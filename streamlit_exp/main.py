@@ -326,23 +326,6 @@ elif st.session_state.phase == "ai_feedback":
             st.rerun()
 
 
-    st.markdown(feedback_html, unsafe_allow_html=True)
-
-    # 진행 버튼
-    if st.session_state.current_kw_index < 2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("다음 글쓰기로 이동"):
-            st.session_state.current_kw_index += 1
-            st.session_state.phase = "writing"
-            st.rerun()
-    else:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("학습동기 설문으로 이동"):
-            st.session_state.data["writing"] = st.session_state.writing_answers
-            st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
-            st.session_state.phase = "motivation"
-            st.rerun()
-
 
 # -------------------
 # 6. 학습동기 설문
