@@ -157,9 +157,10 @@ elif st.session_state.phase == "anthro":
         questions = json.load(f)
 
     st.title("의인화 척도 설문")
-    # 최상단 점수 의미 설명 (가로 한 줄)
+
+    # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
-    <div style='text-align:center; font-size:16px; margin-bottom:20px;'>
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
         <b>4점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
@@ -168,31 +169,51 @@ elif st.session_state.phase == "anthro":
 
     responses = []
     for i, q in enumerate(questions, start=1):
-        # 문항 표시 (큰 글씨)
-        st.markdown(f"<p style='font-size:18px; font-weight:bold;'>{i}. {q}</p>", unsafe_allow_html=True)
+        # 문항 표시
+        st.markdown(
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:4px;'>{i}. {q}</p>",
+            unsafe_allow_html=True
+        )
 
-        # 7점 리커트 척도 (기본값 없음)
+        # 7점 리커트 척도 (기본값 없음, 버튼 하단에 숫자 표시)
+        options_html = """
+        <div style='display:flex; justify-content:center; gap:16px; margin-bottom:12px;'>
+        """
+        for num in range(1, 8):
+            options_html += f"""
+            <div style='text-align:center;'>
+                <input type="radio" name="anthro_{i}" value="{num}" id="anthro_{i}_{num}" style="width:20px; height:20px;">
+                <div style='margin-top:4px; font-size:14px;'>{num}</div>
+            </div>
+            """
+        options_html += "</div>"
+
+        st.markdown(options_html, unsafe_allow_html=True)
+
+        # 실제 값 선택을 위해 Streamlit radio (숨김)
         choice = st.radio(
             label="",
             options=list(range(1, 8)),
-            index=None,  # 기본 선택 없음
+            index=None,
             horizontal=True,
-            key=f"anthro_{i}"
+            key=f"anthro_{i}",
+            label_visibility="collapsed"
         )
         responses.append(choice)
 
-        # 5문항마다 구분선 추가
-        if i % 5 == 0 and i != len(questions):
-            st.markdown("<hr style='border:1px solid #ccc;'>", unsafe_allow_html=True)
+        # 5문항마다 구분선
+        #if i % 5 == 0 and i != len(questions):
+            #st.markdown("<hr style='border:1px solid #ccc; margin:20px 0;'>", unsafe_allow_html=True)
 
-    # 다음 버튼 클릭 시 응답 여부 확인
+    # 필수 응답 체크
     if st.button("다음 (창의적 글쓰기)"):
-        if None in responses:  # 하나라도 응답 안 한 경우
+        if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing"
             st.rerun()
+
 
 # -------------------
 # 3. 창의적 글쓰기
@@ -269,9 +290,9 @@ elif st.session_state.phase == "ai_feedback":
 elif st.session_state.phase == "motivation":
     st.title("학습동기 설문")
 
-    # 최상단 점수 의미 설명 (가로 한 줄)
+    # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
-    <div style='text-align:center; font-size:16px; margin-bottom:20px;'>
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
         <b>5점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
         <b>10점</b> : 매우 그렇다
@@ -279,27 +300,45 @@ elif st.session_state.phase == "motivation":
     """, unsafe_allow_html=True)
 
     motivation_q = [
-        "이번 글쓰기와 비슷한 과제를 앞으로도 계속 해보고 싶다.",
-        "앞으로도 글쓰기 과제를 자발적으로 선택해 수행할 가능성이 높다.",
-        "다음에는 이번보다 더 어려운 글쓰기 과제에 도전해보고 싶다.",
+        "이번 글쓰기와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
+        "앞으로도 글쓰기 과제가 있다면 참여할 의향이 있다.",
+        "더 어려운 글쓰기 과제가 주어져도 도전할 의향이 있다.",
         "글쓰기 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
-        "이번 과제를 통해 느낀 성취감은 나에게 중요하다.",
+        "이번 과제를 통해 성취감을 느꼈다.",
         "글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
         "이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
     ]
 
     motivation_responses = []
     for i, q in enumerate(motivation_q, start=1):
-        # 문항 표시
-        st.markdown(f"<p style='font-size:18px; font-weight:bold;'>{i}. {q}</p>", unsafe_allow_html=True)
+        # 문항 표시 (문항과 버튼 간격 줄임)
+        st.markdown(
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:4px;'>{i}. {q}</p>",
+            unsafe_allow_html=True
+        )
 
-        # 기본값 없는 라디오 버튼
+        # 버튼 + 숫자 표시 (가로 배치)
+        options_html = "<div style='display:flex; justify-content:center; gap:16px; margin-bottom:12px;'>"
+        for num in range(1, 11):
+            options_html += f"""
+            <div style='text-align:center;'>
+                <input type="radio" name="motivation_{i}" value="{num}" id="motivation_{i}_{num}" style="width:20px; height:20px;">
+                <div style='margin-top:4px; font-size:14px;'>{num}</div>
+            </div>
+            """
+        options_html += "</div>"
+
+        # HTML로 커스텀 버튼 표시
+        st.markdown(options_html, unsafe_allow_html=True)
+
+        # Streamlit이 값 저장할 수 있도록 숨김 라디오
         choice = st.radio(
             label="",
-            options=list(range(1, 11)),  # 1~10점
-            index=None,                  # 기본 선택 없음
+            options=list(range(1, 11)),
+            index=None,
             horizontal=True,
-            key=f"motivation_{i}"
+            key=f"motivation_{i}",
+            label_visibility="collapsed"
         )
         motivation_responses.append(choice)
 
