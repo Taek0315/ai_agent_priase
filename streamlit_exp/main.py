@@ -81,9 +81,14 @@ def run_mcp_motion():
 # -------------------
 # AI 피드백 세트
 # -------------------
-with open("data/feedback_sets.json", encoding="utf-8") as f:
-    feedback_sets = json.load(f)
+import os
 
+BASE_DIR = os.path.dirname(__file__)  # main.py가 있는 폴더 경로
+
+# AI 피드백 세트
+feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
+with open(feedback_path, encoding="utf-8") as f:
+    feedback_sets = json.load(f)
 # -------------------
 # 1. 연구 동의 페이지
 # -------------------
@@ -148,7 +153,8 @@ elif st.session_state.phase == "demographic":
 # 2. 의인화 척도
 # -------------------
 elif st.session_state.phase == "anthro":
-    with open("data/questions_anthro.json", encoding="utf-8") as f:
+    anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
+    with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
     st.title("의인화 척도 설문")
     responses = []
@@ -163,7 +169,8 @@ elif st.session_state.phase == "anthro":
 # 3. 창의적 글쓰기
 # -------------------
 elif st.session_state.phase == "writing":
-    with open("data/keywords.json", encoding="utf-8") as f:
+    keywords_path = os.path.join(BASE_DIR, "data", "keywords.json")
+    with open(keywords_path, encoding="utf-8") as f:
         keywords_list = json.load(f)
     current_keywords = keywords_list[st.session_state.current_kw_index]
 
