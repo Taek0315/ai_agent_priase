@@ -268,21 +268,37 @@ elif st.session_state.phase == "analyzing":
 # -------------------
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
-    feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
-    feedback_with_breaks = feedback.replace("\n", "  \n")
-    st.markdown(f"### 📢 AI 평가 결과\n\n> {feedback_with_breaks}")
 
+    feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
+    feedback_with_breaks = feedback.replace("\n", "<br>")  # HTML 줄바꿈
+
+    # 간략한 결과지 스타일
+    feedback_html = f"""
+    <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
+        <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
+        <p style='font-size:16px; line-height:1.6; text-align:center; color:#333;'>
+            {feedback_with_breaks}
+        </p>
+    </div>
+    """
+
+    st.markdown(feedback_html, unsafe_allow_html=True)
+
+    # 진행 버튼
     if st.session_state.current_kw_index < 2:
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("다음 글쓰기로 이동"):
             st.session_state.current_kw_index += 1
             st.session_state.phase = "writing"
             st.rerun()
     else:
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("학습동기 설문으로 이동"):
             st.session_state.data["writing"] = st.session_state.writing_answers
             st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
             st.session_state.phase = "motivation"
             st.rerun()
+
 
 # -------------------
 # 6. 학습동기 설문
