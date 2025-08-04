@@ -6,8 +6,8 @@ def validate_phone(phone: str) -> bool:
 
 def validate_text(text: str, keywords: list) -> tuple:
     text = text.strip()
-    if len(text) < 20:
-        return False, "최소 20자 이상 작성해야 합니다."
+    if len(text) < 10:
+        return False, "최소 10자 이상 작성해야 합니다."
     missing = [kw for kw in keywords if kw not in text]
     if missing:
         return False, f"다음 단어를 반드시 포함해야 합니다: {', '.join(missing)}"

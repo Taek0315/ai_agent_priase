@@ -155,14 +155,44 @@ elif st.session_state.phase == "anthro":
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
+
     st.title("의인화 척도 설문")
+    # 최상단 점수 의미 설명 (가로 한 줄)
+    st.markdown("""
+    <div style='text-align:center; font-size:16px; margin-bottom:20px;'>
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>4점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>7점</b> : 매우 그렇다
+    </div>
+    """, unsafe_allow_html=True)
+
     responses = []
-    for q in questions:
-        responses.append(st.slider(q, 1, 7, 4))
+    for i, q in enumerate(questions, start=1):
+        # 문항 표시 (큰 글씨)
+        st.markdown(f"<p style='font-size:18px; font-weight:bold;'>{i}. {q}</p>", unsafe_allow_html=True)
+
+        # 7점 리커트 척도 (기본값 없음)
+        choice = st.radio(
+            label="",
+            options=list(range(1, 8)),
+            index=None,  # 기본 선택 없음
+            horizontal=True,
+            key=f"anthro_{i}"
+        )
+        responses.append(choice)
+
+        # 5문항마다 구분선 추가
+        if i % 5 == 0 and i != len(questions):
+            st.markdown("<hr style='border:1px solid #ccc;'>", unsafe_allow_html=True)
+
+    # 다음 버튼 클릭 시 응답 여부 확인
     if st.button("다음 (창의적 글쓰기)"):
-        st.session_state.data["anthro_responses"] = responses
-        st.session_state.phase = "writing"
-        st.rerun()
+        if None in responses:  # 하나라도 응답 안 한 경우
+            st.warning("모든 문항에 응답해 주세요.")
+        else:
+            st.session_state.data["anthro_responses"] = responses
+            st.session_state.phase = "writing"
+            st.rerun()
 
 # -------------------
 # 3. 창의적 글쓰기
@@ -176,9 +206,16 @@ elif st.session_state.phase == "writing":
     st.title(f"창의적 글쓰기 과제 {st.session_state.current_kw_index + 1}/3")
     st.markdown(
         f"""
-        다음 단어를 모두 포함하여 **최소 20자 이상** 작성하세요:
-
-        **{ ' / '.join(current_keywords) }**
+        <h1 style="text-align: center; margin-top: 50px;">
+            📋 주어진 단어 3개를 보고 글쓰기 과제를 진행합니다
+        </h1>
+        <p style="text-align: center; font-size: 18px;">
+            주어진 <b>모든 단어</b>를 포함하여 자유롭게 작성해 주세요.<br>
+            <b>최소 10자 이상</b> 작성해야 제출할 수 있습니다.
+        </p>
+        <p style="text-align: center; font-size: 20px; color: #4CAF50;">
+            단어: <b>{' / '.join(current_keywords)}</b>
+        </p>
         """,
         unsafe_allow_html=True
     )
@@ -231,6 +268,16 @@ elif st.session_state.phase == "ai_feedback":
 # -------------------
 elif st.session_state.phase == "motivation":
     st.title("학습동기 설문")
+
+    # 최상단 점수 의미 설명 (가로 한 줄)
+    st.markdown("""
+    <div style='text-align:center; font-size:16px; margin-bottom:20px;'>
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>5점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>10점</b> : 매우 그렇다
+    </div>
+    """, unsafe_allow_html=True)
+
     motivation_q = [
         "이번 글쓰기와 비슷한 과제를 앞으로도 계속 해보고 싶다.",
         "앞으로도 글쓰기 과제를 자발적으로 선택해 수행할 가능성이 높다.",
@@ -240,14 +287,31 @@ elif st.session_state.phase == "motivation":
         "글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
         "이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
     ]
-    motivation_responses = []
-    for q in motivation_q:
-        motivation_responses.append(st.slider(q, 1, 10, 5))
 
+    motivation_responses = []
+    for i, q in enumerate(motivation_q, start=1):
+        # 문항 표시
+        st.markdown(f"<p style='font-size:18px; font-weight:bold;'>{i}. {q}</p>", unsafe_allow_html=True)
+
+        # 기본값 없는 라디오 버튼
+        choice = st.radio(
+            label="",
+            options=list(range(1, 11)),  # 1~10점
+            index=None,                  # 기본 선택 없음
+            horizontal=True,
+            key=f"motivation_{i}"
+        )
+        motivation_responses.append(choice)
+
+    # 설문 완료 버튼
     if st.button("설문 완료"):
-        st.session_state.data["motivation_responses"] = motivation_responses
-        st.session_state.phase = "phone_input"
-        st.rerun()
+        if None in motivation_responses:
+            st.warning("모든 문항에 응답해 주세요.")
+        else:
+            st.session_state.data["motivation_responses"] = motivation_responses
+            st.session_state.phase = "phone_input"
+            st.rerun()
+
 
 # -------------------
 # 6-1. 휴대폰 번호 입력 단계
