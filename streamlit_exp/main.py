@@ -171,9 +171,6 @@ elif st.session_state.phase == "demographic":
 # 2. 의인화 척도
 # -------------------
 elif st.session_state.phase == "anthro":
-    import streamlit as st
-    import os, json
-
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
@@ -198,25 +195,15 @@ elif st.session_state.phase == "anthro":
             unsafe_allow_html=True
         )
 
-        # 버튼 아래 숫자가 표시되도록 가로로 배치
-        cols = st.columns(len(range(1, 8)), gap="small")
-        selected_value = None
-        for idx, num in enumerate(range(1, 8)):
-            with cols[idx]:
-                # 라디오 대신 버튼 모양 유지 + 숫자 아래 배치
-                if st.button(" ", key=f"anthro_btn_{i}_{num}", help=str(num)):
-                    selected_value = num
-                st.markdown(f"<div style='text-align:center; font-size:14px;'>{num}</div>", unsafe_allow_html=True)
-
-        # 현재 선택값을 세션에 저장
-        if f"anthro_{i}" not in st.session_state:
-            st.session_state[f"anthro_{i}"] = None
-        if selected_value is not None:
-            st.session_state[f"anthro_{i}"] = selected_value
-
-        responses.append(st.session_state[f"anthro_{i}"])
-
-    
+        # 기본 라디오 버튼 (1~7점) - 한 줄에 맞게 표시
+        choice = st.radio(
+            label="",
+            options=list(range(1, 8)),
+            index=None,  # 기본 선택 없음
+            horizontal=True,
+            key=f"anthro_{i}"
+        )
+        responses.append(choice)
 
     # 필수 응답 체크
     if st.button("다음 (창의적 글쓰기)"):
@@ -226,6 +213,7 @@ elif st.session_state.phase == "anthro":
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing"
             st.rerun()
+
 
 
 
@@ -349,23 +337,15 @@ elif st.session_state.phase == "motivation":
             unsafe_allow_html=True
         )
 
-        # 가로 배치 컬럼 생성
-        cols = st.columns(len(range(1, 11)), gap="small")
-        selected_value = None
-        for idx, num in enumerate(range(1, 11)):
-            with cols[idx]:
-                # 버튼 모양 + 하단 숫자
-                if st.button(" ", key=f"motivation_btn_{i}_{num}", help=str(num)):
-                    selected_value = num
-                st.markdown(f"<div style='text-align:center; font-size:14px;'>{num}</div>", unsafe_allow_html=True)
-
-        # 선택 상태를 세션에 저장
-        if f"motivation_{i}" not in st.session_state:
-            st.session_state[f"motivation_{i}"] = None
-        if selected_value is not None:
-            st.session_state[f"motivation_{i}"] = selected_value
-
-        motivation_responses.append(st.session_state[f"motivation_{i}"])
+        # 기본 라디오 버튼 (1~10점) - 한 줄 반응형
+        choice = st.radio(
+            label="",
+            options=list(range(1, 11)),
+            index=None,  # 기본 선택 없음
+            horizontal=True,
+            key=f"motivation_{i}"
+        )
+        motivation_responses.append(choice)
 
     # 설문 완료 버튼
     if st.button("설문 완료"):
@@ -375,6 +355,7 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
+
 
 
 
