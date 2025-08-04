@@ -2,9 +2,15 @@ import streamlit as st
 import time
 import random
 import json
+import os
 from datetime import datetime
 from utils.validation import validate_phone, validate_text
 from utils.save_data import save_to_csv
+
+# -------------------
+# 경로 설정 (main.py 기준 절대경로)
+# -------------------
+BASE_DIR = os.path.dirname(__file__)
 
 # -------------------
 # 초기 세팅
@@ -23,11 +29,11 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 세션 상태 초기화
 if "phase" not in st.session_state:
-    st.session_state.phase = "start"  # 현재 단계
-    st.session_state.data = {}  # 전체 응답 저장
-    st.session_state.current_kw_index = 0  # 현재 글쓰기 번호 (0~2)
-    st.session_state.writing_answers = []  # 글쓰기 응답 저장
-    st.session_state.feedback_set_key = random.choice(["set1", "set2"])  # AI 피드백 세트 랜덤 선택
+    st.session_state.phase = "start"
+    st.session_state.data = {}
+    st.session_state.current_kw_index = 0
+    st.session_state.writing_answers = []
+    st.session_state.feedback_set_key = random.choice(["set1", "set2"])
 
 # -------------------
 # MCP 가짜 로그 (모션)
@@ -56,44 +62,36 @@ def run_mcp_motion():
 
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
-
     start_time = time.time()
     elapsed = 0
     step = 0
-    total_duration = 7  # 총 7초 동안 실행
+    total_duration = 7
 
     while elapsed < total_duration:
-        # 진행률 계산
         progress = min((elapsed / total_duration), 1.0)
         progress_bar.progress(progress)
-
-        # 순차적으로 로그 표시 (실제 처리 순서처럼)
         log_message = fake_logs[step % len(fake_logs)]
         timestamp = time.strftime("%H:%M:%S")
         log_placeholder.text(f"[{timestamp}] {log_message}")
-
         step += 1
-        time.sleep(0.5)  # 0.5초마다 새로운 로그 표시
+        time.sleep(0.5)
         elapsed = time.time() - start_time
 
     progress_bar.progress(1.0)
 
 # -------------------
-# AI 피드백 세트
+# AI 피드백 세트 로드
 # -------------------
-import os
-
-BASE_DIR = os.path.dirname(__file__)  # main.py가 있는 폴더 경로
-
-# AI 피드백 세트
 feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
 with open(feedback_path, encoding="utf-8") as f:
     feedback_sets = json.load(f)
+
 # -------------------
 # 1. 연구 동의 페이지
 # -------------------
 if st.session_state.phase == "start":
-    st.image("logo.png", width=150)
+    logo_path = os.path.join(BASE_DIR, "logo.png")
+    st.image(logo_path, width=150)
     st.title("연구 참여 동의서")
 
     st.markdown("""
@@ -132,7 +130,8 @@ if st.session_state.phase == "start":
 # 1-1. 인적사항 입력 페이지
 # -------------------
 elif st.session_state.phase == "demographic":
-    st.image("logo.png", width=150)
+    logo_path = os.path.join(BASE_DIR, "logo.png")
+    st.image(logo_path, width=150)
     st.title("인적사항 입력")
 
     gender = st.radio("성별", ["남자", "여자"])
@@ -175,8 +174,6 @@ elif st.session_state.phase == "writing":
     current_keywords = keywords_list[st.session_state.current_kw_index]
 
     st.title(f"창의적 글쓰기 과제 {st.session_state.current_kw_index + 1}/3")
-    
-    # 줄바꿈을 포함한 안내문
     st.markdown(
         f"""
         다음 단어를 모두 포함하여 **최소 20자 이상** 작성하세요:
@@ -214,10 +211,7 @@ elif st.session_state.phase == "analyzing":
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
-    
-    # JSON 안의 \n을 Markdown 줄바꿈으로 변환
     feedback_with_breaks = feedback.replace("\n", "  \n")
-    
     st.markdown(f"### 📢 AI 평가 결과\n\n> {feedback_with_breaks}")
 
     if st.session_state.current_kw_index < 2:
@@ -227,7 +221,6 @@ elif st.session_state.phase == "ai_feedback":
             st.rerun()
     else:
         if st.button("학습동기 설문으로 이동"):
-            # 모든 글쓰기 저장
             st.session_state.data["writing"] = st.session_state.writing_answers
             st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
             st.session_state.phase = "motivation"
@@ -239,19 +232,14 @@ elif st.session_state.phase == "ai_feedback":
 elif st.session_state.phase == "motivation":
     st.title("학습동기 설문")
     motivation_q = [
-    # 과제 지속 의향
-    "이번 글쓰기와 비슷한 과제를 앞으로도 계속 해보고 싶다.",
-    "앞으로도 글쓰기 과제를 자발적으로 선택해 수행할 가능성이 높다.",
-    
-    # 도전 의향
-    "다음에는 이번보다 더 어려운 글쓰기 과제에 도전해보고 싶다.",
-    "글쓰기 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
-    
-    # 성취·배움 가치
-    "이번 과제를 통해 느낀 성취감은 나에게 중요하다.",
-    "글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
-    "이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
-]
+        "이번 글쓰기와 비슷한 과제를 앞으로도 계속 해보고 싶다.",
+        "앞으로도 글쓰기 과제를 자발적으로 선택해 수행할 가능성이 높다.",
+        "다음에는 이번보다 더 어려운 글쓰기 과제에 도전해보고 싶다.",
+        "글쓰기 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
+        "이번 과제를 통해 느낀 성취감은 나에게 중요하다.",
+        "글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
+        "이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
+    ]
     motivation_responses = []
     for q in motivation_q:
         motivation_responses.append(st.slider(q, 1, 10, 5))
@@ -269,16 +257,14 @@ elif st.session_state.phase == "phone_input":
     st.markdown("""
     연구 참여가 완료되었습니다. 감사합니다.  
     연구 답례품을 받을 휴대폰 번호를 입력해 주세요. (선택 사항)  
-    입력하지 않아도 제출이 가능합니다. 다만, 미입력시 답례품 전달이 어려울 수 있습니다.
+    입력하지 않아도 제출이 가능합니다. 다만, 미입력 시 답례품 전달이 어려울 수 있습니다.
     """)
     phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678")
 
     if st.button("제출"):
-        # 번호를 입력했다면 형식 검증
         if phone.strip() and not validate_phone(phone):
             st.warning("올바른 형식이 아닙니다. (예: 010-1234-5678)")
         else:
-            # 번호가 없으면 빈 문자열로 저장
             st.session_state.data["phone"] = phone.strip()
             st.session_state.data["endTime"] = datetime.now().isoformat()
             save_to_csv(st.session_state.data)
