@@ -36,48 +36,67 @@ if "phase" not in st.session_state:
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
 
 # -------------------
-# MCP 가짜 로그 (모션)
+# MCP Simulation Logs (More Realistic)
 # -------------------
 fake_logs = [
-    "[INFO] 데이터셋 로드 중... s3://mcp-input/empathy_scores.csv (34KB)",
-    "Gemini API 응답 시간: 113ms (OK)",
-    "MCP::심볼릭 추상화 계층 정렬 중...",
-    "행동 패턴 벡터 불러오는 중...",
-    "언어 감성 엔트로피 분석 중...",
-    "신경망 표현 겹침 시뮬레이션...",
-    "잠재 인지 스키마 디코딩 (단계 3/7)...",
-    "세맨틱 경로 매핑 중...",
-    "심리 지표 매트릭스 정렬 Δ=0.039",
-    "✔️ 공감 예측 엔진 수렴 완료",
-    "임시 메모리 버퍼 정리 완료"
+    "[INFO] Loading dataset from secure storage... s3://ai-engine/empathy_scores.csv (34KB)",
+    "[INFO] Preprocessing text input... removing stopwords & normalizing case",
+    "[INFO] Tokenizing text into semantic units (precision mode)",
+    "[OK] Semantic token map generated: 412 unique tokens",
+    "[INFO] Running sentiment polarity analysis (multi-model ensemble)",
+    "[OK] Sentiment polarity: +0.732 (Positive)",
+    "[INFO] Vectorizing content using contextual embeddings (BERT-large)",
+    "[OK] Embedding vector length: 1024 | Norm: 0.987",
+    "[INFO] Initializing deep neural inference pipeline...",
+    "[INFO] Layer 1: Convolutional feature extraction",
+    "[INFO] Layer 2: Recurrent sequence modeling (BiLSTM)",
+    "[INFO] Layer 3: Attention mechanism alignment",
+    "[INFO] Running multi-head attention (8 heads)...",
+    "[OK] Attention weights normalized",
+    "[INFO] Cross-checking results with reinforcement learning agent",
+    "[OK] Policy score: 0.884 | Confidence: High",
+    "[INFO] Performing emotional tone classification (7 categories)",
+    "[OK] Classified tone: Empathetic & Encouraging",
+    "[INFO] Generating personalized feedback template...",
+    "[INFO] Optimizing phrasing for clarity and motivational impact",
+    "[OK] Final feedback text compiled",
+    "[INFO] Validating output consistency against linguistic rules",
+    "[OK] Grammar check passed | No critical issues",
+    "[INFO] Saving inference report to temporary buffer...",
+    "[OK] Report size: 2.8KB",
+    "[✔] AI analysis complete. Preparing feedback delivery..."
 ]
 
 def run_mcp_motion():
-    """7초 동안 AI 처리 시각 효과"""
+    """8 seconds of realistic AI processing simulation"""
     st.markdown("""
-        <h1 style="text-align: center; margin-top: 100px;">
-            🧠 AI analyzing what your TEXT...
+        <h1 style="text-align: center; margin-top: 80px;">
+            🧠 AI is processing your text...
         </h1>
     """, unsafe_allow_html=True)
 
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
+
     start_time = time.time()
     elapsed = 0
     step = 0
-    total_duration = 7
+    total_duration = 8  # Slightly longer for realism
 
     while elapsed < total_duration:
         progress = min((elapsed / total_duration), 1.0)
         progress_bar.progress(progress)
+
         log_message = fake_logs[step % len(fake_logs)]
         timestamp = time.strftime("%H:%M:%S")
         log_placeholder.text(f"[{timestamp}] {log_message}")
+
         step += 1
-        time.sleep(0.5)
+        time.sleep(0.4)  # Faster log changes for realism
         elapsed = time.time() - start_time
 
     progress_bar.progress(1.0)
+
 
 # -------------------
 # AI 피드백 세트 로드
@@ -152,11 +171,15 @@ elif st.session_state.phase == "demographic":
 # 2. 의인화 척도
 # -------------------
 elif st.session_state.phase == "anthro":
+    import streamlit as st
+    import os, json
+
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
 
-    st.title("의인화 척도 설문")
+    # 제목 (앵커 제거 + 중앙정렬)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
 
     # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
@@ -171,39 +194,29 @@ elif st.session_state.phase == "anthro":
     for i, q in enumerate(questions, start=1):
         # 문항 표시
         st.markdown(
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:4px;'>{i}. {q}</p>",
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:6px;'>{i}. {q}</p>",
             unsafe_allow_html=True
         )
 
-        # 7점 리커트 척도 (기본값 없음, 버튼 하단에 숫자 표시)
-        options_html = """
-        <div style='display:flex; justify-content:center; gap:16px; margin-bottom:12px;'>
-        """
-        for num in range(1, 8):
-            options_html += f"""
-            <div style='text-align:center;'>
-                <input type="radio" name="anthro_{i}" value="{num}" id="anthro_{i}_{num}" style="width:20px; height:20px;">
-                <div style='margin-top:4px; font-size:14px;'>{num}</div>
-            </div>
-            """
-        options_html += "</div>"
+        # 버튼 아래 숫자가 표시되도록 가로로 배치
+        cols = st.columns(len(range(1, 8)), gap="small")
+        selected_value = None
+        for idx, num in enumerate(range(1, 8)):
+            with cols[idx]:
+                # 라디오 대신 버튼 모양 유지 + 숫자 아래 배치
+                if st.button(" ", key=f"anthro_btn_{i}_{num}", help=str(num)):
+                    selected_value = num
+                st.markdown(f"<div style='text-align:center; font-size:14px;'>{num}</div>", unsafe_allow_html=True)
 
-        st.markdown(options_html, unsafe_allow_html=True)
+        # 현재 선택값을 세션에 저장
+        if f"anthro_{i}" not in st.session_state:
+            st.session_state[f"anthro_{i}"] = None
+        if selected_value is not None:
+            st.session_state[f"anthro_{i}"] = selected_value
 
-        # 실제 값 선택을 위해 Streamlit radio (숨김)
-        choice = st.radio(
-            label="",
-            options=list(range(1, 8)),
-            index=None,
-            horizontal=True,
-            key=f"anthro_{i}",
-            label_visibility="collapsed"
-        )
-        responses.append(choice)
+        responses.append(st.session_state[f"anthro_{i}"])
 
-        # 5문항마다 구분선
-        #if i % 5 == 0 and i != len(questions):
-            #st.markdown("<hr style='border:1px solid #ccc; margin:20px 0;'>", unsafe_allow_html=True)
+    
 
     # 필수 응답 체크
     if st.button("다음 (창의적 글쓰기)"):
@@ -213,6 +226,7 @@ elif st.session_state.phase == "anthro":
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing"
             st.rerun()
+
 
 
 # -------------------
@@ -304,7 +318,8 @@ elif st.session_state.phase == "ai_feedback":
 # 6. 학습동기 설문
 # -------------------
 elif st.session_state.phase == "motivation":
-    st.title("학습동기 설문")
+    # 제목 (앵커 제거 + 중앙정렬)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>학습동기 설문</h2>", unsafe_allow_html=True)
 
     # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
@@ -326,37 +341,31 @@ elif st.session_state.phase == "motivation":
     ]
 
     motivation_responses = []
+
     for i, q in enumerate(motivation_q, start=1):
-        # 문항 표시 (문항과 버튼 간격 줄임)
+        # 문항 표시
         st.markdown(
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:4px;'>{i}. {q}</p>",
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:6px;'>{i}. {q}</p>",
             unsafe_allow_html=True
         )
 
-        # 버튼 + 숫자 표시 (가로 배치)
-        options_html = "<div style='display:flex; justify-content:center; gap:16px; margin-bottom:12px;'>"
-        for num in range(1, 11):
-            options_html += f"""
-            <div style='text-align:center;'>
-                <input type="radio" name="motivation_{i}" value="{num}" id="motivation_{i}_{num}" style="width:20px; height:20px;">
-                <div style='margin-top:4px; font-size:14px;'>{num}</div>
-            </div>
-            """
-        options_html += "</div>"
+        # 가로 배치 컬럼 생성
+        cols = st.columns(len(range(1, 11)), gap="small")
+        selected_value = None
+        for idx, num in enumerate(range(1, 11)):
+            with cols[idx]:
+                # 버튼 모양 + 하단 숫자
+                if st.button(" ", key=f"motivation_btn_{i}_{num}", help=str(num)):
+                    selected_value = num
+                st.markdown(f"<div style='text-align:center; font-size:14px;'>{num}</div>", unsafe_allow_html=True)
 
-        # HTML로 커스텀 버튼 표시
-        st.markdown(options_html, unsafe_allow_html=True)
+        # 선택 상태를 세션에 저장
+        if f"motivation_{i}" not in st.session_state:
+            st.session_state[f"motivation_{i}"] = None
+        if selected_value is not None:
+            st.session_state[f"motivation_{i}"] = selected_value
 
-        # Streamlit이 값 저장할 수 있도록 숨김 라디오
-        choice = st.radio(
-            label="",
-            options=list(range(1, 11)),
-            index=None,
-            horizontal=True,
-            key=f"motivation_{i}",
-            label_visibility="collapsed"
-        )
-        motivation_responses.append(choice)
+        motivation_responses.append(st.session_state[f"motivation_{i}"])
 
     # 설문 완료 버튼
     if st.button("설문 완료"):
@@ -366,6 +375,7 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
+
 
 
 # -------------------
