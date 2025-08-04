@@ -189,13 +189,15 @@ elif st.session_state.phase == "anthro":
 
     responses = []
     for i, q in enumerate(questions, start=1):
-        # 문항 표시
+        # 하나의 문항 + 응답을 블록으로 묶기
         st.markdown(
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:6px;'>{i}. {q}</p>",
+            f"<div style='margin-bottom:25px;'>"
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:8px;'>{i}. {q}</p>"
+            "</div>",
             unsafe_allow_html=True
         )
 
-        # 기본 라디오 버튼 (1~7점) - 한 줄에 맞게 표시
+        # 기본 라디오 버튼 (1~7점) - 문항과 가깝게, 다음 문항과 멀게
         choice = st.radio(
             label="",
             options=list(range(1, 8)),
@@ -203,7 +205,11 @@ elif st.session_state.phase == "anthro":
             horizontal=True,
             key=f"anthro_{i}"
         )
+
         responses.append(choice)
+
+        # 문항과 문항 사이 간격 넓히기
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 필수 응답 체크
     if st.button("다음 (창의적 글쓰기)"):
@@ -213,8 +219,6 @@ elif st.session_state.phase == "anthro":
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing"
             st.rerun()
-
-
 
 
 # -------------------
@@ -271,18 +275,56 @@ elif st.session_state.phase == "analyzing":
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
 
+    # 랜덤 피드백 선택
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
-    feedback_with_breaks = feedback.replace("\n", "<br>")  # HTML 줄바꿈
 
-    # 간략한 결과지 스타일
+    # 🔹 강조할 단어/구문 리스트 (필요 시 자유롭게 수정)
+    highlight_words = [
+        "완성도 있는 결과",
+        "끝까지 완성하려는 노력",
+        "꾸준한 시도",
+        "창의적인 접근",
+        "높은 언어적 감각",
+        "핵심 아이디어",
+        "논리적인 확장",
+        "매끄러운 구성"
+    ]
+
+    # 🔹 볼드 처리 적용 (HTML로 변환)
+    for word in highlight_words:
+        feedback = feedback.replace(word, f"<b style='color:#2E7D32;'>{word}</b>")  # 초록색 볼드
+
+    # 줄바꿈 변환
+    feedback_with_breaks = feedback.replace("\n", "<br>")
+
+    # 🔹 간략한 결과지 스타일
     feedback_html = f"""
     <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
         <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
-        <p style='font-size:16px; line-height:1.6; text-align:center; color:#333;'>
+        <p style='font-size:16px; line-height:1.6; text-align:left; color:#333;'>
             {feedback_with_breaks}
         </p>
     </div>
     """
+
+    # HTML 렌더링
+    st.markdown(feedback_html, unsafe_allow_html=True)
+
+    # 진행 버튼
+    if st.session_state.current_kw_index < 2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("다음 글쓰기로 이동"):
+            st.session_state.current_kw_index += 1
+            st.session_state.phase = "writing"
+            st.rerun()
+    else:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("학습동기 설문으로 이동"):
+            st.session_state.data["writing"] = st.session_state.writing_answers
+            st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
+            st.session_state.phase = "motivation"
+            st.rerun()
+
 
     st.markdown(feedback_html, unsafe_allow_html=True)
 
@@ -331,13 +373,15 @@ elif st.session_state.phase == "motivation":
     motivation_responses = []
 
     for i, q in enumerate(motivation_q, start=1):
-        # 문항 표시
+        # 하나의 문항 + 응답을 블록으로 묶기
         st.markdown(
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:6px;'>{i}. {q}</p>",
+            f"<div style='margin-bottom:25px;'>"
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:8px;'>{i}. {q}</p>"
+            "</div>",
             unsafe_allow_html=True
         )
 
-        # 기본 라디오 버튼 (1~10점) - 한 줄 반응형
+        # 기본 라디오 버튼 (1~10점) - 문항과 가깝게, 다음 문항과 멀게
         choice = st.radio(
             label="",
             options=list(range(1, 11)),
@@ -345,7 +389,11 @@ elif st.session_state.phase == "motivation":
             horizontal=True,
             key=f"motivation_{i}"
         )
+
         motivation_responses.append(choice)
+
+        # 문항과 문항 사이 간격 넓히기
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 설문 완료 버튼
     if st.button("설문 완료"):
@@ -355,7 +403,6 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
-
 
 
 
