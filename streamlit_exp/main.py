@@ -71,7 +71,7 @@ def run_mcp_motion():
     """8 seconds of realistic AI processing simulation"""
     st.markdown("""
         <h1 style="text-align: center; margin-top: 80px;">
-            🧠 AI Analusing...
+            🧠 AI Analysing...
         </h1>
     """, unsafe_allow_html=True)
 
@@ -181,8 +181,8 @@ elif st.session_state.phase == "anthro":
     # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
     <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
-        <b>4점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
+        <b>4점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
     </div>
     """, unsafe_allow_html=True)
@@ -209,7 +209,7 @@ elif st.session_state.phase == "anthro":
         responses.append(choice)
 
         # 문항과 문항 사이 간격 넓히기
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
     # 필수 응답 체크
     if st.button("다음 (창의적 글쓰기)"):
