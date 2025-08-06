@@ -175,7 +175,7 @@ elif st.session_state.phase == "anthro":
         responses.append(choice)
         st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
-    if st.button("다음 (창의적 글쓰기 지시문)"):
+    if st.button("다음 (창의적 글쓰기)"):
         if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
