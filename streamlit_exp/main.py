@@ -71,7 +71,7 @@ def run_mcp_motion():
     """8 seconds of realistic AI processing simulation"""
     st.markdown("""
         <h1 style="text-align: center; margin-top: 80px;">
-            🧠 AI is processing your text...
+            🧠 AI Analusing...
         </h1>
     """, unsafe_allow_html=True)
 
@@ -192,7 +192,7 @@ elif st.session_state.phase == "anthro":
         # 하나의 문항 + 응답을 블록으로 묶기
         st.markdown(
             f"<div style='margin-bottom:25px;'>"
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:8px;'>{i}. {q}</p>"
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p>"
             "</div>",
             unsafe_allow_html=True
         )
@@ -337,8 +337,8 @@ elif st.session_state.phase == "motivation":
     # 최상단 점수 의미 설명 (가로 한 줄, 모바일 대응)
     st.markdown("""
     <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
-        <b>5점</b> : 보통이다 &nbsp;&nbsp; ───────── &nbsp;&nbsp;
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
+        <b>5점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>10점</b> : 매우 그렇다
     </div>
     """, unsafe_allow_html=True)
@@ -359,7 +359,7 @@ elif st.session_state.phase == "motivation":
         # 하나의 문항 + 응답을 블록으로 묶기
         st.markdown(
             f"<div style='margin-bottom:25px;'>"
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:8px;'>{i}. {q}</p>"
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p>"
             "</div>",
             unsafe_allow_html=True
         )
