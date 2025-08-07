@@ -150,15 +150,18 @@ elif st.session_state.phase == "demographic":
             })
             st.session_state.phase = "anthro"
             st.rerun()
-
+########################################################
+# 2. 의인화 척도
+########################################################
 elif st.session_state.phase == "anthro":
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
 
+    # 제목 및 점수 안내
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
+    <div style='display:flex; justify-content:center; flex-wrap:wrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>4점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
@@ -169,35 +172,42 @@ elif st.session_state.phase == "anthro":
 
     for i, q in enumerate(questions, start=1):
         with st.container():
-            st.markdown(
-                f"""
-                <div style='
-                    border: 1px solid #ccc;
-                    border-radius: 8px;
-                    padding: 20px;
-                    margin-bottom: 25px;
-                    background-color: #ffffff;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-                '>
-                    <p style='font-size:17px; font-weight:600; margin-bottom:16px;'>
-                        {i}. {q}
-                    </p>
-                """,
-                unsafe_allow_html=True
-            )
+            # 질문 + 라디오를 함께 카드 안에 넣음
+            col = st.columns([1])  # 하나의 column으로 카드처럼 보이도록
 
-            choice = st.radio(
-                label="",
-                options=list(range(1, 8)),
-                index=None,
-                horizontal=True,
-                key=f"anthro_{i}"
-            )
+            with col[0]:
+                st.markdown(
+                    f"""
+                    <div style='
+                        border: 1px solid #ccc;
+                        border-radius: 10px;
+                        padding: 20px;
+                        margin-bottom: 20px;
+                        background-color: #fff;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                    '>
+                        <p style='font-size:17px; font-weight:600; margin-bottom:20px; color:#000;'>
+                            {i}. {q}
+                        </p>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            responses.append(choice)
+                # 라디오 버튼을 HTML 상자 안에 넣고 직접 렌더링
+                choice = st.radio(
+                    label="",
+                    options=list(range(1, 8)),
+                    index=None,
+                    horizontal=True,
+                    key=f"anthro_{i}"
+                )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+                responses.append(choice)
 
+                # 카드 끝 닫기
+                st.markdown("</div>", unsafe_allow_html=True)
+
+    # 제출 버튼
     if st.button("다음 (창의적 글쓰기 지시문)"):
         if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
@@ -205,6 +215,7 @@ elif st.session_state.phase == "anthro":
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing_intro"
             st.rerun()
+
 
 
 # -------------------
