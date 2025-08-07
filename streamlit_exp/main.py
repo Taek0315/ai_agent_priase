@@ -265,6 +265,7 @@ elif st.session_state.phase == "analyzing":
 # -------------------
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
+
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
     highlight_words = [
         "완성도 있는 결과", "끝까지 완성하려는 노력", "꾸준한 시도", "창의적인 접근",
@@ -273,6 +274,7 @@ elif st.session_state.phase == "ai_feedback":
     for word in highlight_words:
         feedback = feedback.replace(word, f"<b style='color:#2E7D32;'>{word}</b>")
     feedback_with_breaks = feedback.replace("\n", "<br>")
+
     feedback_html = f"""
     <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
         <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
@@ -282,6 +284,10 @@ elif st.session_state.phase == "ai_feedback":
     </div>
     """
     st.markdown(feedback_html, unsafe_allow_html=True)
+
+    # ✅ 버튼과 피드백 사이에 여백
+    st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
+
     if st.session_state.current_kw_index < 2:
         if st.button("다음 글쓰기로 이동"):
             st.session_state.current_kw_index += 1
