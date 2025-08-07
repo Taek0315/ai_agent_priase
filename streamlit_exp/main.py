@@ -151,9 +151,6 @@ elif st.session_state.phase == "demographic":
             st.session_state.phase = "anthro"
             st.rerun()
 
-# -------------------
-# 2. 의인화 척도
-# -------------------
 elif st.session_state.phase == "anthro":
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
@@ -161,7 +158,7 @@ elif st.session_state.phase == "anthro":
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>4점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
@@ -169,19 +166,46 @@ elif st.session_state.phase == "anthro":
     """, unsafe_allow_html=True)
 
     responses = []
-    for i, q in enumerate(questions, start=1):
-        st.markdown(f"<div style='margin-bottom:25px;'><p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p></div>", unsafe_allow_html=True)
-        choice = st.radio("", options=list(range(1, 8)), index=None, horizontal=True, key=f"anthro_{i}")
-        responses.append(choice)
-        st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
-    if st.button("다음 (창의적 글쓰기)"):
+    for i, q in enumerate(questions, start=1):
+        with st.container():
+            st.markdown(
+                f"""
+                <div style='
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                    background-color: #ffffff;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                '>
+                    <p style='font-size:17px; font-weight:600; margin-bottom:16px;'>
+                        {i}. {q}
+                    </p>
+                """,
+                unsafe_allow_html=True
+            )
+
+            choice = st.radio(
+                label="",
+                options=list(range(1, 8)),
+                index=None,
+                horizontal=True,
+                key=f"anthro_{i}"
+            )
+
+            responses.append(choice)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    if st.button("다음 (창의적 글쓰기 지시문)"):
         if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing_intro"
             st.rerun()
+
 
 # -------------------
 # 2-1. 창의적 글쓰기 지시문 페이지
@@ -277,13 +301,12 @@ elif st.session_state.phase == "ai_feedback":
             st.session_state.phase = "motivation"
             st.rerun()
 
-# -------------------
-# 6. 학습동기 설문
-# -------------------
 elif st.session_state.phase == "motivation":
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>학습동기 설문</h2>", unsafe_allow_html=True)
+
+    # 상단 점수 설명
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>5점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>10점</b> : 매우 그렇다
@@ -299,13 +322,41 @@ elif st.session_state.phase == "motivation":
         "글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
         "이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
     ]
-    motivation_responses = []
-    for i, q in enumerate(motivation_q, start=1):
-        st.markdown(f"<div style='margin-bottom:25px;'><p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p></div>", unsafe_allow_html=True)
-        choice = st.radio("", options=list(range(1, 11)), index=None, horizontal=True, key=f"motivation_{i}")
-        motivation_responses.append(choice)
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
+    motivation_responses = []
+
+    for i, q in enumerate(motivation_q, start=1):
+        with st.container():
+            st.markdown(
+                f"""
+                <div style='
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                    background-color: #ffffff;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                '>
+                    <p style='font-size:17px; font-weight:600; margin-bottom:16px;'>
+                        {i}. {q}
+                    </p>
+                """,
+                unsafe_allow_html=True
+            )
+
+            choice = st.radio(
+                label="",
+                options=list(range(1, 11)),
+                index=None,
+                horizontal=True,
+                key=f"motivation_{i}"
+            )
+
+            motivation_responses.append(choice)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # 제출 버튼
     if st.button("설문 완료"):
         if None in motivation_responses:
             st.warning("모든 문항에 응답해 주세요.")
@@ -313,6 +364,7 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
+
 
 # -------------------
 # 6-1. 휴대폰 번호 입력 단계
