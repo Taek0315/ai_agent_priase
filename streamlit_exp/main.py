@@ -321,23 +321,14 @@ elif st.session_state.phase == "motivation":
     motivation_responses = []
 
     for i, q in enumerate(motivation_q, start=1):
-        # 문항 출력
-        st.markdown(
-            f"<div style='margin-bottom:25px;'>"
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p>"
-            "</div>",
-            unsafe_allow_html=True
-        )
-
-        # 라디오 버튼 출력
         choice = st.radio(
-            label="",
+            label=f"{i}. {q}",
             options=list(range(1, 11)),
             index=None,
             horizontal=True,
-            key=f"motivation_{i}"
+            key=f"motivation_{i}",
+            label_visibility="visible"
         )
-
         motivation_responses.append(choice)
 
         # 문항 간 여백
@@ -351,6 +342,7 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
+
 
 
 
@@ -380,7 +372,18 @@ elif st.session_state.phase == "phone_input":
 # 7. 완료 화면
 # -------------------
 elif st.session_state.phase == "result":
-    st.success("모든 과제가 완료되었습니다. 감사합니다!")
-    st.write("응답이 저장되었습니다.")
-    if st.button("제출 완료"):
-        st.markdown("<script>window.close();</script>", unsafe_allow_html=True)
+    if "result_submitted" not in st.session_state:
+        st.success("모든 과제가 완료되었습니다. 감사합니다!")
+        st.write("연구에 참여해주셔서 감사합니다.")
+
+        if st.button("제출 완료"):
+            st.session_state.result_submitted = True
+            st.rerun()
+    else:
+        st.success("응답이 저장되었습니다.")
+        st.markdown("""
+        <div style='font-size:16px; padding-top:10px;'>
+            설문 응답이 성공적으로 저장되었습니다.<br>
+            <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 수동으로 닫아 주세요.</b>
+        </div>
+        """, unsafe_allow_html=True)
