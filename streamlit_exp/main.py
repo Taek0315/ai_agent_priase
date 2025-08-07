@@ -158,11 +158,12 @@ elif st.session_state.phase == "anthro":
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
 
+    # 제목
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
 
-    # 점수 설명
+    # 점수 의미 안내
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:20px; white-space:nowrap;'>
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
         <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>4점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
@@ -172,27 +173,19 @@ elif st.session_state.phase == "anthro":
     responses = []
 
     for i, q in enumerate(questions, start=1):
-        # 문항 출력
-        st.markdown(
-            f"<div style='margin-bottom:25px;'>"
-            f"<p style='font-size:18px; font-weight:bold; margin-bottom:10px;'>{i}. {q}</p>"
-            "</div>",
-            unsafe_allow_html=True
-        )
-
-        # 라디오 버튼 출력
+        # 문항 + 라디오 버튼 (한 줄로)
         choice = st.radio(
-            label="",
+            label=f"{i}. {q}",
             options=list(range(1, 8)),
-            index=None,  # 기본 선택 없음
+            index=None,
             horizontal=True,
-            key=f"anthro_{i}"
+            key=f"anthro_{i}",
+            label_visibility="visible"
         )
-
         responses.append(choice)
 
         # 문항 간 여백
-        st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 다음 버튼
     if st.button("다음 (창의적 글쓰기 지시문)"):
@@ -202,6 +195,7 @@ elif st.session_state.phase == "anthro":
             st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing_intro"
             st.rerun()
+
 
 
 
@@ -299,7 +293,9 @@ elif st.session_state.phase == "ai_feedback":
             st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
             st.session_state.phase = "motivation"
             st.rerun()
-
+####################################################
+# 6. 학습 동기 설문
+####################################################
 elif st.session_state.phase == "motivation":
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>학습동기 설문</h2>", unsafe_allow_html=True)
 
@@ -325,35 +321,27 @@ elif st.session_state.phase == "motivation":
     motivation_responses = []
 
     for i, q in enumerate(motivation_q, start=1):
-        with st.container():
-            st.markdown(
-                f"""
-                <div style='
-                    border: 1px solid #ccc;
-                    border-radius: 8px;
-                    padding: 20px;
-                    margin-bottom: 25px;
-                    background-color: #ffffff;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-                '>
-                    <p style='font-size:17px; font-weight:600; margin-bottom:16px;'>
-                        {i}. {q}
-                    </p>
-                """,
-                unsafe_allow_html=True
-            )
+        # 문항 출력
+        st.markdown(
+            f"<div style='margin-bottom:25px;'>"
+            f"<p style='font-size:18px; font-weight:bold; margin-bottom:18px;'>{i}. {q}</p>"
+            "</div>",
+            unsafe_allow_html=True
+        )
 
-            choice = st.radio(
-                label="",
-                options=list(range(1, 11)),
-                index=None,
-                horizontal=True,
-                key=f"motivation_{i}"
-            )
+        # 라디오 버튼 출력
+        choice = st.radio(
+            label="",
+            options=list(range(1, 11)),
+            index=None,
+            horizontal=True,
+            key=f"motivation_{i}"
+        )
 
-            motivation_responses.append(choice)
+        motivation_responses.append(choice)
 
-            st.markdown("</div>", unsafe_allow_html=True)
+        # 문항 간 여백
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 제출 버튼
     if st.button("설문 완료"):
@@ -363,6 +351,7 @@ elif st.session_state.phase == "motivation":
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
+
 
 
 # -------------------
