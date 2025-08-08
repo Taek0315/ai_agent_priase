@@ -1,7 +1,7 @@
+# utils/google_sheet.py
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit as st
-import json, os
 
 SCOPE = [
     "https://spreadsheets.google.com/feeds",
@@ -14,15 +14,22 @@ def _get_creds():
         info["private_key"] = info["private_key"].replace("\\n", "\n")
     return ServiceAccountCredentials.from_json_keyfile_dict(info, SCOPE)
 
-def get_google_sheet(_unused_sheet_name: str = None):
+def get_google_sheet():
     creds = _get_creds()
     client = gspread.authorize(creds)
 
-    # ✅ ID 로 직접 열기 (제목 이슈 회피)
-    sheet_id = st.secrets["google_sheet"]["id"]
-    return client.open_by_url(st.secrets["google_sheet"]["url"]).sheet1
-    # 또는 url로 저장했다면: return client.open_by_url(st.secrets["google_sheet"]["url"]).sheet1
+    # ✅ id 우선, 없으면 url 사용
+    gs_conf = st.secrets.get("google_sheet", {})
+    sheet_id = gs_conf.get("id")
+    sheet_url = gs_conf.get("url")
 
-def append_row_to_sheet(_unused_sheet_name: str, row_data: list):
+    if sheet_id:
+        return client.open_by_key(sheet_id).sheet1
+    if sheet_url:
+        return client.open_by_url(sheet_url).sheet1
+
+    raise RuntimeError("Secrets에 [google_sheet.id] 또는 [google_sheet.url]을 설정하세요.")
+
+def append_row_to_sheet(_unused, row_data):
     sheet = get_google_sheet()
     sheet.append_row(row_data)
