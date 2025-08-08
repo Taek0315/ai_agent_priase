@@ -329,7 +329,7 @@ elif st.session_state.phase == "motivation":
     for i, q in enumerate(motivation_q, start=1):
         choice = st.radio(
             label=f"{i}. {q}",
-            options=list(range(1, 11)),
+            options=list(range(1, 6)),
             index=None,
             horizontal=True,
             key=f"motivation_{i}",
