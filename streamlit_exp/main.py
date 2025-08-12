@@ -90,44 +90,84 @@ with open(feedback_path, encoding="utf-8") as f:
     feedback_sets = json.load(f)
 
 # -------------------
-# 1. 연구 동의 페이지
+# 1. 연구 동의 페이지 (2단계)
 # -------------------
 if st.session_state.phase == "start":
+    # 로고
     logo_path = os.path.join(BASE_DIR, "logo.png")
-    st.image(logo_path, width=150)
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=150)
     st.title("연구 참여 동의서")
 
-    st.markdown("""
-    #### 연구 목적
-    본 연구는 인공지능 칭찬 유형과 의인화가 학습 동기에 미치는 영향을 탐구하기 위한 것입니다.
+    # 내부 스텝 상태 초기화
+    if "consent_step" not in st.session_state:
+        st.session_state.consent_step = "explain"   # "explain" → "agree"
 
-    #### 연구 절차
-    - 의인화 설문
-    - 창의적 글쓰기 과제
-    - AI 피드백 경험
-    - 학습동기 설문
+    # 파일 경로 (원하는 파일명으로 교체)
+    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")     # 연구대상자 설명문
+    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")       # 연구 동의서(온라인용)
+    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")    # 개인정보 수집·이용 동의
 
-    #### 개인정보 처리
-    - 응답 내용은 익명으로 처리됩니다.
-    - 전화번호 입력은 선택 사항이며, 연구 종료 후 즉시 폐기됩니다.
-
-    #### 참여 조건
-    - 만 18세 이상
-    - 본 연구 절차에 동의한 경우에만 참여 가능합니다.
-    """)
-
-    consent = st.radio("연구에 참여하시겠습니까?", ["동의함", "동의하지 않음"])
-
-    if st.button("다음"):
-        if consent != "동의함":
-            st.warning("연구 동의가 필요합니다.")
+    # -------------------
+    # STEP 1: 설명문 페이지
+    # -------------------
+    if st.session_state.consent_step == "explain":
+        st.subheader("연구대상자 설명문")
+        if os.path.exists(EXPLAIN_IMG):
+            st.image(EXPLAIN_IMG, use_container_width=True)
         else:
-            st.session_state.data.update({
-                "consent": consent,
-                "startTime": datetime.now().isoformat()
-            })
-            st.session_state.phase = "demographic"
-            st.rerun()
+            st.info("설명문 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
+
+        cols = st.columns([1, 1, 3])
+        with cols[0]:
+            if st.button("다음"):
+                st.session_state.consent_step = "agree"
+                st.rerun()
+
+    # -------------------
+    # STEP 2: 동의서 + 개인정보 동의
+    # -------------------
+    elif st.session_state.consent_step == "agree":
+        st.subheader("연구 동의서")
+        if os.path.exists(AGREE_IMG):
+            st.image(AGREE_IMG, use_container_width=True)
+        else:
+            st.info("연구 동의서 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
+
+        st.subheader("개인정보 수집·이용에 대한 동의")
+        if os.path.exists(PRIV_IMG):
+            st.image(PRIV_IMG, use_container_width=True)
+        else:
+            st.info("개인정보 동의 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
+
+        # 라디오(동의만 확인)
+        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"], horizontal=True, key="consent_research_radio")
+        consent_privacy  = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"], horizontal=True, key="consent_privacy_radio")
+
+        # 버튼들
+        c1, c2 = st.columns([1,1])
+        with c1:
+            if st.button("이전"):
+                st.session_state.consent_step = "explain"
+                st.rerun()
+        with c2:
+            if st.button("다음"):
+                if consent_research != "동의함":
+                    st.warning("연구 참여에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
+                elif consent_privacy != "동의함":
+                    st.warning("개인정보 수집·이용에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
+                else:
+                    # 저장
+                    st.session_state.data.update({
+                        "consent": "동의함",
+                        "consent_research": consent_research,
+                        "consent_privacy": consent_privacy,
+                        "startTime": datetime.now().isoformat()
+                    })
+                    # 다음 전체 단계로 이동
+                    st.session_state.phase = "demographic"
+                    st.rerun()
+
 
 # -------------------
 # 1-1. 인적사항 입력 페이지
@@ -268,8 +308,12 @@ elif st.session_state.phase == "ai_feedback":
 
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
     highlight_words = [
-        "완성도 있는 결과", "끝까지 완성하려는 노력", "꾸준한 시도", "창의적인 접근",
-        "높은 언어적 감각", "핵심 아이디어", "논리적인 확장", "매끄러운 구성"
+        "작성 과정에서 여러 차례 시도와 수정","완성하려는 노력", "과정 중 다양한 시도", "끈기와 꾸준한 시도", 
+        "끝까지 아이디어를 구체화", "중간 과정에서의 시행착오", "꾸준한 시도와 개선 노력",
+        "여러 방법을 모색하고 이를 적용한 흔적", "세부 표현을 다듬는 과정", "성실하고 지속적인 접근", 
+        "단어와 조건을 빠르게 이해", "언어적·인지적 역량이 결과를 이끌어낸 핵심 요인", "높은 수준의 사고력", "탁월한 이해력과 구성력",
+        "직관적으로 파악하고 효과적으로 연결하는 능력", "높은 수준의 판단력", "결과를 도출하는 능력",
+        "높은 언어적 감각", "매끄럽게 구성하는 능력"
     ]
     for word in highlight_words:
         feedback = feedback.replace(word, f"<b style='color:#2E7D32;'>{word}</b>")
