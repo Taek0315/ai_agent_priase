@@ -204,8 +204,8 @@ elif st.session_state.phase == "anthro":
     # 점수 의미 안내
     st.markdown("""
     <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
-        <b>4점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; --- &nbsp;&nbsp;
+        <b>4점</b> : 보통이다 &nbsp;&nbsp; --- &nbsp;&nbsp;
         <b>7점</b> : 매우 그렇다
     </div>
     """, unsafe_allow_html=True)
@@ -228,7 +228,7 @@ elif st.session_state.phase == "anthro":
         st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 다음 버튼
-    if st.button("다음 (창의적 글쓰기 지시문)"):
+    if st.button("다음 (창의적 글쓰기 과제)"):
         if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
@@ -352,8 +352,8 @@ elif st.session_state.phase == "motivation":
     # 상단 점수 설명
     st.markdown("""
     <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
-        <b>5점</b> : 보통이다 &nbsp;&nbsp; ----- &nbsp;&nbsp;
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; --- &nbsp;&nbsp;
+        <b>5점</b> : 보통이다 &nbsp;&nbsp; --- &nbsp;&nbsp;
         <b>10점</b> : 매우 그렇다
     </div>
     """, unsafe_allow_html=True)
@@ -424,9 +424,9 @@ elif st.session_state.phase == "phone_input":
 elif st.session_state.phase == "result":
     if "result_submitted" not in st.session_state:
         st.success("모든 과제가 완료되었습니다. 감사합니다!")
-        st.write("연구에 참여해주셔서 감사합니다.")
+        st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
 
-        if st.button("제출 완료"):
+        if st.button("제출"):
             st.session_state.result_submitted = True
             st.rerun()
     else:
@@ -434,6 +434,8 @@ elif st.session_state.phase == "result":
         st.markdown("""
         <div style='font-size:16px; padding-top:10px;'>
             설문 응답이 성공적으로 저장되었습니다.<br>
-            <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 수동으로 닫아 주세요.</b>
+            <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 수동으로 닫아 주세요.</b><br><br>
+            ※ 본 연구에서 제공된 AI의 평가는 사전에 생성된 예시 대화문으로, 
+            귀하의 실제 글쓰기 능력을 직접 평가한 것이 아님을 알려드립니다.
         </div>
         """, unsafe_allow_html=True)
