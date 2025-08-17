@@ -326,155 +326,162 @@ elif st.session_state.phase == "writing":
     if "inference_started_ts" not in st.session_state:
         st.session_state.inference_started_ts = time.time()
 
-    st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
+    # 👉 이 페이지 전용 컨테이너
+    page = st.empty()
+    with page.container():
 
-    with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
-        st.markdown("""
-        이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
-        아래의 간단한 규칙을 참고해 10개의 객관식 문항에 답해주세요.
+        st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
 
-        **어휘 예시**
-        - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
-        - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
+        with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
+            st.markdown("""
+            이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
+            아래의 간단한 규칙을 참고해 10개의 객관식 문항에 답해주세요.
 
-        **어법 규칙(간단화)**
-        1) **소유**: 명사 뒤에 `-mi` → “~의”  (예: *nuk-mi ani* = 사람의 집)
-        2) **복수**: 명사 뒤에 `-t`  (예: *nuk-t* = 사람들)
-        3) **목적 표시**: 목적어에 `-ka`  (예: *pira-ka niri* = 음식을 먹다)
-        4) **시제**: 동사 뒤에 `-na`(현재), `-tu`(과거)  
-        5) **연결**: 문장 연결에 *ama* = 그리고
-        """)
+            **어휘 예시**
+            - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
+            - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
-    questions = [
-        {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
-         "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
-        {"q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
-         "options": ["ika-ka sua niri-na", "sua-ka ika niri-tu", "sua taku-na ika-ka", "ika sua-ka niri-na"], "ans": 0},
-        {"q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
-         "options": ["nuk-t pira-ka siku-tu", "nuk pira-ka siku-na", "pira nuk-t-ka siku-na", "nuk-mi pira siku-tu"], "ans": 0},
-        {"q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
-         "options": ["sua ama nuk ani-ka taku-na", "sua-ka ama nuk-ka ani taku-na", "ani-ka sua ama nuk taku-tu", "sua ama nuk-mi ani taku-na"], "ans": 0},
-        {"q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
-         "options": ["nuk-mi sua-t pira-ka taku-na", "nuk-t-mi sua pira-ka taku-na", "sua-t nuk pira-ka taku-na", "nuk-mi sua pira taku-na"], "ans": 0},
-        {"q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
-         "options": ["nuk-t sua-mi ani-ka taku-tu", "nuk sua-mi ani-ka taku-na", "nuk-t sua ani-ka taku-tu", "sua-mi nuk-t ani-ka taku-na"], "ans": 0},
-        {"q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
-         "options": ["nuk-mi sua ika-ka siku-tu", "sua-mi nuk ika-ka siku-na", "nuk-mi sua-ka ika siku-tu", "nuk-t sua ika-ka siku-tu"], "ans": 0},
-        {"q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
-         "options": ["nuk ama sua pira-ka niri-na", "nuk pira-ka ama sua niri-na", "nuk ama sua pira niri-tu", "nuk-t ama sua pira-ka niri-na"], "ans": 0},
-        {"q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
-         "options": ["nuk-t ika ama pira-ka taku-na", "nuk-t ika-ka ama pira-ka taku-na", "nuk ika ama pira-ka taku-na", "nuk-t ika ama pira taku-na"], "ans": 0},
-        {"q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
-         "options": ["sua-t nuk-mi ani-ka siku-tu", "sua nuk-mi ani-ka siku-na", "sua-t nuk ani-ka siku-tu", "sua-t nuk-mi ani siku-na"], "ans": 0},
-    ]
+            **어법 규칙(간단화)**
+            1) **소유**: 명사 뒤에 `-mi` → “~의”  (예: *nuk-mi ani* = 사람의 집)
+            2) **복수**: 명사 뒤에 `-t`  (예: *nuk-t* = 사람들)
+            3) **목적 표시**: 목적어에 `-ka`  (예: *pira-ka niri* = 음식을 먹다)
+            4) **시제**: 동사 뒤에 `-na`(현재), `-tu`(과거)  
+            5) **연결**: 문장 연결에 *ama* = 그리고
+            """)
 
-    st.markdown(
-        "<div style='margin:6px 0 16px; padding:10px; border-radius:8px; background:#202b20;'>"
-        "※ 모든 문항은 <b>정답보다 '추론하려는 과정'</b>을 봅니다. 끝까지 선택해 주세요."
-        "</div>", unsafe_allow_html=True
-    )
+        questions = [
+            {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
+             "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
+            {"q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
+             "options": ["ika-ka sua niri-na", "sua-ka ika niri-tu", "sua taku-na ika-ka", "ika sua-ka niri-na"], "ans": 0},
+            {"q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
+             "options": ["nuk-t pira-ka siku-tu", "nuk pira-ka siku-na", "pira nuk-t-ka siku-na", "nuk-mi pira siku-tu"], "ans": 0},
+            {"q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
+             "options": ["sua ama nuk ani-ka taku-na", "sua-ka ama nuk-ka ani taku-na", "ani-ka sua ama nuk taku-tu", "sua ama nuk-mi ani taku-na"], "ans": 0},
+            {"q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
+             "options": ["nuk-mi sua-t pira-ka taku-na", "nuk-t-mi sua pira-ka taku-na", "sua-t nuk pira-ka taku-na", "nuk-mi sua pira taku-na"], "ans": 0},
+            {"q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
+             "options": ["nuk-t sua-mi ani-ka taku-tu", "nuk sua-mi ani-ka taku-na", "nuk-t sua ani-ka taku-tu", "sua-mi nuk-t ani-ka taku-na"], "ans": 0},
+            {"q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
+             "options": ["nuk-mi sua ika-ka siku-tu", "sua-mi nuk ika-ka siku-na", "nuk-mi sua-ka ika siku-tu", "nuk-t sua ika-ka siku-tu"], "ans": 0},
+            {"q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
+             "options": ["nuk ama sua pira-ka niri-na", "nuk pira-ka ama sua niri-na", "nuk ama sua pira niri-tu", "nuk-t ama sua pira-ka niri-na"], "ans": 0},
+            {"q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
+             "options": ["nuk-t ika ama pira-ka taku-na", "nuk-t ika-ka ama pira-ka taku-na", "nuk ika ama pira-ka taku-na", "nuk-t ika ama pira taku-na"], "ans": 0},
+            {"q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
+             "options": ["sua-t nuk-mi ani-ka siku-tu", "sua nuk-mi ani-ka siku-na", "sua-t nuk ani-ka siku-tu", "sua-t nuk-mi ani siku-na"], "ans": 0},
+        ]
 
-    rationale_tags = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
-
-    selections, rationales = [], []
-    for i, item in enumerate(questions):
-        st.markdown(f"### {item['q']}")
-        st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
-        choice = st.radio(
-            label=f"문항 {i+1} 선택",
-            options=list(range(len(item["options"]))),
-            format_func=lambda idx, opts=item["options"]: opts[idx],
-            key=f"mcq_{i}",
-            horizontal=False,
-            index=None
+        st.markdown(
+            "<div style='margin:6px 0 16px; padding:10px; border-radius:8px; background:#202b20;'>"
+            "※ 모든 문항은 <b>정답보다 '추론하려는 과정'</b>을 봅니다. 끝까지 선택해 주세요."
+            "</div>", unsafe_allow_html=True
         )
-        selections.append(choice)
-        rationale = st.multiselect(
-            f"문항 {i+1}에서 참고한 규칙(선택적)",
-            options=rationale_tags,
-            key=f"mcq_rationale_{i}"
-        )
-        rationales.append(rationale)
 
-    def validate_mcq(sel_list):
-        return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
+        rationale_tags = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
 
-    if st.button("제출"):
-        if not validate_mcq(selections):
-            st.warning("10개 문항 모두 선택해 주세요.")
-        else:
-            selected_idx = [int(s) for s in selections]
-            st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
-            score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
+        selections, rationales = [], []
+        for i, item in enumerate(questions):
+            st.markdown(f"### {item['q']}")
+            st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
+            choice = st.radio(
+                label=f"문항 {i+1} 선택",
+                options=list(range(len(item["options"]))),
+                format_func=lambda idx, opts=item["options"]: opts[idx],
+                key=f"mcq_{i}",
+                horizontal=False,
+                index=None
+            )
+            selections.append(choice)
+            rationale = st.multiselect(
+                f"문항 {i+1}에서 참고한 규칙(선택적)",
+                options=rationale_tags,
+                key=f"mcq_rationale_{i}"
+            )
+            rationales.append(rationale)
 
-            st.session_state.inference_answers = [
-                {
-                    "q": questions[i]["q"],
-                    "options": questions[i]["options"],
-                    "selected_idx": selected_idx[i],
-                    "correct_idx": int(questions[i]["ans"]),
-                    "rationales": rationales[i]
-                }
-                for i in range(len(questions))
-            ]
-            st.session_state.inference_score = int(score)
+        def validate_mcq(sel_list):
+            return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
 
-            # MCP 단계 플래그 초기화 후 분석 페이지로
-            st.session_state["_mcp_started"] = False
-            st.session_state["_mcp_done"] = False
-            st.session_state.phase = "analyzing"
-            st.rerun()
-            st.stop()   # 🔒 여기서 즉시 렌더 중단 (writing 잔상 방지)
+        if st.button("제출"):
+            if not validate_mcq(selections):
+                st.warning("10개 문항 모두 선택해 주세요.")
+            else:
+                selected_idx = [int(s) for s in selections]
+                st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
+                score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
+                st.session_state.inference_answers = [
+                    {
+                        "q": questions[i]["q"],
+                        "options": questions[i]["options"],
+                        "selected_idx": selected_idx[i],
+                        "correct_idx": int(questions[i]["ans"]),
+                        "rationales": rationales[i]
+                    } for i in range(len(questions))
+                ]
+                st.session_state.inference_score = int(score)
+
+                # 👉 페이지 비우고 다음 단계로 (잔상 방지)
+                page.empty()
+                st.session_state["_mcp_started"] = False
+                st.session_state["_mcp_done"] = False
+                st.session_state.phase = "analyzing"
+                st.rerun()
+                st.stop()
 
 
 # -------------------
 # 4. MCP 분석 모션 (완전 분리 페이지)
 # -------------------
 elif st.session_state.phase == "analyzing":
-    st.markdown("""
-        <style>
-          body { overflow-x:hidden; }
-          .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
-          .mcp-done-card {
-              border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
-              background: #F9FFF9; max-width: 820px; margin: 48px auto;
-          }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 1) 애니메이션 1회 실행
-    if not st.session_state.get("_mcp_started", False):
-        st.session_state["_mcp_started"] = True
-        with st.container():
-            st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
-            run_mcp_motion()  # ⬅️ 8초
-            st.markdown("</div>", unsafe_allow_html=True)
-        st.session_state["_mcp_done"] = True
-        st.rerun()
-        st.stop()   # 🔒 analyzing 1차 렌더 종료
-
-    # 2) 완료 안내 + 결과 보기 버튼
-    if st.session_state.get("_mcp_done", False):
+    # 👉 이 페이지 전용 컨테이너
+    page = st.empty()
+    with page.container():
         st.markdown("""
-            <div class='mcp-done-card'>
-              <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-              <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin: 6px 0 0;">
-                COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
-              </p>
-            </div>
+            <style>
+              body { overflow-x:hidden; }
+              .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
+              .mcp-done-card {
+                  border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
+                  background: #F9FFF9; max-width: 820px; margin: 48px auto;
+              }
+            </style>
         """, unsafe_allow_html=True)
 
-        c1, c2, c3 = st.columns([1,2,1])
-        with c2:
-            if st.button("결과 보기", use_container_width=True):
-                st.session_state["_mcp_started"] = False
-                st.session_state["_mcp_done"] = False
-                st.session_state.phase = "ai_feedback"
-                st.rerun()
-                st.stop()  # 🔒 피드백으로 전환 시 즉시 중단
+        # 1) 애니메이션 1회 실행
+        if not st.session_state.get("_mcp_started", False):
+            st.session_state["_mcp_started"] = True
+            st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
+            run_mcp_motion()  # ← 8초짜리 MCP 모션
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.session_state["_mcp_done"] = True
+            st.rerun()
+            st.stop()
+
+        # 2) 완료 안내 + 결과 보기 버튼
+        if st.session_state.get("_mcp_done", False):
+            st.markdown("""
+                <div class='mcp-done-card'>
+                  <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
+                  <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin: 6px 0 0;">
+                    COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
+                  </p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            c1, c2, c3 = st.columns([1,2,1])
+            with c2:
+                if st.button("결과 보기", use_container_width=True):
+                    page.empty()  # 현재 페이지 비우기
+                    st.session_state["_mcp_started"] = False
+                    st.session_state["_mcp_done"] = False
+                    st.session_state.phase = "ai_feedback"
+                    st.rerun()
+                    st.stop()
 
     # (안전망)
     st.stop()
+
 
 
 # -------------------
