@@ -323,13 +323,11 @@ elif st.session_state.phase == "writing_intro":
 elif st.session_state.phase == "writing":
     import time
 
-    # ⏱ 시작 시각 기록(한 번만)
     if "inference_started_ts" not in st.session_state:
         st.session_state.inference_started_ts = time.time()
 
     st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
 
-    # 1) 학습 설명문 (간단한 어휘/어법 규칙)
     with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
         st.markdown("""
         이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
@@ -347,7 +345,6 @@ elif st.session_state.phase == "writing":
         5) **연결**: 문장 연결에 *ama* = 그리고
         """)
 
-    # 2) 10문항 객관식
     questions = [
         {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
          "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
@@ -389,9 +386,9 @@ elif st.session_state.phase == "writing":
             format_func=lambda idx, opts=item["options"]: opts[idx],
             key=f"mcq_{i}",
             horizontal=False,
-            index=None  # ✅ 기본 선택 해제
+            index=None
         )
-        selections.append(choice)  # None 가능
+        selections.append(choice)
         rationale = st.multiselect(
             f"문항 {i+1}에서 참고한 규칙(선택적)",
             options=rationale_tags,
@@ -399,11 +396,9 @@ elif st.session_state.phase == "writing":
         )
         rationales.append(rationale)
 
-    # 응답 확인
     def validate_mcq(sel_list):
         return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
 
-    # 제출 버튼
     if st.button("제출"):
         if not validate_mcq(selections):
             st.warning("10개 문항 모두 선택해 주세요.")
@@ -424,20 +419,18 @@ elif st.session_state.phase == "writing":
             ]
             st.session_state.inference_score = int(score)
 
-            # 🔁 MCP 단계 플래그 초기화
+            # MCP 단계 플래그 초기화 후 분석 페이지로
             st.session_state["_mcp_started"] = False
             st.session_state["_mcp_done"] = False
-
-            # 🔄 분석 화면으로 전환(페이지 분리)
             st.session_state.phase = "analyzing"
             st.rerun()
+            st.stop()   # 🔒 여기서 즉시 렌더 중단 (writing 잔상 방지)
 
 
 # -------------------
-# 4. MCP 분석 모션 (완전 분리 페이지: 애니메이션 → 완료 안내/버튼)
+# 4. MCP 분석 모션 (완전 분리 페이지)
 # -------------------
 elif st.session_state.phase == "analyzing":
-    # 최소 스타일
     st.markdown("""
         <style>
           body { overflow-x:hidden; }
@@ -449,20 +442,19 @@ elif st.session_state.phase == "analyzing":
         </style>
     """, unsafe_allow_html=True)
 
-    # 1) 아직 MCP를 실행하지 않았다면: 애니메이션 한 번만 실행
+    # 1) 애니메이션 1회 실행
     if not st.session_state.get("_mcp_started", False):
         st.session_state["_mcp_started"] = True
-
         with st.container():
             st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
-            run_mcp_motion()  # ⬅️ 약 8초 (로그/프로그레스)
+            run_mcp_motion()  # ⬅️ 8초
             st.markdown("</div>", unsafe_allow_html=True)
-
         st.session_state["_mcp_done"] = True
         st.rerun()
+        st.stop()   # 🔒 analyzing 1차 렌더 종료
 
-    # 2) MCP가 끝났으면: 완료 안내 + 결과 보기 버튼
-    elif st.session_state.get("_mcp_done", False):
+    # 2) 완료 안내 + 결과 보기 버튼
+    if st.session_state.get("_mcp_done", False):
         st.markdown("""
             <div class='mcp-done-card'>
               <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
@@ -479,30 +471,30 @@ elif st.session_state.phase == "analyzing":
                 st.session_state["_mcp_done"] = False
                 st.session_state.phase = "ai_feedback"
                 st.rerun()
+                st.stop()  # 🔒 피드백으로 전환 시 즉시 중단
 
-    # 3) 경합 대비 로딩 플레이스홀더
-    else:
-        st.markdown("<div class='mcp-screen'><h3>분석 준비 중…</h3></div>", unsafe_allow_html=True)
+    # (안전망)
+    st.stop()
 
 
 # -------------------
-# 5. AI 피드백 화면 (정확 일치 하이라이트)
+# 5. AI 피드백 화면
 # -------------------
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
 
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
 
-    # 피드백 세트의 '정확히 동일한' 구절만 하이라이트
+    # 정확 일치 구절 하이라이트(세트 문장 기반)
     highlight_words = [
-        # ─ 노력(과정) set1 ─
+        # set1(노력)
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "지속적인 탐색과 시도",
         "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
         "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
         "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
-        # ─ 능력(성과) set2 ─
+        # set2(능력)
         "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
         "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
@@ -513,16 +505,15 @@ elif st.session_state.phase == "ai_feedback":
         feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
     feedback_with_breaks = feedback.replace("\n", "<br>")
-
-    feedback_html = f"""
-    <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
-        <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
-        <p style='font-size:16px; line-height:1.6; text-align:left; color:#333;'>
-            {feedback_with_breaks}
-        </p>
-    </div>
-    """
-    st.markdown(feedback_html, unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
+            <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
+            <p style='font-size:16px; line-height:1.6; text-align:left; color:#333;'>{feedback_with_breaks}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
@@ -530,6 +521,8 @@ elif st.session_state.phase == "ai_feedback":
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+        st.stop()
+
 
 ####################################################
 # 6. 학습 동기 설문
