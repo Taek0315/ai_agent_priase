@@ -348,7 +348,7 @@ elif st.session_state.phase == "writing":
         5) **연결**: 문장 연결에 *ama* = 그리고
         """)
 
-    # 2) 10문항 객관식 (정답은 기록만, 노력 평가 목적 안내 포함)
+    # 2) 10문항 객관식
     questions = [
         {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
          "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
@@ -378,7 +378,6 @@ elif st.session_state.phase == "writing":
         "</div>", unsafe_allow_html=True
     )
 
-    # 공통 근거 태그(응답자의 추론 근거 체크) — 칭찬/분석용으로 저장
     rationale_tags = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
 
     selections, rationales = [], []
@@ -393,8 +392,7 @@ elif st.session_state.phase == "writing":
             horizontal=False,
             index=None  # ✅ 기본 선택 해제
         )
-        selections.append(choice)  # None 가능 (아직 선택 전)
-        # 🔎 선택 근거(복수 선택 가능) — 추론 패턴 기록용
+        selections.append(choice)  # None 가능
         rationale = st.multiselect(
             f"문항 {i+1}에서 참고한 규칙(선택적)",
             options=rationale_tags,
@@ -402,7 +400,7 @@ elif st.session_state.phase == "writing":
         )
         rationales.append(rationale)
 
-    # 2-1) 모든 문항 응답 확인
+    # 응답 확인
     def validate_mcq(sel_list):
         return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
 
@@ -411,31 +409,25 @@ elif st.session_state.phase == "writing":
         if not validate_mcq(selections):
             st.warning("10개 문항 모두 선택해 주세요.")
         else:
-            # 선택값을 저장 시점에만 정수로 변환
             selected_idx = [int(s) for s in selections]
-
-            # ⏱ 소요시간 기록
             st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
-
-            # 정답 집계(참고용)
             score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
 
-            # 저장: 기존 파이프라인과 충돌 없게 별도 키 사용
             st.session_state.inference_answers = [
                 {
                     "q": questions[i]["q"],
                     "options": questions[i]["options"],
                     "selected_idx": selected_idx[i],
                     "correct_idx": int(questions[i]["ans"]),
-                    "rationales": rationales[i]  # 추론 근거 기록
+                    "rationales": rationales[i]
                 }
                 for i in range(len(questions))
             ]
             st.session_state.inference_score = int(score)
 
-            # 🔄 분석 화면으로 전환하고 즉시 재렌더 (배경 잔상 방지)
+            # 🔄 분석 화면으로 전환(지원되는 API 사용)
             st.session_state.phase = "analyzing"
-            st.experimental_rerun()
+            st.rerun()
 
 
 # -------------------
@@ -447,8 +439,8 @@ elif st.session_state.phase == "analyzing":
 
     # 끝나면 다음 단계로 전환
     st.session_state.phase = "ai_feedback"
-    st.experimental_rerun()
-    st.stop()
+    st.rerun()
+
 
 # -------------------
 # 5. AI 피드백 화면
@@ -459,19 +451,14 @@ elif st.session_state.phase == "ai_feedback":
     # 1) 피드백 1개 선택
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
 
-    # 2) 추론 피드백용 하이라이트 문구(능력/노력 공통 포함)
+    # 2) 추론 피드백용 하이라이트 문구
     highlight_words = [
-        # 공통
         "추론 패턴을 분석해본 결과",
-
-        # 노력(과정) 측면
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
         "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
         "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
-
-        # 능력(성과) 측면
         "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
         "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
@@ -479,11 +466,10 @@ elif st.session_state.phase == "ai_feedback":
         "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력"
     ]
 
-    # 3) 겹침/부분일치 오류 없이 하이라이트 적용
+    # 3) 하이라이트 적용(부분일치/겹침 방지)
     import re
     def apply_highlight(text: str, phrases: list[str]) -> str:
         for p in sorted(set(phrases), key=len, reverse=True):
-            # 문구 뒤에 공백/구두점/문장끝이 오면 매칭 (, . ! ? : ;) — 원문 보존
             pattern = re.escape(p) + r'(?=[\s,\.\!\?\:\;]|$)'
             text = re.sub(pattern, f"<b style='color:#2E7D32;'>{p}</b>", text)
         return text
@@ -502,15 +488,14 @@ elif st.session_state.phase == "ai_feedback":
     """
     st.markdown(feedback_html, unsafe_allow_html=True)
 
-    # 5) 여백 + 다음 단계
+    # 5) 다음 단계
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
-
     if st.button("학습동기 설문으로 이동"):
-        # (기존 저장 키 유지)
         st.session_state.data["writing"] = st.session_state.writing_answers
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 ####################################################
 # 6. 학습 동기 설문
