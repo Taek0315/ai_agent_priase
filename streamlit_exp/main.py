@@ -27,52 +27,69 @@ if "phase" not in st.session_state:
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
 
+# ==== COVNOX log lines (EN) ====
 fake_logs = [
-    "[INFO] Loading dataset from secure storage... s3://ai-engine/empathy_scores.csv (34KB)",
-    "[INFO] Preprocessing text input... removing stopwords & normalizing case",
-    "[INFO] Tokenizing text into semantic units (precision mode)",
-    "[OK] Semantic token map generated: 412 unique tokens",
-    "[INFO] Running sentiment polarity analysis (multi-model ensemble)",
-    "[OK] Sentiment polarity: +0.732 (Positive)",
-    "[INFO] Vectorizing content using contextual embeddings (BERT-large)",
-    "[OK] Embedding vector length: 1024 | Norm: 0.987",
-    "[INFO] Initializing deep neural inference pipeline...",
-    "[INFO] Layer 1: Convolutional feature extraction",
-    "[INFO] Layer 2: Recurrent sequence modeling (BiLSTM)",
-    "[INFO] Layer 3: Attention mechanism alignment",
-    "[INFO] Running multi-head attention (8 heads)...",
-    "[OK] Attention weights normalized",
-    "[INFO] Cross-checking results with reinforcement learning agent",
-    "[OK] Policy score: 0.884 | Confidence: High",
-    "[INFO] Performing emotional tone classification (7 categories)",
-    "[OK] Classified tone: Empathetic & Encouraging",
-    "[INFO] Generating personalized feedback template...",
-    "[INFO] Optimizing phrasing for clarity and motivational impact",
-    "[OK] Final feedback text compiled",
-    "[INFO] Validating output consistency against linguistic rules",
-    "[OK] Grammar check passed | No critical issues",
-    "[INFO] Saving inference report to temporary buffer...",
-    "[OK] Report size: 2.8KB",
-    "[✔] AI analysis complete. Preparing feedback delivery..."
+    "[INFO][COVNOX] Initializing… booting inference-pattern engine",
+    "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu), connector(ama)",
+    "[INFO][COVNOX] Collecting responses… building 10-item choice hash",
+    "[OK][COVNOX] Response hash map constructed",
+    "[INFO][COVNOX] Running grammatical marker detection",
+    "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/ama",
+    "[INFO][COVNOX] Parsing rationale tags (multi-select)",
+    "[OK][COVNOX] Rationale normalization complete",
+    "[INFO][COVNOX] Computing rule-match consistency",
+    "[OK][COVNOX] Consistency matrix updated",
+    "[INFO][COVNOX] Testing elimination-of-incorrect-options strategy",
+    "[OK][COVNOX] Comparison/contrast pattern detected",
+    "[INFO][COVNOX] Checking tense/object conflicts",
+    "[OK][COVNOX] No critical conflicts · reasoning path stable",
+    "[INFO][COVNOX] Analyzing response time (persistence index)",
+    "[OK][COVNOX] Persistence index calculated",
+    "[INFO][COVNOX] Scoring diversity of rule application",
+    "[OK][COVNOX] Diversity score updated",
+    "[INFO][COVNOX] Synthesizing overall inference profile (ability/effort emphasis)",
+    "[OK][COVNOX] Profile composed · selecting feedback template",
+    "[INFO][COVNOX] Natural language phrasing optimization",
+    "[OK][COVNOX] Fluency/consistency checks passed",
+    "[INFO][COVNOX] Preparing feedback delivery",
+    "[✔][COVNOX] Analysis complete. Rendering results…"
 ]
 
+# ==== Motion (duration unchanged) ====
 def run_mcp_motion():
-    st.markdown("""
-        <h1 style="text-align: center; margin-top: 80px;">
-            🧠 AI Analysing...
-        </h1>
-    """, unsafe_allow_html=True)
+    import os
 
+    # 1) 로고 경로 (우선순위대로 탐색)
+    LOGO_PATHS = [
+        "./covnox.png",                 # main.py와 같은 폴더
+        os.path.join(os.getcwd(), "covnox.png")
+    ]
+    logo_path = next((p for p in LOGO_PATHS if os.path.exists(p)), None)
+
+    # 2) 로고 + 타이틀
+    with st.container():
+        # 로고를 정확히 가운데에 배치
+        left, mid, right = st.columns([1, 2, 1])
+        with mid:
+            if logo_path:
+                st.image(logo_path, width=180)
+        st.markdown("""
+            <h1 style="text-align: center; margin-top: 8px;">
+                🧩 COVNOX: Inference Pattern Analysis
+            </h1>
+        """, unsafe_allow_html=True)
+
+    # 3) 프로그레스 + 로그 (동일)
     log_placeholder = st.empty()
     progress_bar = st.progress(0)
 
     start_time = time.time()
-    elapsed = 0
+    elapsed = 0.0
     step = 0
-    total_duration = 8
+    total_duration = 8  # seconds
 
     while elapsed < total_duration:
-        progress = min((elapsed / total_duration), 1.0)
+        progress = min(elapsed / total_duration, 1.0)
         progress_bar.progress(progress)
 
         log_message = fake_logs[step % len(fake_logs)]
@@ -228,7 +245,7 @@ elif st.session_state.phase == "anthro":
         st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
     # 다음 버튼
-    if st.button("다음 (창의적 글쓰기 과제)"):
+    if st.button("다음 (추론 과제)"):
         if None in responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
@@ -241,56 +258,235 @@ elif st.session_state.phase == "anthro":
 
 
 # -------------------
-# 2-1. 창의적 글쓰기 지시문 페이지
+# 2-1. 추론 기반 객관식 과제 지시문 페이지
 # -------------------
 elif st.session_state.phase == "writing_intro":
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>창의적 글쓰기 과제 안내</h2>", unsafe_allow_html=True)
-    st.markdown("""
-    다음 단계에서는 세 번의 창의적 글쓰기 과제를 수행하게 됩니다.  
-    각 과제에서는 **세 개의 주어진 단어**를 모두 포함하여 글을 작성해야 합니다.  
-    자유롭게 작성하되, **최소 10자 이상** 작성해야 제출이 가능합니다.  
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
 
-    - 각 과제 작성 후 AI의 분석과 피드백을 받게 됩니다.
-    - 피드백 확인 후 다음 과제로 진행됩니다.
-    - 총 3회의 과제가 모두 끝나면 학습동기 설문으로 넘어갑니다.
+    st.markdown("""
+    이번 단계에서는 **가상 언어(Inuktut-like)**의 간단한 규칙을 읽고,  
+    총 **10개**의 객관식 문항에 답하는 **추론 과제**를 수행합니다.
+
+    이 과제의 목표는 **정답률 자체가 아니라 ‘낯선 규칙에서 끝까지 추론하려는 과정’**을 관찰하는 것입니다.  
+    즉, 정답을 모두 맞추는 것보다 **단서를 찾고, 비교하고, 일관된 근거로 선택**하는 과정이 더 중요합니다.
+
+    **왜 중요한가요?**
+    - 연구는 **문제 해결에서의 추론 전략**(패턴, 근거 사용, 오답 소거 등)을 분석합니다.
+    - 여러분의 응답은 COVNOX라는 **추론 패턴 분석 도구**로 처리되어,  
+      **능력 중심(추론 역량)** 또는 **노력 중심(추론 태도)** 관점의 피드백으로 제시됩니다.
+    - 분석은 개인 식별 없이 **연구 목적**으로만 사용됩니다.
+
+    **진행 방식**
+    1) 간단한 어휘/어법 규칙을 읽습니다.  
+    2) 객관식 문항 10개에 **모두 응답**합니다. (정답보다 **추론 근거**가 중요)  
+    3) 제출하면 AI가 분석 애니메이션과 함께 결과 피드백을 보여줍니다.  
+    4) 이후 설문으로 이어집니다.
+
+    **성실히 참여하면 좋아요**
+    - 문항마다 ‘가장 그럴듯한’ 선택을 고르고, 가능하면 **적용한 규칙**을 함께 떠올려 보세요.  
+    - **끝까지 응답을 완성**하는 것이 중요합니다. 빈 문항 없이 제출해 주세요.  
+    - 오답이어도 괜찮습니다. **추론 경로**가 분석의 핵심입니다.
+
+    **유의사항**
+    - 과제 도중 뒤로 가기/새로고침은 기록 손실을 일으킬 수 있습니다.  
+    - 개인 피드백은 연구용으로 제공되며 점수화된 평가가 목적이 아닙니다.
     """)
-    if st.button("과제 시작"):
+
+    if st.button("추론 과제 시작"):
         st.session_state.phase = "writing"
         st.rerun()
 
 # -------------------
-# 3. 창의적 글쓰기
+# 3. 추론 기반 객관식 과제 (가상 언어 학습)
 # -------------------
 elif st.session_state.phase == "writing":
-    keywords_path = os.path.join(BASE_DIR, "data", "keywords.json")
-    with open(keywords_path, encoding="utf-8") as f:
-        keywords_list = json.load(f)
-    current_keywords = keywords_list[st.session_state.current_kw_index]
+    import time
 
-    st.title(f"창의적 글쓰기 과제 {st.session_state.current_kw_index + 1}/3")
-    st.markdown(f"""
-        <h1 style="text-align: center; margin-top: 50px;">
-            📋 주어진 단어 3개를 보고 글쓰기 과제를 진행합니다
-        </h1>
-        <p style="text-align: center; font-size: 18px;">
-            주어진 <b>모든 단어</b>를 포함하여 자유롭게 작성해 주세요.<br>
-            <b>최소 10자 이상</b> 작성해야 제출할 수 있습니다.
-        </p>
-        <p style="text-align: center; font-size: 20px; color: #4CAF50;">
-            단어: <b>{' / '.join(current_keywords)}</b>
-        </p>
-        """, unsafe_allow_html=True)
+    # ⏱ 시작 시각 기록(한 번만)
+    if "inference_started_ts" not in st.session_state:
+        st.session_state.inference_started_ts = time.time()
 
-    text_input = st.text_area("글 작성", key=f"text_{st.session_state.current_kw_index}")
+    st.title("추론 과제 1/1 · 가상 언어 학습(Inuktut-like)")
 
+    # 1) 학습 설명문 (간단한 어휘/어법 규칙)
+    with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
+        st.markdown("""
+        이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
+        아래의 간단한 규칙을 참고해 10개의 객관식 문항에 답해주세요.
+
+        **어휘 예시**
+        - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
+        - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
+
+        **어법 규칙(간단화)**
+        1) **소유**: 명사 뒤에 `-mi` → “~의”  (예: *nuk-mi ani* = 사람의 집)
+        2) **복수**: 명사 뒤에 `-t`  (예: *nuk-t* = 사람들)
+        3) **목적 표시**: 목적어에 `-ka`  (예: *pira-ka niri* = 음식을 먹다)
+        4) **시제**: 동사 뒤에 `-na`(현재), `-tu`(과거)  
+        5) **연결**: 문장 연결에 *ama* = 그리고
+        """)
+
+    # 2) 10문항 객관식 (정답은 기록만, 노력 평가 목적 안내 포함)
+    questions = [
+        {
+            "q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
+            "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"],
+            "ans": 1
+        },
+        {
+            "q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
+            "options": [
+                "ika-ka sua niri-na",   # 정답(마시다≈물-목적, 먹다-현재)
+                "sua-ka ika niri-tu",
+                "sua taku-na ika-ka",
+                "ika sua-ka niri-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
+            "options": [
+                "nuk-t pira-ka siku-tu",   # 정답
+                "nuk pira-ka siku-na",
+                "pira nuk-t-ka siku-na",
+                "nuk-mi pira siku-tu"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
+            "options": [
+                "sua ama nuk ani-ka taku-na",   # 정답
+                "sua-ka ama nuk-ka ani taku-na",
+                "ani-ka sua ama nuk taku-tu",
+                "sua ama nuk-mi ani taku-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
+            "options": [
+                "nuk-mi sua-t pira-ka taku-na",  # 정답
+                "nuk-t-mi sua pira-ka taku-na",
+                "sua-t nuk pira-ka taku-na",
+                "nuk-mi sua pira taku-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
+            "options": [
+                "nuk-t sua-mi ani-ka taku-tu",   # 정답
+                "nuk sua-mi ani-ka taku-na",
+                "nuk-t sua ani-ka taku-tu",
+                "sua-mi nuk-t ani-ka taku-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
+            "options": [
+                "nuk-mi sua ika-ka siku-tu",     # 정답
+                "sua-mi nuk ika-ka siku-na",
+                "nuk-mi sua-ka ika siku-tu",
+                "nuk-t sua ika-ka siku-tu"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
+            "options": [
+                "nuk ama sua pira-ka niri-na",   # 정답
+                "nuk pira-ka ama sua niri-na",
+                "nuk ama sua pira niri-tu",
+                "nuk-t ama sua pira-ka niri-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
+            "options": [
+                "nuk-t ika ama pira-ka taku-na",   # 정답(목적표시는 마지막 항에)
+                "nuk-t ika-ka ama pira-ka taku-na",
+                "nuk ika ama pira-ka taku-na",
+                "nuk-t ika ama pira taku-na"
+            ],
+            "ans": 0
+        },
+        {
+            "q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
+            "options": [
+                "sua-t nuk-mi ani-ka siku-tu",    # 정답
+                "sua nuk-mi ani-ka siku-na",
+                "sua-t nuk ani-ka siku-tu",
+                "sua-t nuk-mi ani siku-na"
+            ],
+            "ans": 0
+        },
+    ]
+
+    st.markdown(
+        "<div style='margin:6px 0 16px; padding:10px; border-radius:8px; background:#202b20;'>"
+        "※ 모든 문항은 <b>정답보다 '추론하려는 과정'</b>을 봅니다. 끝까지 선택해 주세요."
+        "</div>", unsafe_allow_html=True
+    )
+
+    # 공통 근거 태그(응답자의 추론 근거 체크) — 칭찬/분석용으로 저장
+    rationale_tags = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
+
+    selections, rationales = [], []
+    for i, item in enumerate(questions):
+        st.markdown(f"### {item['q']}")
+        st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
+        choice = st.radio(
+            label=f"문항 {i+1} 선택",
+            options=list(range(len(item["options"]))),
+            format_func=lambda idx, opts=item["options"]: opts[idx],
+            key=f"mcq_{i}",
+            horizontal=False
+        )
+        selections.append(int(choice))
+        # 🔎 선택 근거(복수 선택 가능) — 추론 패턴 기록용
+        rationale = st.multiselect(
+            f"문항 {i+1}에서 참고한 규칙(선택적)",
+            options=rationale_tags,
+            key=f"mcq_rationale_{i}"
+        )
+        rationales.append(rationale)
+
+    # 2-1) 모든 문항 응답 확인
+    def validate_mcq(sel_list):
+        return all(s is not None for s in sel_list)
+
+    # 제출 버튼
     if st.button("제출"):
-        valid, msg = validate_text(text_input, current_keywords)
-        if not valid:
-            st.warning(msg)
+        if not validate_mcq(selections):
+            st.warning("10개 문항 모두 선택해 주세요.")
         else:
-            st.session_state.writing_answers.append({"keywords": current_keywords, "text": text_input})
+            # ⏱ 소요시간 기록
+            st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
+
+            # 정답 집계(참고용)
+            score = sum(int(selections[i] == q["ans"]) for i, q in enumerate(questions))
+
+            # 저장: 기존 파이프라인과 충돌 없게 별도 키 사용
+            st.session_state.inference_answers = [
+                {
+                    "q": questions[i]["q"],
+                    "options": questions[i]["options"],
+                    "selected_idx": int(selections[i]),
+                    "correct_idx": int(questions[i]["ans"]),
+                    "rationales": rationales[i]  # 추론 근거 기록
+                }
+                for i in range(len(questions))
+            ]
+            st.session_state.inference_score = int(score)
+
+            # 다음 단계: 기존 애니메이션 그대로 사용
             st.session_state.phase = "analyzing"
             st.rerun()
+
+
 
 # -------------------
 # 4. MCP 분석 모션
@@ -308,12 +504,12 @@ elif st.session_state.phase == "ai_feedback":
 
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
     highlight_words = [
-        "작성 과정에서 여러 차례 시도와 수정","완성하려는 노력", "과정 중 다양한 시도", "끈기와 꾸준한 시도", 
-        "끝까지 아이디어를 구체화", "중간 과정에서의 시행착오", "꾸준한 시도와 개선 노력",
-        "여러 방법을 모색하고 이를 적용한 흔적", "세부 표현을 다듬는 과정", "성실하고 지속적인 접근", 
-        "단어와 조건을 빠르게 이해", "언어적·인지적 역량이 결과를 이끌어낸 핵심 요인", "높은 수준의 사고력", "탁월한 이해력과 구성력",
-        "직관적으로 파악하고 효과적으로 연결하는 능력", "높은 수준의 판단력", "결과를 도출하는 능력",
-        "높은 언어적 감각", "매끄럽게 구성하는 능력"
+    "작성 과정에서 여러 차례 시도와 수정", "완성하려는 노력", "과정 중 다양한 시도", "끈기와 꾸준한 시도", 
+    "끝까지 아이디어를 구체화", "중간 과정에서의 시행착오", "꾸준한 시도와 개선 노력",
+    "여러 방법을 모색하고 이를 적용한 흔적", "세부 표현을 다듬는 과정", "성실하고 지속적인 접근", 
+    "단어와 조건을 빠르게 이해", "언어적·인지적 역량이 결과를 이끌어낸 핵심 요인", "높은 수준의 사고력", "탁월한 이해력과 구성력",
+    "직관적으로 파악하고 효과적으로 연결하는 능력", "높은 수준의 판단력", "결과를 도출하는 능력",
+    "높은 언어적 감각", "매끄럽게 구성하는 능력"
     ]
     for word in highlight_words:
         feedback = feedback.replace(word, f"<b style='color:#2E7D32;'>{word}</b>")
@@ -332,17 +528,12 @@ elif st.session_state.phase == "ai_feedback":
     # ✅ 버튼과 피드백 사이에 여백
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
 
-    if st.session_state.current_kw_index < 2:
-        if st.button("다음 글쓰기로 이동"):
-            st.session_state.current_kw_index += 1
-            st.session_state.phase = "writing"
-            st.rerun()
-    else:
-        if st.button("학습동기 설문으로 이동"):
-            st.session_state.data["writing"] = st.session_state.writing_answers
-            st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
-            st.session_state.phase = "motivation"
-            st.rerun()
+    # ✅ 칭찬은 1회만 표시 → 바로 설문으로 이동
+    if st.button("학습동기 설문으로 이동"):
+        st.session_state.data["writing"] = st.session_state.writing_answers
+        st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
+        st.session_state.phase = "motivation"
+        st.rerun()
 ####################################################
 # 6. 학습 동기 설문
 ####################################################
@@ -359,13 +550,13 @@ elif st.session_state.phase == "motivation":
     """, unsafe_allow_html=True)
 
     motivation_q = [
-        "1. 이번 글쓰기와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
-        "2. 앞으로도 글쓰기 과제가 있다면 참여할 의향이 있다.",
-        "3. 더 어려운 글쓰기 과제가 주어져도 도전할 의향이 있다.",
-        "4. 글쓰기 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
+        "1. 이번 추론 과제와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
+        "2. 앞으로도 추론 과제가 있다면 참여할 의향이 있다.",
+        "3. 더 어려운 추론 과제가 주어져도 도전할 의향이 있다.",
+        "4. 추론 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
         "5. 이번 과제를 통해 성취감을 느꼈다.",
-        "6. 글쓰기 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
-        "7. 이런 과제를 수행하는 것은 나의 글쓰기 능력을 발전시키는 데 가치가 있다."
+        "6. 추론 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
+        "7. 이런 과제를 수행하는 것은 나의 추론 능력을 발전시키는 데 가치가 있다."
     ]
 
     motivation_responses = []
