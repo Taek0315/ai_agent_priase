@@ -431,43 +431,30 @@ elif st.session_state.phase == "writing":
 
 
 # -------------------
-# 4. MCP 분석 모션 (풀스크린 · 뒤 배경 완전 가림)
+# 4. MCP 분석 모션 (MCP만 표시 → 종료 후 피드백으로)
 # -------------------
 elif st.session_state.phase == "analyzing":
-    import time
-
-    # 1) 아직 MCP를 보여주지 않았다면: 오버레이 + 애니메이션만 렌더
-    if not st.session_state.get("_mcp_shown_once", False):
-        # 전체를 덮는 오버레이 CSS (배경 스크롤/클릭 차단)
-        st.markdown("""
+    # MCP만 그리는 독립 컨테이너
+    holder = st.empty()
+    with holder.container():
+        # 필요 시 배경/여백만 간단히 스타일링 (오버레이 불필요)
+        st.markdown(
+            """
             <style>
-            html, body { margin:0; padding:0; overflow:hidden; }
-            .covnox-overlay {
-                position: fixed; inset: 0;
-                background: #0C1522;           /* 어두운 배경 */
-                z-index: 999999;               /* 최상단 */
-                display: flex; align-items: center; justify-content: center;
-            }
-            .covnox-stage { width: min(920px, 94vw); padding: 8px; }
+              body { overflow: hidden; }
+              .mcp-wrap { display:flex; min-height: 75vh; align-items:center; justify-content:center; }
             </style>
-        """, unsafe_allow_html=True)
+            <div class="mcp-wrap"></div>
+            """,
+            unsafe_allow_html=True,
+        )
+        # ⬇️ 실제 MCP 애니메이션 (로그/프로그레스 포함)
+        run_mcp_motion()
 
-        # 풀스크린 컨테이너에 MCP만 렌더
-        holder = st.empty()
-        with holder.container():
-            st.markdown("<div class='covnox-overlay'><div class='covnox-stage'>", unsafe_allow_html=True)
-            run_mcp_motion()   # ⟵ 기존 MCP 모션(로고/로그/프로그레스, 약 8초)
-            st.markdown("</div></div>", unsafe_allow_html=True)
+    # 애니메이션 끝난 뒤 피드백으로 전환
+    st.session_state.phase = "ai_feedback"
+    st.rerun()
 
-        # 2) 플래그만 세팅하고 재실행 → 다음 렌더에서 피드백으로 전환
-        st.session_state["_mcp_shown_once"] = True
-        st.rerun()
-
-    # 3) MCP가 한 번 표시되었다면: 플래그 리셋 후 피드백 화면으로 이동
-    else:
-        st.session_state["_mcp_shown_once"] = False  # 다음 번을 위해 리셋
-        st.session_state.phase = "ai_feedback"
-        st.rerun()
 
 
 # -------------------
