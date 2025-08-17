@@ -294,8 +294,7 @@ elif st.session_state.phase == "writing_intro":
 
     **왜 중요한가요?**
     - 연구는 **문제 해결에서의 추론 전략**(패턴, 근거 사용, 오답 소거 등)을 분석합니다.
-    - 여러분의 응답은 COVNOX라는 **추론 패턴 분석 도구**로 처리되어,  
-      **능력 중심(추론 역량)** 또는 **노력 중심(추론 태도)** 관점의 피드백으로 제시됩니다.
+    - 여러분의 응답은 COVNOX라는 **추론 패턴 분석 도구**로 처리되어, 추론 패턴 피드백을 제시합니다.
     - 분석은 개인 식별 없이 **연구 목적**으로만 사용됩니다.
 
     **진행 방식**
@@ -425,72 +424,96 @@ elif st.session_state.phase == "writing":
             ]
             st.session_state.inference_score = int(score)
 
-            # 🔄 분석 화면으로 전환
+            # 🔁 MCP 단계 플래그 초기화
+            st.session_state["_mcp_started"] = False
+            st.session_state["_mcp_done"] = False
+
+            # 🔄 분석 화면으로 전환(페이지 분리)
             st.session_state.phase = "analyzing"
             st.rerun()
 
 
 # -------------------
-# 4. MCP 분석 모션 (MCP만 표시 → 종료 후 피드백으로)
+# 4. MCP 분석 모션 (완전 분리 페이지: 애니메이션 → 완료 안내/버튼)
 # -------------------
 elif st.session_state.phase == "analyzing":
-    # MCP만 그리는 독립 컨테이너
-    holder = st.empty()
-    with holder.container():
-        # 필요 시 배경/여백만 간단히 스타일링 (오버레이 불필요)
-        st.markdown(
-            """
-            <style>
-              body { overflow: hidden; }
-              .mcp-wrap { display:flex; min-height: 75vh; align-items:center; justify-content:center; }
-            </style>
-            <div class="mcp-wrap"></div>
-            """,
-            unsafe_allow_html=True,
-        )
-        # ⬇️ 실제 MCP 애니메이션 (로그/프로그레스 포함)
-        run_mcp_motion()
+    # 최소 스타일
+    st.markdown("""
+        <style>
+          body { overflow-x:hidden; }
+          .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
+          .mcp-done-card {
+              border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
+              background: #F9FFF9; max-width: 820px; margin: 48px auto;
+          }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 애니메이션 끝난 뒤 피드백으로 전환
-    st.session_state.phase = "ai_feedback"
-    st.rerun()
+    # 1) 아직 MCP를 실행하지 않았다면: 애니메이션 한 번만 실행
+    if not st.session_state.get("_mcp_started", False):
+        st.session_state["_mcp_started"] = True
 
+        with st.container():
+            st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
+            run_mcp_motion()  # ⬅️ 약 8초 (로그/프로그레스)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.session_state["_mcp_done"] = True
+        st.rerun()
+
+    # 2) MCP가 끝났으면: 완료 안내 + 결과 보기 버튼
+    elif st.session_state.get("_mcp_done", False):
+        st.markdown("""
+            <div class='mcp-done-card'>
+              <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
+              <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin: 6px 0 0;">
+                COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
+              </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        c1, c2, c3 = st.columns([1,2,1])
+        with c2:
+            if st.button("결과 보기", use_container_width=True):
+                st.session_state["_mcp_started"] = False
+                st.session_state["_mcp_done"] = False
+                st.session_state.phase = "ai_feedback"
+                st.rerun()
+
+    # 3) 경합 대비 로딩 플레이스홀더
+    else:
+        st.markdown("<div class='mcp-screen'><h3>분석 준비 중…</h3></div>", unsafe_allow_html=True)
 
 
 # -------------------
-# 5. AI 피드백 화면
+# 5. AI 피드백 화면 (정확 일치 하이라이트)
 # -------------------
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
 
-    # 1) 피드백 1개 선택
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
 
-    # 2) 피드백 세트의 '정확히 동일한' 구절만 하이라이트
+    # 피드백 세트의 '정확히 동일한' 구절만 하이라이트
     highlight_words = [
-        # ── 노력(과정) 세트(set1)에 등장하는 핵심 구절 ──
+        # ─ 노력(과정) set1 ─
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "지속적인 탐색과 시도",
         "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
         "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
         "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
-
-        # ── 능력(성과) 세트(set2)에 등장하는 핵심 구절 ──
+        # ─ 능력(성과) set2 ─
         "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
         "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
         "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
         "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력",
     ]
-
-    # 정확 일치로만 치환 (부분 일치/유연 매칭 없음)
     for phrase in highlight_words:
         feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
     feedback_with_breaks = feedback.replace("\n", "<br>")
 
-    # 3) 카드 렌더
     feedback_html = f"""
     <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
         <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
@@ -501,17 +524,12 @@ elif st.session_state.phase == "ai_feedback":
     """
     st.markdown(feedback_html, unsafe_allow_html=True)
 
-    # 4) 다음 단계
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
-        st.session_state.data["writing"] = st.session_state.writing_answers
+        st.session_state.data["writing"] = st.session_state.get("writing_answers", [])
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
-
-
-
-
 
 ####################################################
 # 6. 학습 동기 설문
