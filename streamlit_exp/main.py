@@ -120,10 +120,10 @@ if st.session_state.phase == "start":
     if "consent_step" not in st.session_state:
         st.session_state.consent_step = "explain"   # "explain" → "agree"
 
-    # 파일 경로 (원하는 파일명으로 교체)
-    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")     # 연구대상자 설명문
-    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")       # 연구 동의서(온라인용)
-    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")    # 개인정보 수집·이용 동의
+    # 파일 경로
+    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")   # 연구대상자 설명문
+    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")     # 연구 동의서(온라인용)
+    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")  # 개인정보 수집·이용 동의
 
     # -------------------
     # STEP 1: 설명문 페이지
@@ -135,52 +135,60 @@ if st.session_state.phase == "start":
         else:
             st.info("설명문 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        cols = st.columns([1, 1, 3])
-        with cols[0]:
-            if st.button("다음"):
-                st.session_state.consent_step = "agree"
-                st.rerun()
+        st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+        # 다음 버튼 (단독)
+        if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
+            st.session_state.consent_step = "agree"
+            st.rerun()
 
     # -------------------
     # STEP 2: 동의서 + 개인정보 동의
     # -------------------
     elif st.session_state.consent_step == "agree":
+        # 연구 동의서
         st.subheader("연구 동의서")
         if os.path.exists(AGREE_IMG):
             st.image(AGREE_IMG, use_container_width=True)
         else:
             st.info("연구 동의서 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        # ✅ 연구 동의 라디오: 연구 동의서 이미지 바로 아래
+        # 연구 동의 라디오 (이미지 바로 아래)
         consent_research = st.radio(
-            "연구 참여에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
+            label="연구 참여에 동의하십니까?",
+            options=["동의함", "동의하지 않음"],
             horizontal=True,
             key="consent_research_radio"
         )
 
+        st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+
+        # 개인정보 수집·이용 동의서
         st.subheader("개인정보 수집·이용에 대한 동의")
         if os.path.exists(PRIV_IMG):
             st.image(PRIV_IMG, use_container_width=True)
         else:
             st.info("개인정보 동의 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        # ✅ 개인정보 동의 라디오: 개인정보 이미지 바로 아래
+        # 개인정보 동의 라디오 (이미지 바로 아래)
         consent_privacy = st.radio(
-            "개인정보 수집·이용에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
+            label="개인정보 수집·이용에 동의하십니까?",
+            options=["동의함", "동의하지 않음"],
             horizontal=True,
             key="consent_privacy_radio"
         )
 
-        # ✅ 하단 내비게이션 버튼: 좌/우 끝에 배치
-        left_btn, spacer, right_btn = st.columns([1, 8, 1])
-        with left_btn:
-            if st.button("이전", use_container_width=True):
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        st.divider()
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+
+        # 하단 내비게이션: 좌/우 끝에 작게 배치 (기본 크기 버튼)
+        left_col, spacer, right_col = st.columns([1, 8, 1])
+        with left_col:
+            if st.button("이전", key="consent_prev_btn"):
                 st.session_state.consent_step = "explain"
                 st.rerun()
-        with right_btn:
-            if st.button("다음", use_container_width=True):
+        with right_col:
+            if st.button("다음", key="consent_next_btn"):
                 if consent_research != "동의함":
                     st.warning("연구 참여에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
                 elif consent_privacy != "동의함":
@@ -196,6 +204,8 @@ if st.session_state.phase == "start":
                     # 다음 전체 단계로 이동
                     st.session_state.phase = "demographic"
                     st.rerun()
+
+
 
 # -------------------
 # 1-1. 인적사항 입력 페이지
@@ -446,19 +456,42 @@ elif st.session_state.phase == "analyzing":
 elif st.session_state.phase == "ai_feedback":
     st.success("AI 분석 완료!")
 
+    # 1) 피드백 1개 선택
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
+
+    # 2) 추론 피드백용 하이라이트 문구(능력/노력 공통 포함)
     highlight_words = [
-    "작성 과정에서 여러 차례 시도와 수정", "완성하려는 노력", "과정 중 다양한 시도", "끈기와 꾸준한 시도", 
-    "끝까지 아이디어를 구체화", "중간 과정에서의 시행착오", "꾸준한 시도와 개선 노력",
-    "여러 방법을 모색하고 이를 적용한 흔적", "세부 표현을 다듬는 과정", "성실하고 지속적인 접근", 
-    "단어와 조건을 빠르게 이해", "언어적·인지적 역량이 결과를 이끌어낸 핵심 요인", "높은 수준의 사고력", "탁월한 이해력과 구성력",
-    "직관적으로 파악하고 효과적으로 연결하는 능력", "높은 수준의 판단력", "결과를 도출하는 능력",
-    "높은 언어적 감각", "매끄럽게 구성하는 능력"
+        # 공통
+        "추론 패턴을 분석해본 결과",
+
+        # 노력(과정) 측면
+        "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
+        "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
+        "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
+        "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
+        "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
+
+        # 능력(성과) 측면
+        "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
+        "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
+        "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
+        "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
+        "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력"
     ]
-    for word in highlight_words:
-        feedback = feedback.replace(word, f"<b style='color:#2E7D32;'>{word}</b>")
+
+    # 3) 겹침/부분일치 오류 없이 하이라이트 적용
+    import re
+    def apply_highlight(text: str, phrases: list[str]) -> str:
+        for p in sorted(set(phrases), key=len, reverse=True):
+            # 문구 뒤에 공백/구두점/문장끝이 오면 매칭 (, . ! ? : ;) — 원문 보존
+            pattern = re.escape(p) + r'(?=[\s,\.\!\?\:\;]|$)'
+            text = re.sub(pattern, f"<b style='color:#2E7D32;'>{p}</b>", text)
+        return text
+
+    feedback = apply_highlight(feedback, highlight_words)
     feedback_with_breaks = feedback.replace("\n", "<br>")
 
+    # 4) 카드 렌더
     feedback_html = f"""
     <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
         <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
@@ -469,15 +502,16 @@ elif st.session_state.phase == "ai_feedback":
     """
     st.markdown(feedback_html, unsafe_allow_html=True)
 
-    # ✅ 버튼과 피드백 사이에 여백
+    # 5) 여백 + 다음 단계
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
 
-    # ✅ 칭찬은 1회만 표시 → 바로 설문으로 이동
     if st.button("학습동기 설문으로 이동"):
+        # (기존 저장 키 유지)
         st.session_state.data["writing"] = st.session_state.writing_answers
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 ####################################################
 # 6. 학습 동기 설문
 ####################################################
