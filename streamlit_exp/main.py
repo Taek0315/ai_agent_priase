@@ -7,19 +7,32 @@ from datetime import datetime
 from utils.validation import validate_phone, validate_text
 from utils.save_data import save_to_csv
 
-BASE_DIR = os.path.dirname(__file__)
+# ──────────────────────────────────────────────────────────────────────────────
+# 공통: 스크롤 항상 최상단
+def scroll_top_js():
+    st.markdown("""
+        <script>
+        try {
+          const sect = window.parent?.document?.querySelector('section.main');
+          if (sect) sect.scrollTo({top:0, left:0, behavior:'instant'});
+          window.scrollTo({top:0, left:0, behavior:'instant'});
+        } catch(e) {}
+        </script>
+    """, unsafe_allow_html=True)
 
+BASE_DIR = os.path.dirname(__file__)
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
-hide_streamlit_style = """
+# 상단 UI 숨김
+st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;} 
-    footer {visibility: hidden;} 
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     header {visibility: hidden;}
     </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
+# 상태 초기화
 if "phase" not in st.session_state:
     st.session_state.phase = "start"
     st.session_state.data = {}
@@ -27,7 +40,13 @@ if "phase" not in st.session_state:
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
 
-# ==== COVNOX log lines (EN) ====
+# 피드백 세트 로드 (누락 방지)
+feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
+with open(feedback_path, encoding="utf-8") as f:
+    feedback_sets = json.load(f)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# COVNOX 로그 (EN)
 fake_logs = [
     "[INFO][COVNOX] Initializing… booting inference-pattern engine",
     "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu), connector(ama)",
@@ -55,96 +74,73 @@ fake_logs = [
     "[✔][COVNOX] Analysis complete. Rendering results…"
 ]
 
-# ==== Motion (duration unchanged) ====
+# MCP 애니메이션 (정중앙)
 def run_mcp_motion():
-    import os
-    
     st.markdown("""
         <style>
         .covnox-stage{
-            min-height: 86vh;
-            display:flex; flex-direction:column;
-            align-items:center; justify-content:center;
+          min-height:92vh; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; gap:8px;
         }
-        .covnox-title{ margin:0 0 6px 0; text-align:center; }
-        .covnox-sub{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                     font-size:14px; opacity:.9; margin:10px 0 12px 0; text-align:center; }
-        .covnox-bar{ width:min(920px, 92vw); }
+        .covnox-title{ margin:0; text-align:center;
+          font-size: clamp(26px, 5.2vw, 46px); font-weight:800;
+        }
+        .covnox-sub{
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
+        }
+        .covnox-bar{ width:min(920px, 92vw); margin-top:4px; }
         </style>
+        <div class='covnox-stage'>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='covnox-stage'>", unsafe_allow_html=True)
-
-    # 로고 (있으면)
+    # 로고(있으면)
     try:
         base_dir = os.getcwd()
         logo_path = os.path.join(base_dir, "covnox.png")
         if os.path.exists(logo_path):
-            st.image(logo_path, width=84)
+            st.image(logo_path, width=80)
     except Exception:
         pass
 
-    # 제목(상단 여백 제거)
-    st.markdown(
-        "<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    # 로그 + 프로그레스
     log_placeholder = st.empty()
-    bar_holder = st.container()
-    with bar_holder:
-        progress_bar = st.progress(0, text=None)
+    progress = st.progress(0, text=None)
 
-    start_time = time.time()
-    total_duration = 8.0  # 초
+    start = time.time()
+    total = 8.0
     step = 0
-
     while True:
-        elapsed = time.time() - start_time
-        if elapsed >= total_duration:
-            break
-
-        # 진행률
-        pct = min(elapsed / total_duration, 1.0)
-        progress_bar.progress(pct, text=None)
-
-        # 로그
-        log_message = fake_logs[step % len(fake_logs)]
+        t = time.time() - start
+        if t >= total: break
+        progress.progress(min(t/total, 1.0), text=None)
+        msg = fake_logs[step % len(fake_logs)]
         timestamp = time.strftime("%H:%M:%S")
-        log_placeholder.markdown(
-            f"<div class='covnox-sub'>[{timestamp}] {log_message}</div>",
-            unsafe_allow_html=True
-        )
-
+        log_placeholder.markdown(f"<div class='covnox-sub'>[{timestamp}] {msg}</div>", unsafe_allow_html=True)
         step += 1
         time.sleep(0.4)
 
-    progress_bar.progress(1.0, text=None)
+    progress.progress(1.0, text=None)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# -------------------
-# 1. 연구 동의 페이지 (2단계)
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 1. 연구 동의 페이지
 if st.session_state.phase == "start":
-    # 로고
+    scroll_top_js()
+
     logo_path = os.path.join(BASE_DIR, "logo.png")
     if os.path.exists(logo_path):
         st.image(logo_path, width=150)
     st.title("연구 참여 동의서")
 
-    # 내부 스텝 상태 초기화
     if "consent_step" not in st.session_state:
-        st.session_state.consent_step = "explain"   # "explain" → "agree"
+        st.session_state.consent_step = "explain"
 
-    # 파일 경로
-    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")   # 연구대상자 설명문
-    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")     # 연구 동의서(온라인용)
-    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")  # 개인정보 수집·이용 동의
+    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")
+    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")
+    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")
 
-    # -------------------
-    # STEP 1: 설명문 페이지
-    # -------------------
     if st.session_state.consent_step == "explain":
         st.subheader("연구대상자 설명문")
         if os.path.exists(EXPLAIN_IMG):
@@ -153,52 +149,35 @@ if st.session_state.phase == "start":
             st.info("설명문 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
-        # 다음 버튼 (단독)
         if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
             st.session_state.consent_step = "agree"
             st.rerun()
 
-    # -------------------
-    # STEP 2: 동의서 + 개인정보 동의
-    # -------------------
     elif st.session_state.consent_step == "agree":
-        # 연구 동의서
         st.subheader("연구 동의서")
         if os.path.exists(AGREE_IMG):
             st.image(AGREE_IMG, use_container_width=True)
         else:
             st.info("연구 동의서 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        # 연구 동의 라디오 (이미지 바로 아래)
-        consent_research = st.radio(
-            label="연구 참여에 동의하십니까?",
-            options=["동의함", "동의하지 않음"],
-            horizontal=True,
-            key="consent_research_radio"
-        )
+        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                    horizontal=True, key="consent_research_radio")
 
         st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 
-        # 개인정보 수집·이용 동의서
         st.subheader("개인정보 수집·이용에 대한 동의")
         if os.path.exists(PRIV_IMG):
             st.image(PRIV_IMG, use_container_width=True)
         else:
             st.info("개인정보 동의 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        # 개인정보 동의 라디오 (이미지 바로 아래)
-        consent_privacy = st.radio(
-            label="개인정보 수집·이용에 동의하십니까?",
-            options=["동의함", "동의하지 않음"],
-            horizontal=True,
-            key="consent_privacy_radio"
-        )
+        consent_privacy = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                   horizontal=True, key="consent_privacy_radio")
 
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
         st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
-        # 하단 내비게이션: 좌/우 끝에 작게 배치 (기본 크기 버튼)
         left_col, spacer, right_col = st.columns([1, 8, 1])
         with left_col:
             if st.button("이전", key="consent_prev_btn"):
@@ -211,25 +190,23 @@ if st.session_state.phase == "start":
                 elif consent_privacy != "동의함":
                     st.warning("개인정보 수집·이용에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
                 else:
-                    # 저장
                     st.session_state.data.update({
                         "consent": "동의함",
                         "consent_research": consent_research,
                         "consent_privacy": consent_privacy,
                         "startTime": datetime.now().isoformat()
                     })
-                    # 다음 전체 단계로 이동
                     st.session_state.phase = "demographic"
                     st.rerun()
 
-
-
-# -------------------
-# 1-1. 인적사항 입력 페이지
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 1-1. 인적사항
 elif st.session_state.phase == "demographic":
+    scroll_top_js()
+
     logo_path = os.path.join(BASE_DIR, "logo.png")
-    st.image(logo_path, width=150)
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=150)
     st.title("인적사항 입력")
 
     gender = st.radio("성별", ["남자", "여자"])
@@ -239,80 +216,66 @@ elif st.session_state.phase == "demographic":
         if not gender or not age_group:
             st.warning("성별과 연령을 모두 입력해 주세요.")
         else:
-            st.session_state.data.update({
-                "gender": gender,
-                "age": age_group
-            })
+            st.session_state.data.update({"gender": gender, "age": age_group})
             st.session_state.phase = "anthro"
             st.rerun()
-########################################################
-# 2. 의인화 척도
-########################################################
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 2. 의인화 척도 (10점 슬라이더)
 elif st.session_state.phase == "anthro":
+    scroll_top_js()
+
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
 
-    # 제목
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
-
-    # 점수 의미 안내 (10점 척도)
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:18px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; — &nbsp;&nbsp;
-        <b>5점</b> : 보통이다 &nbsp;&nbsp; — &nbsp;&nbsp;
-        <b>10점</b> : 매우 그렇다
-    </div>
-    <div style='text-align:center; color:#777; font-size:13px; margin-top:-6px; margin-bottom:24px;'>
-        ※ 초기값 <b>0</b>은 "<b>미응답</b>"을 의미합니다. 슬라이더를 움직여 1~10점 중 하나를 선택해 주세요.
-    </div>
+        <style>
+        .anthro-title{ text-align:center; font-weight:800;
+           font-size:clamp(28px, 6vw, 56px); line-height:1.15; margin:8px 0 6px 0;}
+        .scale-guide{ display:flex; justify-content:center; align-items:center; gap:12px;
+           flex-wrap:wrap; text-align:center; font-size:clamp(14px, 2.8vw, 20px); line-height:1.6; margin-bottom:10px;}
+        .scale-guide span{ white-space:nowrap; }
+        .scale-note{ text-align:center; color:#9aa3ad; font-size:clamp(12px, 2.6vw, 16px);
+           line-height:1.6; margin-bottom:30px;}
+        </style>
+        <h2 class="anthro-title">의인화 척도 설문</h2>
+        <div class="scale-guide">
+          <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
+          <span><b>5점</b>: 보통이다</span><span>—</span>
+          <span><b>10점</b>: 매우 그렇다</span>
+        </div>
+        <div class="scale-note">※ 초깃값 0은 <b>“미응답”</b>을 의미합니다. 슬라이더를 움직여 1~10점 중 하나를 선택해 주세요.</div>
     """, unsafe_allow_html=True)
 
     responses = []
-
     for i, q in enumerate(questions, start=1):
-        # 문항 + 슬라이더 (0은 미응답)
-        val = st.slider(
-            label=f"{i}. {q}",
-            min_value=0, max_value=10, value=0, step=1,  # ⭐ 초기값 0=미응답
-            format="%d점",
-            key=f"anthro_{i}",
-            help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요."
-        )
+        val = st.slider(label=f"{i}. {q}", min_value=0, max_value=10, value=0, step=1,
+                        format="%d점", key=f"anthro_{i}",
+                        help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요.")
         responses.append(val)
-
-        # 문항 간 여백
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # 다음 버튼
     if st.button("다음 (추론 과제)"):
         if any(v == 0 for v in responses):
             st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
         else:
-            st.session_state.data["anthro_responses"] = responses  # 1~10점
+            st.session_state.data["anthro_responses"] = responses
             st.session_state.phase = "writing_intro"
             st.rerun()
 
-
-
-
-# -------------------
-# 2-1. 추론 기반 객관식 과제 지시문 페이지
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 2-1. 추론 과제 지시문
 elif st.session_state.phase == "writing_intro":
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
+    scroll_top_js()
 
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
     st.markdown("""
     이번 단계에서는 **이누이트 언어(Inuktut-like)**의 간단한 규칙을 읽고,  
     총 **10개**의 객관식 문항에 답하는 **추론 과제**를 수행합니다.
 
     이 과제의 목표는 **정답률 자체가 아니라 ‘낯선 규칙에서 끝까지 추론하려는 과정’**을 관찰하는 것입니다.  
     즉, 정답을 모두 맞추는 것보다 **단서를 찾고, 비교하고, 일관된 근거로 선택**하는 과정이 더 중요합니다.
-
-    **왜 중요한가요?**
-    - 연구는 **문제 해결에서의 추론 전략**(패턴, 근거 사용, 오답 소거 등)을 분석합니다.
-    - 여러분의 응답은 COVNOX라는 **추론 패턴 분석 도구**로 처리되어, 추론 패턴 피드백을 제시합니다.
-    - 분석은 개인 식별 없이 **연구 목적**으로만 사용됩니다.
 
     **진행 방식**
     1) 간단한 어휘/어법 규칙을 읽습니다.  
@@ -324,29 +287,21 @@ elif st.session_state.phase == "writing_intro":
     - 문항마다 ‘가장 그럴듯한’ 선택을 고르고, 가능하면 **적용한 규칙**을 함께 떠올려 보세요.  
     - **끝까지 응답을 완성**하는 것이 중요합니다. 빈 문항 없이 제출해 주세요.  
     - 오답이어도 괜찮습니다. **추론 경로**가 분석의 핵심입니다.
-
-    **유의사항**
-    - 과제 도중 뒤로 가기/새로고침은 기록 손실을 일으킬 수 있습니다.  
-    - 개인 피드백은 연구용으로 제공되며 점수화된 평가가 목적이 아닙니다.
     """)
-
     if st.button("추론 과제 시작"):
         st.session_state.phase = "writing"
         st.rerun()
 
-# -------------------
-# 3. 추론 기반 객관식 과제 (가상 언어 학습)
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 3. 추론 기반 객관식 과제
 elif st.session_state.phase == "writing":
-    import time
+    scroll_top_js()
 
     if "inference_started_ts" not in st.session_state:
         st.session_state.inference_started_ts = time.time()
 
-    # 👉 이 페이지 전용 컨테이너
     page = st.empty()
     with page.container():
-
         st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
 
         with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
@@ -417,51 +372,58 @@ elif st.session_state.phase == "writing":
             )
             rationales.append(rationale)
 
-        def validate_mcq(sel_list):
-            return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
+        def validate_mcq(sel_list): return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
 
         if st.button("제출"):
             if not validate_mcq(selections):
                 st.warning("10개 문항 모두 선택해 주세요.")
             else:
                 selected_idx = [int(s) for s in selections]
-                st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
+                duration = int(time.time() - st.session_state.inference_started_ts)
                 score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
-                st.session_state.inference_answers = [
-                    {
-                        "q": questions[i]["q"],
-                        "options": questions[i]["options"],
-                        "selected_idx": selected_idx[i],
-                        "correct_idx": int(questions[i]["ans"]),
-                        "rationales": rationales[i]
-                    } for i in range(len(questions))
-                ]
-                st.session_state.inference_score = int(score)
+                accuracy = round(score / len(questions), 3)
 
-                # 👉 페이지 비우고 다음 단계로 (잔상 방지)
+                # 세부 응답 저장(→ CSV에서 문항별로 풀 수 있도록)
+                detail = [{
+                    "q": questions[i]["q"],
+                    "options": questions[i]["options"],
+                    "selected_idx": selected_idx[i],
+                    "correct_idx": int(questions[i]["ans"]),
+                    "rationales": rationales[i]
+                } for i in range(len(questions))]
+
+                st.session_state.inference_answers = detail
+                st.session_state.inference_score = int(score)
+                st.session_state.inference_duration_sec = duration
+
+                # 🔸 저장 버퍼에 즉시 기록 (누락 방지)
+                st.session_state.data["inference_answers"] = detail
+                st.session_state.data["inference_score"] = int(score)
+                st.session_state.data["inference_duration_sec"] = duration
+                st.session_state.data["inference_accuracy"] = accuracy
+
+                # 페이지 비우고 다음 페이즈
                 page.empty()
                 st.session_state["_mcp_started"] = False
                 st.session_state["_mcp_done"] = False
                 st.session_state.phase = "analyzing"
                 st.rerun()
-                st.stop()
 
-
-# -------------------
-# 4. MCP 분석 모션 (완전 분리 페이지)
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 4. MCP 분석 모션 (완전 분리)
 elif st.session_state.phase == "analyzing":
-    # 👉 이 페이지 전용 컨테이너
+    scroll_top_js()
+
     page = st.empty()
     with page.container():
         st.markdown("""
             <style>
-              body { overflow-x:hidden; }
-              .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
-              .mcp-done-card {
-                  border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
-                  background: #F9FFF9; max-width: 820px; margin: 48px auto;
-              }
+            body { overflow-x:hidden; }
+            .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
+            .mcp-done-card {
+                border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
+                background: #F9FFF9; max-width: 820px; margin: 48px auto;
+            }
             </style>
         """, unsafe_allow_html=True)
 
@@ -469,13 +431,12 @@ elif st.session_state.phase == "analyzing":
         if not st.session_state.get("_mcp_started", False):
             st.session_state["_mcp_started"] = True
             st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
-            run_mcp_motion()  # ← 8초짜리 MCP 모션
+            run_mcp_motion()
             st.markdown("</div>", unsafe_allow_html=True)
             st.session_state["_mcp_done"] = True
             st.rerun()
-            st.stop()
 
-        # 2) 완료 안내 + 결과 보기 버튼
+        # 2) 완료 안내
         if st.session_state.get("_mcp_done", False):
             st.markdown("""
                 <div class='mcp-done-card'>
@@ -485,26 +446,20 @@ elif st.session_state.phase == "analyzing":
                   </p>
                 </div>
             """, unsafe_allow_html=True)
-
-            c1, c2, c3 = st.columns([1,2,1])
-            with c2:
+            _, mid, _ = st.columns([1,2,1])
+            with mid:
                 if st.button("결과 보기", use_container_width=True):
-                    page.empty()  # 현재 페이지 비우기
+                    page.empty()
                     st.session_state["_mcp_started"] = False
                     st.session_state["_mcp_done"] = False
                     st.session_state.phase = "ai_feedback"
                     st.rerun()
-                    st.stop()
 
-    # (안전망)
-    st.stop()
-
-
-
-# -------------------
-# 5. AI 피드백 화면
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. AI 피드백
 elif st.session_state.phase == "ai_feedback":
+    scroll_top_js()
+
     st.success("AI 분석 완료!")
 
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
@@ -541,25 +496,26 @@ elif st.session_state.phase == "ai_feedback":
 
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
-        st.session_state.data["writing"] = st.session_state.get("writing_answers", [])
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
-        st.stop()
 
-
-####################################################
+# ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
-####################################################
 elif st.session_state.phase == "motivation":
+    scroll_top_js()
+
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>학습동기 설문</h2>", unsafe_allow_html=True)
 
-    # 상단 점수 설명
+    # 가로 폭 축소 시 잘림 방지
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; - &nbsp;&nbsp;
-        <b>3점</b> : 보통이다 &nbsp;&nbsp; - &nbsp;&nbsp;
-        <b>5점</b> : 매우 그렇다
+    <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
+                font-size:16px; margin-bottom:30px;'>
+        <span style="white-space:nowrap;"><b>1점</b> : 전혀 그렇지 않다</span>
+        <span>—</span>
+        <span style="white-space:nowrap;"><b>3점</b> : 보통이다</span>
+        <span>—</span>
+        <span style="white-space:nowrap;"><b>5점</b> : 매우 그렇다</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -574,7 +530,6 @@ elif st.session_state.phase == "motivation":
     ]
 
     motivation_responses = []
-
     for i, q in enumerate(motivation_q, start=1):
         choice = st.radio(
             label=f"{i}. {q}",
@@ -585,11 +540,8 @@ elif st.session_state.phase == "motivation":
             label_visibility="visible"
         )
         motivation_responses.append(choice)
-
-        # 문항 간 여백
         st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
-    # 제출 버튼
     if st.button("설문 완료"):
         if None in motivation_responses:
             st.warning("모든 문항에 응답해 주세요.")
@@ -598,13 +550,11 @@ elif st.session_state.phase == "motivation":
             st.session_state.phase = "phone_input"
             st.rerun()
 
-
-
-
-# -------------------
-# 6-1. 휴대폰 번호 입력 단계
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# 6-1. 휴대폰 번호 입력
 elif st.session_state.phase == "phone_input":
+    scroll_top_js()
+
     st.title("휴대폰 번호 입력")
     st.markdown("""
     연구 참여가 완료되었습니다. 감사합니다.  
@@ -623,14 +573,14 @@ elif st.session_state.phase == "phone_input":
             st.session_state.phase = "result"
             st.rerun()
 
-# -------------------
+# ──────────────────────────────────────────────────────────────────────────────
 # 7. 완료 화면
-# -------------------
 elif st.session_state.phase == "result":
+    scroll_top_js()
+
     if "result_submitted" not in st.session_state:
         st.success("모든 과제가 완료되었습니다. 감사합니다!")
         st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
-
         if st.button("제출"):
             st.session_state.result_submitted = True
             st.rerun()
