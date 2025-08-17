@@ -151,24 +151,36 @@ if st.session_state.phase == "start":
         else:
             st.info("연구 동의서 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
+        # ✅ 연구 동의 라디오: 연구 동의서 이미지 바로 아래
+        consent_research = st.radio(
+            "연구 참여에 동의하십니까?",
+            ["동의함", "동의하지 않음"],
+            horizontal=True,
+            key="consent_research_radio"
+        )
+
         st.subheader("개인정보 수집·이용에 대한 동의")
         if os.path.exists(PRIV_IMG):
             st.image(PRIV_IMG, use_container_width=True)
         else:
             st.info("개인정보 동의 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        # 라디오(동의만 확인)
-        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"], horizontal=True, key="consent_research_radio")
-        consent_privacy  = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"], horizontal=True, key="consent_privacy_radio")
+        # ✅ 개인정보 동의 라디오: 개인정보 이미지 바로 아래
+        consent_privacy = st.radio(
+            "개인정보 수집·이용에 동의하십니까?",
+            ["동의함", "동의하지 않음"],
+            horizontal=True,
+            key="consent_privacy_radio"
+        )
 
-        # 버튼들
-        c1, c2 = st.columns([1,1])
-        with c1:
-            if st.button("이전"):
+        # ✅ 하단 내비게이션 버튼: 좌/우 끝에 배치
+        left_btn, spacer, right_btn = st.columns([1, 8, 1])
+        with left_btn:
+            if st.button("이전", use_container_width=True):
                 st.session_state.consent_step = "explain"
                 st.rerun()
-        with c2:
-            if st.button("다음"):
+        with right_btn:
+            if st.button("다음", use_container_width=True):
                 if consent_research != "동의함":
                     st.warning("연구 참여에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
                 elif consent_privacy != "동의함":
@@ -184,7 +196,6 @@ if st.session_state.phase == "start":
                     # 다음 전체 단계로 이동
                     st.session_state.phase = "demographic"
                     st.rerun()
-
 
 # -------------------
 # 1-1. 인적사항 입력 페이지
@@ -218,41 +229,42 @@ elif st.session_state.phase == "anthro":
     # 제목
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>의인화 척도 설문</h2>", unsafe_allow_html=True)
 
-    # 점수 의미 안내
+    # 점수 의미 안내 (10점 척도)
     st.markdown("""
-    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; --- &nbsp;&nbsp;
-        <b>4점</b> : 보통이다 &nbsp;&nbsp; --- &nbsp;&nbsp;
-        <b>7점</b> : 매우 그렇다
+    <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:18px; white-space:nowrap;'>
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; — &nbsp;&nbsp;
+        <b>5점</b> : 보통이다 &nbsp;&nbsp; — &nbsp;&nbsp;
+        <b>10점</b> : 매우 그렇다
+    </div>
+    <div style='text-align:center; color:#777; font-size:13px; margin-top:-6px; margin-bottom:24px;'>
+        ※ 초기값 <b>0</b>은 "<b>미응답</b>"을 의미합니다. 슬라이더를 움직여 1~10점 중 하나를 선택해 주세요.
     </div>
     """, unsafe_allow_html=True)
 
     responses = []
 
     for i, q in enumerate(questions, start=1):
-        # 문항 + 라디오 버튼 (한 줄로)
-        choice = st.radio(
+        # 문항 + 슬라이더 (0은 미응답)
+        val = st.slider(
             label=f"{i}. {q}",
-            options=list(range(1, 8)),
-            index=None,
-            horizontal=True,
+            min_value=0, max_value=10, value=0, step=1,  # ⭐ 초기값 0=미응답
+            format="%d점",
             key=f"anthro_{i}",
-            label_visibility="visible"
+            help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요."
         )
-        responses.append(choice)
+        responses.append(val)
 
         # 문항 간 여백
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
     # 다음 버튼
     if st.button("다음 (추론 과제)"):
-        if None in responses:
-            st.warning("모든 문항에 응답해 주세요.")
+        if any(v == 0 for v in responses):
+            st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
         else:
-            st.session_state.data["anthro_responses"] = responses
+            st.session_state.data["anthro_responses"] = responses  # 1~10점
             st.session_state.phase = "writing_intro"
             st.rerun()
-
 
 
 
@@ -264,7 +276,7 @@ elif st.session_state.phase == "writing_intro":
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
 
     st.markdown("""
-    이번 단계에서는 **가상 언어(Inuktut-like)**의 간단한 규칙을 읽고,  
+    이번 단계에서는 **이누이트 언어(Inuktut-like)**의 간단한 규칙을 읽고,  
     총 **10개**의 객관식 문항에 답하는 **추론 과제**를 수행합니다.
 
     이 과제의 목표는 **정답률 자체가 아니라 ‘낯선 규칙에서 끝까지 추론하려는 과정’**을 관찰하는 것입니다.  
@@ -306,7 +318,7 @@ elif st.session_state.phase == "writing":
     if "inference_started_ts" not in st.session_state:
         st.session_state.inference_started_ts = time.time()
 
-    st.title("추론 과제 1/1 · 가상 언어 학습(Inuktut-like)")
+    st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
 
     # 1) 학습 설명문 (간단한 어휘/어법 규칙)
     with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
@@ -328,101 +340,26 @@ elif st.session_state.phase == "writing":
 
     # 2) 10문항 객관식 (정답은 기록만, 노력 평가 목적 안내 포함)
     questions = [
-        {
-            "q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
-            "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"],
-            "ans": 1
-        },
-        {
-            "q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
-            "options": [
-                "ika-ka sua niri-na",   # 정답(마시다≈물-목적, 먹다-현재)
-                "sua-ka ika niri-tu",
-                "sua taku-na ika-ka",
-                "ika sua-ka niri-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
-            "options": [
-                "nuk-t pira-ka siku-tu",   # 정답
-                "nuk pira-ka siku-na",
-                "pira nuk-t-ka siku-na",
-                "nuk-mi pira siku-tu"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
-            "options": [
-                "sua ama nuk ani-ka taku-na",   # 정답
-                "sua-ka ama nuk-ka ani taku-na",
-                "ani-ka sua ama nuk taku-tu",
-                "sua ama nuk-mi ani taku-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
-            "options": [
-                "nuk-mi sua-t pira-ka taku-na",  # 정답
-                "nuk-t-mi sua pira-ka taku-na",
-                "sua-t nuk pira-ka taku-na",
-                "nuk-mi sua pira taku-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
-            "options": [
-                "nuk-t sua-mi ani-ka taku-tu",   # 정답
-                "nuk sua-mi ani-ka taku-na",
-                "nuk-t sua ani-ka taku-tu",
-                "sua-mi nuk-t ani-ka taku-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
-            "options": [
-                "nuk-mi sua ika-ka siku-tu",     # 정답
-                "sua-mi nuk ika-ka siku-na",
-                "nuk-mi sua-ka ika siku-tu",
-                "nuk-t sua ika-ka siku-tu"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
-            "options": [
-                "nuk ama sua pira-ka niri-na",   # 정답
-                "nuk pira-ka ama sua niri-na",
-                "nuk ama sua pira niri-tu",
-                "nuk-t ama sua pira-ka niri-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
-            "options": [
-                "nuk-t ika ama pira-ka taku-na",   # 정답(목적표시는 마지막 항에)
-                "nuk-t ika-ka ama pira-ka taku-na",
-                "nuk ika ama pira-ka taku-na",
-                "nuk-t ika ama pira taku-na"
-            ],
-            "ans": 0
-        },
-        {
-            "q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
-            "options": [
-                "sua-t nuk-mi ani-ka siku-tu",    # 정답
-                "sua nuk-mi ani-ka siku-na",
-                "sua-t nuk ani-ka siku-tu",
-                "sua-t nuk-mi ani siku-na"
-            ],
-            "ans": 0
-        },
+        {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
+         "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
+        {"q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
+         "options": ["ika-ka sua niri-na", "sua-ka ika niri-tu", "sua taku-na ika-ka", "ika sua-ka niri-na"], "ans": 0},
+        {"q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-t pira-ka siku-tu", "nuk pira-ka siku-na", "pira nuk-t-ka siku-na", "nuk-mi pira siku-tu"], "ans": 0},
+        {"q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
+         "options": ["sua ama nuk ani-ka taku-na", "sua-ka ama nuk-ka ani taku-na", "ani-ka sua ama nuk taku-tu", "sua ama nuk-mi ani taku-na"], "ans": 0},
+        {"q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk-mi sua-t pira-ka taku-na", "nuk-t-mi sua pira-ka taku-na", "sua-t nuk pira-ka taku-na", "nuk-mi sua pira taku-na"], "ans": 0},
+        {"q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-t sua-mi ani-ka taku-tu", "nuk sua-mi ani-ka taku-na", "nuk-t sua ani-ka taku-tu", "sua-mi nuk-t ani-ka taku-na"], "ans": 0},
+        {"q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-mi sua ika-ka siku-tu", "sua-mi nuk ika-ka siku-na", "nuk-mi sua-ka ika siku-tu", "nuk-t sua ika-ka siku-tu"], "ans": 0},
+        {"q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk ama sua pira-ka niri-na", "nuk pira-ka ama sua niri-na", "nuk ama sua pira niri-tu", "nuk-t ama sua pira-ka niri-na"], "ans": 0},
+        {"q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk-t ika ama pira-ka taku-na", "nuk-t ika-ka ama pira-ka taku-na", "nuk ika ama pira-ka taku-na", "nuk-t ika ama pira taku-na"], "ans": 0},
+        {"q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["sua-t nuk-mi ani-ka siku-tu", "sua nuk-mi ani-ka siku-na", "sua-t nuk ani-ka siku-tu", "sua-t nuk-mi ani siku-na"], "ans": 0},
     ]
 
     st.markdown(
@@ -443,9 +380,10 @@ elif st.session_state.phase == "writing":
             options=list(range(len(item["options"]))),
             format_func=lambda idx, opts=item["options"]: opts[idx],
             key=f"mcq_{i}",
-            horizontal=False
+            horizontal=False,
+            index=None  # ✅ 기본 선택 해제
         )
-        selections.append(int(choice))
+        selections.append(choice)  # None 가능 (아직 선택 전)
         # 🔎 선택 근거(복수 선택 가능) — 추론 패턴 기록용
         rationale = st.multiselect(
             f"문항 {i+1}에서 참고한 규칙(선택적)",
@@ -456,25 +394,28 @@ elif st.session_state.phase == "writing":
 
     # 2-1) 모든 문항 응답 확인
     def validate_mcq(sel_list):
-        return all(s is not None for s in sel_list)
+        return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
 
     # 제출 버튼
     if st.button("제출"):
         if not validate_mcq(selections):
             st.warning("10개 문항 모두 선택해 주세요.")
         else:
+            # 선택값을 저장 시점에만 정수로 변환
+            selected_idx = [int(s) for s in selections]
+
             # ⏱ 소요시간 기록
             st.session_state.inference_duration_sec = int(time.time() - st.session_state.inference_started_ts)
 
             # 정답 집계(참고용)
-            score = sum(int(selections[i] == q["ans"]) for i, q in enumerate(questions))
+            score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
 
             # 저장: 기존 파이프라인과 충돌 없게 별도 키 사용
             st.session_state.inference_answers = [
                 {
                     "q": questions[i]["q"],
                     "options": questions[i]["options"],
-                    "selected_idx": int(selections[i]),
+                    "selected_idx": selected_idx[i],
                     "correct_idx": int(questions[i]["ans"]),
                     "rationales": rationales[i]  # 추론 근거 기록
                 }
@@ -482,19 +423,22 @@ elif st.session_state.phase == "writing":
             ]
             st.session_state.inference_score = int(score)
 
-            # 다음 단계: 기존 애니메이션 그대로 사용
+            # 🔄 분석 화면으로 전환하고 즉시 재렌더 (배경 잔상 방지)
             st.session_state.phase = "analyzing"
-            st.rerun()
-
+            st.experimental_rerun()
 
 
 # -------------------
-# 4. MCP 분석 모션
+# 4. MCP 분석 모션 (MCP만 표시 → 종료 후 피드백으로)
 # -------------------
 elif st.session_state.phase == "analyzing":
+    # MCP 애니메이션만 렌더
     run_mcp_motion()
+
+    # 끝나면 다음 단계로 전환
     st.session_state.phase = "ai_feedback"
-    st.rerun()
+    st.experimental_rerun()
+    st.stop()
 
 # -------------------
 # 5. AI 피드백 화면
@@ -543,9 +487,9 @@ elif st.session_state.phase == "motivation":
     # 상단 점수 설명
     st.markdown("""
     <div style='display:flex; justify-content:center; flex-wrap:nowrap; font-size:16px; margin-bottom:30px; white-space:nowrap;'>
-        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; --- &nbsp;&nbsp;
-        <b>5점</b> : 보통이다 &nbsp;&nbsp; --- &nbsp;&nbsp;
-        <b>10점</b> : 매우 그렇다
+        <b>1점</b> : 전혀 그렇지 않다 &nbsp;&nbsp; - &nbsp;&nbsp;
+        <b>3점</b> : 보통이다 &nbsp;&nbsp; - &nbsp;&nbsp;
+        <b>5점</b> : 매우 그렇다
     </div>
     """, unsafe_allow_html=True)
 
