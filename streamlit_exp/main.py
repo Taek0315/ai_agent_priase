@@ -425,19 +425,37 @@ elif st.session_state.phase == "writing":
             ]
             st.session_state.inference_score = int(score)
 
-            # 🔄 분석 화면으로 전환(지원되는 API 사용)
+            # 🔄 분석 화면으로 전환
             st.session_state.phase = "analyzing"
             st.rerun()
 
 
 # -------------------
-# 4. MCP 분석 모션 (MCP만 표시 → 종료 후 피드백으로)
+# 4. MCP 분석 모션 (풀스크린 · 뒤 배경 완전 가림)
 # -------------------
 elif st.session_state.phase == "analyzing":
-    # MCP 애니메이션만 렌더
-    run_mcp_motion()
+    # 전체를 덮는 오버레이 CSS (배경 스크롤/클릭 차단)
+    st.markdown("""
+        <style>
+        html, body { margin:0; padding:0; overflow:hidden; }
+        .covnox-overlay {
+            position: fixed; inset: 0;
+            background: #0C1522;           /* 어두운 배경 */
+            z-index: 999999;               /* 최상단 */
+            display: flex; align-items: center; justify-content: center;
+        }
+        .covnox-stage { width: min(920px, 94vw); padding: 8px; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 끝나면 다음 단계로 전환
+    # 풀스크린 컨테이너에 MCP만 렌더
+    holder = st.empty()
+    with holder.container():
+        st.markdown("<div class='covnox-overlay'><div class='covnox-stage'>", unsafe_allow_html=True)
+        run_mcp_motion()   # ⟵ 기존 MCP 모션(로고/로그/프로그레스)
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
+    # 모션 종료 후 다음 단계로
     st.session_state.phase = "ai_feedback"
     st.rerun()
 
@@ -451,25 +469,40 @@ elif st.session_state.phase == "ai_feedback":
     # 1) 피드백 1개 선택
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
 
-    # 2) 추론 피드백용 하이라이트 문구
+    # 2) 추론 피드백용 하이라이트 문구(표에 있던 표현 + 서두 문구까지 포함)
     highlight_words = [
+        # ── 서두/공통 패턴 ──
         "추론 패턴을 분석해본 결과",
+        "추론 과정에서 나타난 응답을 살펴보면",
+        "분석 결과, 응답자는",
+        "추론 패턴을 살펴본 결과",
+        "이번 과제의 응답은",
+
+        # ── 노력(과정) 측면 ──
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
         "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
         "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
+        # 문장 내 자주 쓰인 보조 표현(문구 차이 대비)
+        "지속적인 탐색과 시도",
+        "제한된 단서 속에서도",
+        "제한된 정보 속에서도",
+
+        # ── 능력(성과) 측면 ──
         "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
         "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
         "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
-        "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력"
+        "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력",
     ]
 
-    # 3) 하이라이트 적용(부분일치/겹침 방지)
+    # 3) 겹침/부분일치 문제 없이 하이라이트 적용
     import re
     def apply_highlight(text: str, phrases: list[str]) -> str:
+        # 긴 문구부터 치환(부분 중복 방지)
         for p in sorted(set(phrases), key=len, reverse=True):
+            # 문구 뒤에 공백/구두점/문장끝이 오면 매칭 (원문 보존)
             pattern = re.escape(p) + r'(?=[\s,\.\!\?\:\;]|$)'
             text = re.sub(pattern, f"<b style='color:#2E7D32;'>{p}</b>", text)
         return text
@@ -488,13 +521,15 @@ elif st.session_state.phase == "ai_feedback":
     """
     st.markdown(feedback_html, unsafe_allow_html=True)
 
-    # 5) 다음 단계
+    # 5) 여백 + 다음 단계
     st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["writing"] = st.session_state.writing_answers
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
+
 
 
 ####################################################
