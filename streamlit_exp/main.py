@@ -58,7 +58,7 @@ fake_logs = [
 # ==== Motion (duration unchanged) ====
 def run_mcp_motion():
     import os
-    """COVNOX 애니메이션을 화면 정중앙에 표시"""
+    
     st.markdown("""
         <style>
         .covnox-stage{
