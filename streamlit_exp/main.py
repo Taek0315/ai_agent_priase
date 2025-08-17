@@ -58,53 +58,70 @@ fake_logs = [
 # ==== Motion (duration unchanged) ====
 def run_mcp_motion():
     import os
+    """COVNOX 애니메이션을 화면 정중앙에 표시"""
+    st.markdown("""
+        <style>
+        .covnox-stage{
+            min-height: 86vh;
+            display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+        }
+        .covnox-title{ margin:0 0 6px 0; text-align:center; }
+        .covnox-sub{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                     font-size:14px; opacity:.9; margin:10px 0 12px 0; text-align:center; }
+        .covnox-bar{ width:min(920px, 92vw); }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 1) 로고 경로 (우선순위대로 탐색)
-    LOGO_PATHS = [
-        "./covnox.png",                 # main.py와 같은 폴더
-        os.path.join(os.getcwd(), "covnox.png")
-    ]
-    logo_path = next((p for p in LOGO_PATHS if os.path.exists(p)), None)
+    st.markdown("<div class='covnox-stage'>", unsafe_allow_html=True)
 
-    # 2) 로고 + 타이틀
-    with st.container():
-        # 로고를 정확히 가운데에 배치
-        left, mid, right = st.columns([1, 2, 1])
-        with mid:
-            if logo_path:
-                st.image(logo_path, width=180)
-        st.markdown("""
-            <h1 style="text-align: center; margin-top: 8px;">
-                🧩 COVNOX: Inference Pattern Analysis
-            </h1>
-        """, unsafe_allow_html=True)
+    # 로고 (있으면)
+    try:
+        base_dir = os.getcwd()
+        logo_path = os.path.join(base_dir, "covnox.png")
+        if os.path.exists(logo_path):
+            st.image(logo_path, width=84)
+    except Exception:
+        pass
 
-    # 3) 프로그레스 + 로그 (동일)
+    # 제목(상단 여백 제거)
+    st.markdown(
+        "<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>",
+        unsafe_allow_html=True
+    )
+
+    # 로그 + 프로그레스
     log_placeholder = st.empty()
-    progress_bar = st.progress(0)
+    bar_holder = st.container()
+    with bar_holder:
+        progress_bar = st.progress(0, text=None)
 
     start_time = time.time()
-    elapsed = 0.0
+    total_duration = 8.0  # 초
     step = 0
-    total_duration = 8  # seconds
 
-    while elapsed < total_duration:
-        progress = min(elapsed / total_duration, 1.0)
-        progress_bar.progress(progress)
+    while True:
+        elapsed = time.time() - start_time
+        if elapsed >= total_duration:
+            break
 
+        # 진행률
+        pct = min(elapsed / total_duration, 1.0)
+        progress_bar.progress(pct, text=None)
+
+        # 로그
         log_message = fake_logs[step % len(fake_logs)]
         timestamp = time.strftime("%H:%M:%S")
-        log_placeholder.text(f"[{timestamp}] {log_message}")
+        log_placeholder.markdown(
+            f"<div class='covnox-sub'>[{timestamp}] {log_message}</div>",
+            unsafe_allow_html=True
+        )
 
         step += 1
         time.sleep(0.4)
-        elapsed = time.time() - start_time
 
-    progress_bar.progress(1.0)
-
-feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
-with open(feedback_path, encoding="utf-8") as f:
-    feedback_sets = json.load(f)
+    progress_bar.progress(1.0, text=None)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------
 # 1. 연구 동의 페이지 (2단계)
