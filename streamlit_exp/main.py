@@ -221,14 +221,32 @@ elif st.session_state.phase == "demographic":
             st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2. 의인화 척도 (10점 슬라이더)
+# 2. 의인화 척도 (10점 슬라이더) — 10문항 단위 페이지네이션
 elif st.session_state.phase == "anthro":
     scroll_top_js()
 
+    # 질문 로드
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
 
+    total_items = len(questions)  # 기대: 30
+    page_size = 10
+    total_pages = (total_items + page_size - 1) // page_size  # 30 -> 3
+
+    # 페이지 상태 & 임시 응답 버퍼 초기화
+    if "anthro_page" not in st.session_state:
+        st.session_state["anthro_page"] = 1
+    if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
+        # 전체 길이(30)로 0(미응답) 초기화
+        st.session_state["anthro_responses"] = [0] * total_items
+
+    page = st.session_state["anthro_page"]
+    start_idx = (page - 1) * page_size
+    end_idx = min(start_idx + page_size, total_items)
+    slice_questions = questions[start_idx:end_idx]
+
+    # 상단 안내(유지)
     st.markdown("""
         <style>
         .anthro-title{ text-align:center; font-weight:800;
@@ -237,7 +255,8 @@ elif st.session_state.phase == "anthro":
            flex-wrap:wrap; text-align:center; font-size:clamp(14px, 2.8vw, 20px); line-height:1.6; margin-bottom:10px;}
         .scale-guide span{ white-space:nowrap; }
         .scale-note{ text-align:center; color:#9aa3ad; font-size:clamp(12px, 2.6vw, 16px);
-           line-height:1.6; margin-bottom:30px;}
+           line-height:1.6; margin-bottom:18px;}
+        .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
         </style>
         <h2 class="anthro-title">의인화 척도 설문</h2>
         <div class="scale-guide">
@@ -248,21 +267,71 @@ elif st.session_state.phase == "anthro":
         <div class="scale-note">※ 초깃값 0은 <b>“미응답”</b>을 의미합니다. 슬라이더를 움직여 1~10점 중 하나를 선택해 주세요.</div>
     """, unsafe_allow_html=True)
 
-    responses = []
-    for i, q in enumerate(questions, start=1):
-        val = st.slider(label=f"{i}. {q}", min_value=0, max_value=10, value=0, step=1,
-                        format="%d점", key=f"anthro_{i}",
-                        help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요.")
-        responses.append(val)
+    # 진행도 표기 (예: 1페이지 1~10 / 총 30)
+    st.markdown(
+        f"<div class='progress-note'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
+        unsafe_allow_html=True
+    )
+
+    # 현재 페이지의 슬라이더 렌더링
+    for local_i, q in enumerate(slice_questions, start=1):
+        global_idx = start_idx + local_i - 1  # 0-based
+        current_value = st.session_state["anthro_responses"][global_idx]
+        # 고유 키는 전체 문항 번호 기반으로 (안정 유지)
+        slider_key = f"anthro_{global_idx+1}"
+
+        val = st.slider(
+            label=f"{global_idx+1}. {q}",
+            min_value=0,
+            max_value=10,
+            value=int(current_value) if isinstance(current_value, int) else 0,
+            step=1,
+            format="%d점",
+            key=slider_key,
+            help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요."
+        )
+        # 상태에 즉시 반영
+        st.session_state["anthro_responses"][global_idx] = val
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    if st.button("다음 (추론 과제)"):
-        if any(v == 0 for v in responses):
-            st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+    # 네비게이션 버튼 영역
+    col_prev, col_info, col_next = st.columns([1, 2, 1])
+
+    with col_prev:
+        if page > 1:
+            if st.button("← 이전"):
+                st.session_state["anthro_page"] = page - 1
+                st.rerun()
+
+    with col_next:
+        # 현재 페이지 유효성(모두 1~10 선택)
+        current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
+        all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 10) for v in current_slice)
+
+        if page < total_pages:
+            # 중간 페이지: 다음 10문항으로
+            if st.button("다음 →"):
+                if not all_answered:
+                    st.warning("현재 페이지 모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                else:
+                    st.session_state["anthro_page"] = page + 1
+                    st.rerun()
         else:
-            st.session_state.data["anthro_responses"] = responses
-            st.session_state.phase = "writing_intro"
-            st.rerun()
+            # 마지막 페이지: 다음 단계로
+            if st.button("다음 (추론 과제)"):
+                # 마지막 페이지 슬라이스뿐 아니라 전체 검사 (안전)
+                full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 10)
+                              for v in st.session_state["anthro_responses"])
+                if not full_ok:
+                    st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                else:
+                    # 최종 저장 후 다음 단계
+                    st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
+                    # 페이지 인덱스 초기화(재방문 대비)
+                    st.session_state["anthro_page"] = 1
+                    st.session_state.phase = "writing_intro"
+                    st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 2-1. 추론 과제 지시문
@@ -280,8 +349,8 @@ elif st.session_state.phase == "writing_intro":
     **진행 방식**
     1) 간단한 어휘/어법 규칙을 읽습니다.  
     2) 객관식 문항 10개에 **모두 응답**합니다. (정답보다 **추론 근거**가 중요)  
-    3) 제출하면 AI가 분석 애니메이션과 함께 결과 피드백을 보여줍니다.  
-    4) 이후 설문으로 이어집니다.
+    3) 응답을 제출하면 딥러닝 기반 추론 패턴 분석을 진행합니다.  
+    4) 딥러닝 기반 분석 후 AI의 피드백을 확인할 수 있습니다..
 
     **성실히 참여하면 좋아요**
     - 문항마다 ‘가장 그럴듯한’ 선택을 고르고, 가능하면 **적용한 규칙**을 함께 떠올려 보세요.  
@@ -366,48 +435,62 @@ elif st.session_state.phase == "writing":
             )
             selections.append(choice)
             rationale = st.multiselect(
-                f"문항 {i+1}에서 참고한 규칙(선택적)",
+                f"문항 {i+1}에서 참고한 규칙(최소 1개 이상)",
                 options=rationale_tags,
-                key=f"mcq_rationale_{i}"
+                key=f"mcq_rationale_{i}",
+                help="최소 1개 이상 선택해야 제출할 수 있습니다."
             )
             rationales.append(rationale)
 
-        def validate_mcq(sel_list): return all(s is not None for s in sel_list) and len(sel_list) == len(questions)
+        # ---- 검증: ① 모든 문항 선택, ② 각 문항 근거 규칙 최소 1개 ----
+        def validate_mcq(sel_list, rat_list):
+            missing_sel = [i+1 for i, s in enumerate(sel_list) if s is None]
+            missing_rat = [i+1 for i, r in enumerate(rat_list) if not r]
+            all_selected = (len(sel_list) == len(questions)) and not missing_sel
+            all_rationale = (len(rat_list) == len(questions)) and not missing_rat
+            return (all_selected and all_rationale), missing_sel, missing_rat
 
         if st.button("제출"):
-            if not validate_mcq(selections):
-                st.warning("10개 문항 모두 선택해 주세요.")
+            valid, miss_sel, miss_rat = validate_mcq(selections, rationales)
+            if not valid:
+                msgs = []
+                if miss_sel:
+                    msgs.append(f"미선택 문항: {', '.join(map(str, miss_sel))}")
+                if miss_rat:
+                    msgs.append(f"근거 규칙 미선택 문항: {', '.join(map(str, miss_rat))}")
+                st.warning(" · ".join(msgs) if msgs else "모든 문항을 확인해 주세요.")
             else:
                 selected_idx = [int(s) for s in selections]
                 duration = int(time.time() - st.session_state.inference_started_ts)
                 score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
                 accuracy = round(score / len(questions), 3)
 
-                # 세부 응답 저장(→ CSV에서 문항별로 풀 수 있도록)
+                # 세부 응답 저장(문항별 근거 포함)
                 detail = [{
                     "q": questions[i]["q"],
                     "options": questions[i]["options"],
                     "selected_idx": selected_idx[i],
                     "correct_idx": int(questions[i]["ans"]),
-                    "rationales": rationales[i]
+                    "rationales": rationales[i]  # ✅ 각 문항 근거 최소 1개 보장
                 } for i in range(len(questions))]
 
                 st.session_state.inference_answers = detail
                 st.session_state.inference_score = int(score)
                 st.session_state.inference_duration_sec = duration
 
-                # 🔸 저장 버퍼에 즉시 기록 (누락 방지)
+                # 🔸 저장 버퍼에 즉시 기록
                 st.session_state.data["inference_answers"] = detail
                 st.session_state.data["inference_score"] = int(score)
                 st.session_state.data["inference_duration_sec"] = duration
                 st.session_state.data["inference_accuracy"] = accuracy
 
-                # 페이지 비우고 다음 페이즈
+                # 다음 단계
                 page.empty()
                 st.session_state["_mcp_started"] = False
                 st.session_state["_mcp_done"] = False
                 st.session_state.phase = "analyzing"
                 st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 4. MCP 분석 모션 (완전 분리)
