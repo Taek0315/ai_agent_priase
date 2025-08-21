@@ -140,10 +140,30 @@ def run_mcp_motion():
 if st.session_state.phase == "start":
     scroll_top_js()
 
-    # logo_path = os.path.join(BASE_DIR, "logo.png")
-    # if os.path.exists(logo_path):
-    #     st.image(logo_path, width=150)
-    st.title("연구 참여 동의서")
+    # ── 페이지 상단/하단 패딩 & 제목 마진 조정 ─────────────────────────────
+    st.markdown("""
+    <style>
+      /* 메인 컨테이너 상단/하단 패딩 축소 */
+      section.main > div.block-container, .main .block-container {
+        padding-top: 12px !important;   /* 필요시 0~24px로 조정 */
+        padding-bottom: 24px !important;
+      }
+      /* 큰 제목/부제목 위아래 마진 최적화 */
+      h1, .stMarkdown h1 { 
+        margin-top: 4px !important; 
+        margin-bottom: 12px !important; 
+        line-height: 1.2;
+      }
+      h2, .stMarkdown h2 { 
+        margin-top: 10px !important; 
+        margin-bottom: 8px !important; 
+      }
+    </style>
+    """, unsafe_allow_html=True)
+    # ────────────────────────────────────────────────────────────────────────
+
+    # 제목 변경
+    st.title("AI 에이전트의 칭찬 방식이 학습 동기에 미치는 영향 연구")
 
     if "consent_step" not in st.session_state:
         st.session_state.consent_step = "explain"
@@ -209,6 +229,7 @@ if st.session_state.phase == "start":
                     })
                     st.session_state.phase = "demographic"
                     st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1-1. 인적사항
