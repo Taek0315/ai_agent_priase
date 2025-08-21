@@ -1,48 +1,72 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# 필요한 모듈
 import streamlit as st
-import time
-import random
-import json
-import os
+import streamlit.components.v1 as components
+import time, random, json, os
 from datetime import datetime
 from utils.validation import validate_phone, validate_text
 from utils.save_data import save_to_csv
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 공통: 스크롤 항상 최상단
-import streamlit.components.v1 as components
+# 페이지 설정 (가장 먼저 호출)
+st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
+# 경로 상수
+BASE_DIR = os.path.dirname(__file__)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 전역 스타일: 상단 UI 제거 + 상단/하단 패딩 축소 + 제목 마진 정리
+st.markdown("""
+<style>
+/* 스트림릿 기본 UI 제거 (공간까지 없앰) */
+#MainMenu, header, footer { display: none !important; }
+
+/* 컨테이너 상단/하단 패딩 축소 (버전별 선택자 모두 커버) */
+[data-testid="stAppViewContainer"] > .main > div,
+.main .block-container,
+section.main > div.block-container {
+  padding-top: 6px !important;   /* 필요시 0~12px로 조정 */
+  padding-bottom: 24px !important;
+}
+
+/* 루트 상단 패딩/마진 방지 */
+.stApp { padding-top: 0 !important; }
+
+/* 제목 마진 최적화 */
+h1, .stMarkdown h1 {
+  margin-top: 4px !important;
+  margin-bottom: 12px !important;
+  line-height: 1.2;
+}
+h2, .stMarkdown h2 {
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 공통: 스크롤 항상 최상단 (components로 확실히 실행)
 def scroll_top_js():
     components.html(
         """
         <script>
         (function(){
           try {
-            // Streamlit 앱이 iframe 안에 있을 수도 있으므로 parent와 자신 둘 다 시도
-            const sectParent = window.parent?.document?.querySelector('section.main');
-            if (sectParent) sectParent.scrollTo({top:0, left:0, behavior:'instant'});
-            const sectSelf = document.querySelector('section.main');
-            if (sectSelf) sectSelf.scrollTo({top:0, left:0, behavior:'instant'});
+            // Streamlit이 iframe 안/밖에 있을 수 있어 양쪽 모두 시도
+            const parentSect = window.parent?.document?.querySelector('section.main');
+            if (parentSect) parentSect.scrollTo({top:0, left:0, behavior:'instant'});
+            const selfSect = document.querySelector('section.main');
+            if (selfSect) selfSect.scrollTo({top:0, left:0, behavior:'instant'});
             window.parent?.scrollTo({top:0, left:0, behavior:'instant'});
             window.scrollTo({top:0, left:0, behavior:'instant'});
           } catch(e) {}
         })();
         </script>
         """,
-        height=0,   # 화면에 아무것도 차지하지 않도록
+        height=0,  # 화면 공간 차지하지 않음
     )
 
-BASE_DIR = os.path.dirname(__file__)
-st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
-
-# 상단 UI 숨김
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
+# ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
 if "phase" not in st.session_state:
     st.session_state.phase = "start"
@@ -51,10 +75,23 @@ if "phase" not in st.session_state:
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
 
-# 피드백 세트 로드 (누락 방지)
+# ──────────────────────────────────────────────────────────────────────────────
+# 피드백 세트 로드 (안전 로드 + 폴백)
 feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
-with open(feedback_path, encoding="utf-8") as f:
-    feedback_sets = json.load(f)
+try:
+    with open(feedback_path, "r", encoding="utf-8") as f:
+        feedback_sets = json.load(f)
+    # 최소 형태 검증
+    if not isinstance(feedback_sets, dict) or not feedback_sets:
+        raise ValueError("feedback_sets.json 형식이 올바르지 않습니다.")
+except Exception as e:
+    # 폴백 세트(간단 문구)로라도 앱이 멈추지 않도록 처리
+    st.warning(f"피드백 세트를 불러오지 못했습니다. 기본 세트를 사용합니다. (원인: {e})")
+    feedback_sets = {
+        "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
+        "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
+    }
+# ──────────────────────────────────────────────────────────────────────────────
 
 # ──────────────────────────────────────────────────────────────────────────────
 # COVNOX 로그 (EN)
