@@ -60,34 +60,29 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
-# - 렌더 직후 & 약간의 지연 후 2번 호출 → Streamlit rerun/expanders 상황에서도 확실히 동작
+
 def scroll_top_js():
-    components.html(
+    st.markdown(
         """
         <script>
         (function(){
-          try {
-            const topIt = () => {
-              const q = sel => (sel && (document.querySelector(sel) || window.parent?.document?.querySelector(sel)));
-              const sectSelf   = q('section.main');
-              const sectParent = (window.parent && window.parent !== window) ? window.parent.document.querySelector('section.main') : null;
-
-              if (sectParent) sectParent.scrollTo({top:0, left:0, behavior:'instant'});
-              if (sectSelf)   sectSelf.scrollTo({top:0, left:0, behavior:'instant'});
-              if (window.parent && window.parent !== window) window.parent.scrollTo({top:0, left:0, behavior:'instant'});
+          const goTop = () => {
+            try {
+              const sect = document.querySelector('section.main');
+              if (sect) sect.scrollTo({top:0, left:0, behavior:'instant'});
               window.scrollTo({top:0, left:0, behavior:'instant'});
-            };
-            // 즉시 1회
-            topIt();
-            // 렌더가 완전히 끝난 뒤를 위해 약간의 지연으로 1~2회 추가
-            setTimeout(topIt, 50);
-            setTimeout(topIt, 200);
-          } catch(e) {}
+            } catch (e) {}
+          };
+          // 즉시 + 약간 지연 2번 더(렌더 타이밍 대비)
+          goTop();
+          setTimeout(goTop, 50);
+          setTimeout(goTop, 200);
         })();
         </script>
         """,
-        height=0,
+        unsafe_allow_html=True
     )
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
@@ -146,11 +141,9 @@ fake_logs = [
 
 # MCP 애니메이션 (정중앙)
 def run_mcp_motion():
-    # 상단에 일정 뷰포트 높이만큼 여백을 넣어 중앙 근처로 위치
-    # (스크린 크기에 따라 자연스럽게 중앙에 옵니다)
-    st.markdown("<div style='height: 18vh;'></div>", unsafe_allow_html=True)
+    # 위쪽에 살짝 뷰포트 여백을 넣어 중앙 근처에 배치
+    st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
 
-    # 중앙 정렬용 안내/제목 (HTML)
     st.markdown("""
         <style>
         .covnox-title{ margin:0; text-align:center;
@@ -167,14 +160,13 @@ def run_mcp_motion():
         base_dir = os.getcwd()
         logo_path = os.path.join(base_dir, "covnox.png")
         if os.path.exists(logo_path):
-            # 로고는 살짝만
             st.image(logo_path, width=80)
     except Exception:
         pass
 
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    # 👉 진행 로그와 프로그레스 바를 같은 컨테이너에 묶어 위아래로 흩어지지 않게 함
+    # 로그와 프로그레스를 한 컨테이너에 묶어 레이아웃 흔들림 방지
     with st.container():
         log_placeholder = st.empty()
         progress = st.progress(0, text=None)
@@ -184,8 +176,7 @@ def run_mcp_motion():
         step = 0
         while True:
             t = time.time() - start
-            if t >= total:
-                break
+            if t >= total: break
             progress.progress(min(t/total, 1.0), text=None)
             msg = fake_logs[step % len(fake_logs)]
             timestamp = time.strftime("%H:%M:%S")
@@ -197,6 +188,7 @@ def run_mcp_motion():
             time.sleep(0.4)
 
         progress.progress(1.0, text=None)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. 연구 동의 페이지
@@ -236,6 +228,7 @@ if st.session_state.phase == "start":
     PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")
 
     if st.session_state.consent_step == "explain":
+        scroll_top_js()
         st.subheader("연구대상자 설명문")
         if os.path.exists(EXPLAIN_IMG):
             st.image(EXPLAIN_IMG, use_container_width=True)
@@ -248,6 +241,7 @@ if st.session_state.phase == "start":
             st.rerun()
 
     elif st.session_state.consent_step == "agree":
+        scroll_top_js()
         st.subheader("연구 동의서")
         if os.path.exists(AGREE_IMG):
             st.image(AGREE_IMG, use_container_width=True)
@@ -333,8 +327,14 @@ elif st.session_state.phase == "anthro":
     if "anthro_page" not in st.session_state:
         st.session_state["anthro_page"] = 1
     if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
-        # 전체 길이(30)로 0(미응답) 초기화
         st.session_state["anthro_responses"] = [0] * total_items
+
+    page = st.session_state["anthro_page"]
+
+    # ★ 추가: 페이지가 바뀐 순간이면 최상단 스크롤
+    if st.session_state.get("_anthro_prev_page") != page:
+        st.session_state["_anthro_prev_page"] = page
+        scroll_top_js()                 
 
     page = st.session_state["anthro_page"]
     start_idx = (page - 1) * page_size
@@ -591,13 +591,11 @@ elif st.session_state.phase == "writing":
 # 4. MCP 분석 모션 (완전 분리)
 elif st.session_state.phase == "analyzing":
     scroll_top_js()
-
     page = st.empty()
     with page.container():
         st.markdown("""
             <style>
             body { overflow-x:hidden; }
-            /* .mcp-screen { ... }  <-- 이 줄은 삭제 */
             .mcp-done-card {
                 border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
                 background: #F9FFF9; max-width: 820px; margin: 48px auto;
@@ -605,20 +603,17 @@ elif st.session_state.phase == "analyzing":
             </style>
         """, unsafe_allow_html=True)
 
-        # 1) 애니메이션 1회 실행
         if not st.session_state.get("_mcp_started", False):
             st.session_state["_mcp_started"] = True
-            # 래퍼 div 없이 바로 실행
             run_mcp_motion()
             st.session_state["_mcp_done"] = True
             st.rerun()
 
-        # 2) 완료 안내
         if st.session_state.get("_mcp_done", False):
             st.markdown("""
                 <div class='mcp-done-card'>
                   <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-                  <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin: 6px 0 0;">
+                  <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
                     COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
                   </p>
                 </div>
@@ -631,6 +626,7 @@ elif st.session_state.phase == "analyzing":
                     st.session_state["_mcp_done"] = False
                     st.session_state.phase = "ai_feedback"
                     st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 5. AI 피드백
