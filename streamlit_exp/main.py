@@ -145,7 +145,7 @@ if st.session_state.phase == "start":
     <style>
       /* 메인 컨테이너 상단/하단 패딩 축소 */
       section.main > div.block-container, .main .block-container {
-        padding-top: 12px !important;   /* 필요시 0~24px로 조정 */
+        padding-top: 6px !important;   /* 필요시 0~24px로 조정 */
         padding-bottom: 24px !important;
       }
       /* 큰 제목/부제목 위아래 마진 최적화 */
