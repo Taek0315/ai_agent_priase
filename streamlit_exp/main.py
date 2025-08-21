@@ -14,56 +14,79 @@ st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 BASE_DIR = os.path.dirname(__file__)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 전역 스타일: 상단 UI 제거 + 상단/하단 패딩 축소 + 제목 마진 정리
-st.markdown("""
+# 전역 스타일: 상단 UI 제거 + 상단/하단 패딩 완전 제거 + 제목/문단 마진 정리
+COMPACT_CSS = """
 <style>
-/* 스트림릿 기본 UI 제거 (공간까지 없앰) */
-#MainMenu, header, footer { display: none !important; }
+/* 0) Streamlit 기본 UI 제거 (공간까지 없앰) */
+#MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
 
-/* 컨테이너 상단/하단 패딩 축소 (버전별 선택자 모두 커버) */
+/* 1) 최신 Streamlit은 block padding을 CSS 변수로도 관리 → 변수 자체를 0으로 */
+:root{
+  --block-container-padding-top: 0rem !important;
+  --block-container-padding: 0rem 1rem 1.25rem !important; /* top right/left bottom */
+}
+
+/* 2) 상단 여백이 생길 수 있는 모든 래퍼에 top 패딩/마진 0 강제 */
+html, body,
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > .main,
+section.main {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* 3) 실제 컨테이너(.block-container) top 패딩 제거(버전별 경로 모두) */
 [data-testid="stAppViewContainer"] > .main > div,
 .main .block-container,
 section.main > div.block-container {
-  padding-top: 6px !important;   /* 필요시 0~12px로 조정 */
-  padding-bottom: 24px !important;
+  padding-top: 0 !important;
+  padding-bottom: 20px !important; /* 하단은 적당히 */
 }
 
-/* 루트 상단 패딩/마진 방지 */
-.stApp { padding-top: 0 !important; }
+/* 4) 첫 요소 margin-collapsing으로 남는 여백 차단: 제목/문단 top 마진 정돈 */
+h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
+h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+p, .stMarkdown p   { margin-top: 0 !important; }
 
-/* 제목 마진 최적화 */
-h1, .stMarkdown h1 {
-  margin-top: 4px !important;
-  margin-bottom: 12px !important;
-  line-height: 1.2;
-}
-h2, .stMarkdown h2 {
-  margin-top: 8px !important;
-  margin-bottom: 8px !important;
-}
+/* 5) 사용자 정의 제목 클래스(anthro 등)도 상단 마진 제거 */
+.anthro-title { margin-top: 0 !important; }
+
+/* 6) 불필요한 수평 스크롤 방지 */
+html, body { overflow-x: hidden !important; }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 공통: 스크롤 항상 최상단 (components로 확실히 실행)
+# 공통: 스크롤 항상 최상단
+# - 렌더 직후 & 약간의 지연 후 2번 호출 → Streamlit rerun/expanders 상황에서도 확실히 동작
 def scroll_top_js():
     components.html(
         """
         <script>
         (function(){
           try {
-            // Streamlit이 iframe 안/밖에 있을 수 있어 양쪽 모두 시도
-            const parentSect = window.parent?.document?.querySelector('section.main');
-            if (parentSect) parentSect.scrollTo({top:0, left:0, behavior:'instant'});
-            const selfSect = document.querySelector('section.main');
-            if (selfSect) selfSect.scrollTo({top:0, left:0, behavior:'instant'});
-            window.parent?.scrollTo({top:0, left:0, behavior:'instant'});
-            window.scrollTo({top:0, left:0, behavior:'instant'});
+            const topIt = () => {
+              const q = sel => (sel && (document.querySelector(sel) || window.parent?.document?.querySelector(sel)));
+              const sectSelf   = q('section.main');
+              const sectParent = (window.parent && window.parent !== window) ? window.parent.document.querySelector('section.main') : null;
+
+              if (sectParent) sectParent.scrollTo({top:0, left:0, behavior:'instant'});
+              if (sectSelf)   sectSelf.scrollTo({top:0, left:0, behavior:'instant'});
+              if (window.parent && window.parent !== window) window.parent.scrollTo({top:0, left:0, behavior:'instant'});
+              window.scrollTo({top:0, left:0, behavior:'instant'});
+            };
+            // 즉시 1회
+            topIt();
+            // 렌더가 완전히 끝난 뒤를 위해 약간의 지연으로 1~2회 추가
+            setTimeout(topIt, 50);
+            setTimeout(topIt, 200);
           } catch(e) {}
         })();
         </script>
         """,
-        height=0,  # 화면 공간 차지하지 않음
+        height=0,
     )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -81,17 +104,16 @@ feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
 try:
     with open(feedback_path, "r", encoding="utf-8") as f:
         feedback_sets = json.load(f)
-    # 최소 형태 검증
     if not isinstance(feedback_sets, dict) or not feedback_sets:
         raise ValueError("feedback_sets.json 형식이 올바르지 않습니다.")
 except Exception as e:
-    # 폴백 세트(간단 문구)로라도 앱이 멈추지 않도록 처리
     st.warning(f"피드백 세트를 불러오지 못했습니다. 기본 세트를 사용합니다. (원인: {e})")
     feedback_sets = {
         "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
         "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
     }
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # COVNOX 로그 (EN)
@@ -124,12 +146,13 @@ fake_logs = [
 
 # MCP 애니메이션 (정중앙)
 def run_mcp_motion():
+    # 상단에 일정 뷰포트 높이만큼 여백을 넣어 중앙 근처로 위치
+    # (스크린 크기에 따라 자연스럽게 중앙에 옵니다)
+    st.markdown("<div style='height: 18vh;'></div>", unsafe_allow_html=True)
+
+    # 중앙 정렬용 안내/제목 (HTML)
     st.markdown("""
         <style>
-        .covnox-stage{
-          min-height:92vh; display:flex; flex-direction:column;
-          align-items:center; justify-content:center; gap:8px;
-        }
         .covnox-title{ margin:0; text-align:center;
           font-size: clamp(26px, 5.2vw, 46px); font-weight:800;
         }
@@ -137,67 +160,70 @@ def run_mcp_motion():
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
           font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
         }
-        .covnox-bar{ width:min(920px, 92vw); margin-top:4px; }
         </style>
-        <div class='covnox-stage'>
     """, unsafe_allow_html=True)
 
-    # 로고(있으면)
     try:
         base_dir = os.getcwd()
         logo_path = os.path.join(base_dir, "covnox.png")
         if os.path.exists(logo_path):
+            # 로고는 살짝만
             st.image(logo_path, width=80)
     except Exception:
         pass
 
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    log_placeholder = st.empty()
-    progress = st.progress(0, text=None)
+    # 👉 진행 로그와 프로그레스 바를 같은 컨테이너에 묶어 위아래로 흩어지지 않게 함
+    with st.container():
+        log_placeholder = st.empty()
+        progress = st.progress(0, text=None)
 
-    start = time.time()
-    total = 8.0
-    step = 0
-    while True:
-        t = time.time() - start
-        if t >= total: break
-        progress.progress(min(t/total, 1.0), text=None)
-        msg = fake_logs[step % len(fake_logs)]
-        timestamp = time.strftime("%H:%M:%S")
-        log_placeholder.markdown(f"<div class='covnox-sub'>[{timestamp}] {msg}</div>", unsafe_allow_html=True)
-        step += 1
-        time.sleep(0.4)
+        start = time.time()
+        total = 8.0
+        step = 0
+        while True:
+            t = time.time() - start
+            if t >= total:
+                break
+            progress.progress(min(t/total, 1.0), text=None)
+            msg = fake_logs[step % len(fake_logs)]
+            timestamp = time.strftime("%H:%M:%S")
+            log_placeholder.markdown(
+                f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
+                unsafe_allow_html=True
+            )
+            step += 1
+            time.sleep(0.4)
 
-    progress.progress(1.0, text=None)
-    st.markdown("</div>", unsafe_allow_html=True)
+        progress.progress(1.0, text=None)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. 연구 동의 페이지
 if st.session_state.phase == "start":
     scroll_top_js()
 
-    # ── 페이지 상단/하단 패딩 & 제목 마진 조정 ─────────────────────────────
-    st.markdown("""
-    <style>
-      /* 메인 컨테이너 상단/하단 패딩 축소 */
-      section.main > div.block-container, .main .block-container {
-        padding-top: 6px !important;   /* 필요시 0~24px로 조정 */
-        padding-bottom: 24px !important;
-      }
-      /* 큰 제목/부제목 위아래 마진 최적화 */
-      h1, .stMarkdown h1 { 
-        margin-top: 4px !important; 
-        margin-bottom: 12px !important; 
-        line-height: 1.2;
-      }
-      h2, .stMarkdown h2 { 
-        margin-top: 10px !important; 
-        margin-bottom: 8px !important; 
-      }
-    </style>
-    """, unsafe_allow_html=True)
-    # ────────────────────────────────────────────────────────────────────────
+    # # ── 페이지 상단/하단 패딩 & 제목 마진 조정 ─────────────────────────────
+    # st.markdown("""
+    # <style>
+    #   /* 메인 컨테이너 상단/하단 패딩 축소 */
+    #   section.main > div.block-container, .main .block-container {
+    #     padding-top: 6px !important;   /* 필요시 0~24px로 조정 */
+    #     padding-bottom: 24px !important;
+    #   }
+    #   /* 큰 제목/부제목 위아래 마진 최적화 */
+    #   h1, .stMarkdown h1 { 
+    #     margin-top: 4px !important; 
+    #     margin-bottom: 12px !important; 
+    #     line-height: 1.2;
+    #   }
+    #   h2, .stMarkdown h2 { 
+    #     margin-top: 10px !important; 
+    #     margin-bottom: 8px !important; 
+    #   }
+    # </style>
+    # """, unsafe_allow_html=True)
+    # # ────────────────────────────────────────────────────────────────────────
 
     # 제목 변경
     st.title("AI 에이전트의 칭찬 방식이 학습 동기에 미치는 영향 연구")
@@ -273,9 +299,9 @@ if st.session_state.phase == "start":
 elif st.session_state.phase == "demographic":
     scroll_top_js()
 
-    logo_path = os.path.join(BASE_DIR, "logo.png")
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=150)
+    # logo_path = os.path.join(BASE_DIR, "logo.png")
+    # if os.path.exists(logo_path):
+    #     st.image(logo_path, width=150)
     st.title("인적사항 입력")
 
     gender = st.radio("성별", ["남자", "여자"])
@@ -571,7 +597,7 @@ elif st.session_state.phase == "analyzing":
         st.markdown("""
             <style>
             body { overflow-x:hidden; }
-            .mcp-screen { min-height: 78vh; display:flex; align-items:center; justify-content:center; }
+            /* .mcp-screen { ... }  <-- 이 줄은 삭제 */
             .mcp-done-card {
                 border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
                 background: #F9FFF9; max-width: 820px; margin: 48px auto;
@@ -582,9 +608,8 @@ elif st.session_state.phase == "analyzing":
         # 1) 애니메이션 1회 실행
         if not st.session_state.get("_mcp_started", False):
             st.session_state["_mcp_started"] = True
-            st.markdown("<div class='mcp-screen'>", unsafe_allow_html=True)
+            # 래퍼 div 없이 바로 실행
             run_mcp_motion()
-            st.markdown("</div>", unsafe_allow_html=True)
             st.session_state["_mcp_done"] = True
             st.rerun()
 
