@@ -9,16 +9,27 @@ from utils.save_data import save_to_csv
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
+import streamlit.components.v1 as components
+
 def scroll_top_js():
-    st.markdown("""
+    components.html(
+        """
         <script>
-        try {
-          const sect = window.parent?.document?.querySelector('section.main');
-          if (sect) sect.scrollTo({top:0, left:0, behavior:'instant'});
-          window.scrollTo({top:0, left:0, behavior:'instant'});
-        } catch(e) {}
+        (function(){
+          try {
+            // Streamlit 앱이 iframe 안에 있을 수도 있으므로 parent와 자신 둘 다 시도
+            const sectParent = window.parent?.document?.querySelector('section.main');
+            if (sectParent) sectParent.scrollTo({top:0, left:0, behavior:'instant'});
+            const sectSelf = document.querySelector('section.main');
+            if (sectSelf) sectSelf.scrollTo({top:0, left:0, behavior:'instant'});
+            window.parent?.scrollTo({top:0, left:0, behavior:'instant'});
+            window.scrollTo({top:0, left:0, behavior:'instant'});
+          } catch(e) {}
+        })();
         </script>
-    """, unsafe_allow_html=True)
+        """,
+        height=0,   # 화면에 아무것도 차지하지 않도록
+    )
 
 BASE_DIR = os.path.dirname(__file__)
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
@@ -129,9 +140,9 @@ def run_mcp_motion():
 if st.session_state.phase == "start":
     scroll_top_js()
 
-    logo_path = os.path.join(BASE_DIR, "logo.png")
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=150)
+    # logo_path = os.path.join(BASE_DIR, "logo.png")
+    # if os.path.exists(logo_path):
+    #     st.image(logo_path, width=150)
     st.title("연구 참여 동의서")
 
     if "consent_step" not in st.session_state:
