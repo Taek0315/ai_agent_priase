@@ -413,23 +413,127 @@ elif st.session_state.phase == "anthro":
                     st.rerun()
         else:
             # 마지막 페이지: 다음 단계로
-            if st.button("다음 (추론 과제)"):
+            if st.button("다음"):
                 # 마지막 페이지 슬라이스뿐 아니라 전체 검사 (안전)
                 full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 10)
                               for v in st.session_state["anthro_responses"])
                 if not full_ok:
                     st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
                 else:
-                    # 최종 저장 후 다음 단계
                     st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
-                    # 페이지 인덱스 초기화(재방문 대비)
                     st.session_state["anthro_page"] = 1
-                    st.session_state.phase = "writing_intro"
+                    # 🔽 기존: st.session_state.phase = "writing_intro"
+                    st.session_state.phase = "achive"   # 🔥 의인화 다음에 성취/접근 관련 26문항 설문 진행
                     st.rerun()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2-1. 추론 과제 지시문
+# 2-1. 성취/접근 관련 추가 설문(6점 리커트) — 10/10/6 페이지네이션
+elif st.session_state.phase == "achive":
+    scroll_top_js()
+
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추가 설문</h2>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
+                font-size:16px; margin-bottom:22px;'>
+        <span style="white-space:nowrap;"><b>1</b> : 전혀 그렇지 않다</span>
+        <span>—</span>
+        <span style="white-space:nowrap;"><b>3</b> : 보통이다</span>
+        <span>—</span>
+        <span style="white-space:nowrap;"><b>6</b> : 매우 그렇다</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 질문 로드 (의인화 문항과 같은 폴더/규칙 가정: BASE_DIR/data)
+    achive_path = os.path.join(BASE_DIR, "data", "questions_achive.json")
+    try:
+        with open(achive_path, "r", encoding="utf-8") as f:
+            achive_questions = json.load(f)
+    except Exception as e:
+        st.error(f"추가 설문 문항을 불러오지 못했습니다: {e}")
+        achive_questions = []
+
+    total_items = len(achive_questions)  # 기대: 26
+    # 10, 10, 6으로 슬라이스
+    page_breaks = [10, 20, total_items]  # 각 페이지의 끝 인덱스(1-based 해석을 0-based 슬라이스로 변환)
+    page_size_list = [10, 10, total_items - 20] if total_items >= 20 else [total_items]
+    total_pages = len(page_size_list)
+
+    # 상태 초기화
+    if "achive_page" not in st.session_state:
+        st.session_state["achive_page"] = 1
+    if "achive_responses" not in st.session_state or len(st.session_state["achive_responses"]) != total_items:
+        st.session_state["achive_responses"] = [None] * total_items  # ✅ 초기 미선택
+
+    page = st.session_state["achive_page"]
+
+    # 페이지 전환 시 스크롤 최상단
+    if st.session_state.get("_achive_prev_page") != page:
+        st.session_state["_achive_prev_page"] = page
+        scroll_top_js()
+
+    # 현재 페이지의 시작/끝 인덱스(0-based, end exclusive)
+    if page == 1:
+        start_idx, end_idx = 0, min(10, total_items)
+    elif page == 2:
+        start_idx, end_idx = 10, min(20, total_items)
+    else:
+        start_idx, end_idx = 20, total_items
+
+    st.markdown(
+        f"<div style='text-align:center; color:#6b7480; margin-bottom:10px;'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
+        unsafe_allow_html=True
+    )
+
+    # 현재 페이지 문항 렌더링 (라디오, 1~6)
+    for gi in range(start_idx, end_idx):
+        q = achive_questions[gi]
+        choice = st.radio(
+            label=f"{gi+1}. {q}",
+            options=[1, 2, 3, 4, 5, 6],
+            index=None,                 # ✅ 초기값 없음
+            horizontal=True,
+            key=f"achive_{gi}"
+        )
+        st.session_state["achive_responses"][gi] = choice
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+
+    # 네비게이션
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c1:
+        if page > 1:
+            if st.button("← 이전", key="achive_prev"):
+                st.session_state["achive_page"] = page - 1
+                st.rerun()
+
+    with c3:
+        # 현재 페이지 필수 검증
+        curr_slice = st.session_state["achive_responses"][start_idx:end_idx]
+        all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
+
+        if page < total_pages:
+            if st.button("다음 →", key="achive_next"):
+                if not all_answered:
+                    st.warning("현재 페이지의 모든 문항에 1~6 중 하나를 선택해 주세요.")
+                else:
+                    st.session_state["achive_page"] = page + 1
+                    st.rerun()
+        else:
+            # 마지막 페이지 → 전체 검증 후 다음 단계
+            if st.button("다음 (추론 과제 안내)", key="achive_done"):
+                full_ok = all(v in [1,2,3,4,5,6] for v in st.session_state["achive_responses"])
+                if not full_ok:
+                    st.warning("모든 문항에 응답해 주세요. (1~6)")
+                else:
+                    # 저장
+                    st.session_state.data["achive_responses"] = st.session_state["achive_responses"]
+                    # 페이지 인덱스 초기화
+                    st.session_state["achive_page"] = 1
+                    # 다음 단계로 진행
+                    st.session_state.phase = "writing_intro"
+                    st.rerun()
+
+# 2-2. 추론 과제 지시문
 elif st.session_state.phase == "writing_intro":
     scroll_top_js()
 

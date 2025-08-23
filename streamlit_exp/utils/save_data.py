@@ -1,44 +1,50 @@
+# utils/save_data.py
 from datetime import datetime
 import streamlit as st
 from utils.google_sheet import append_row_to_sheet
 
 def save_to_csv(data: dict, sheet_name: str = "resp") -> None:
     """
-    추론 과제 저장용 최종본.
-    main.py에서 save_to_csv(st.session_state.data)로 호출하면
-    secrets의 스프레드시트 내 sheet_name(기본 'resp') 탭에 저장됩니다.
+    최종 저장 함수.
+    - 의인화 30문항: anthro_responses -> CSV 문자열
+    - 추가 설문 26문항(6점 척도): achive_responses -> CSV 문자열
+    - 추론 과제: 10문항 상세(선택/정답/정오/근거) + 소요시간/점수/정확도
+    - 학습동기: 7문항 -> CSV 문자열
     """
-
-    # --- 날짜(YYYY-MM-DD) ---
+    # --- 날짜 ---
     start_iso = data.get("startTime") or data.get("startTime_iso") or ""
     try:
         date = datetime.fromisoformat(start_iso).strftime("%Y-%m-%d") if start_iso else ""
     except Exception:
         date = start_iso
 
-    # --- 기본 메타 ---
+    # --- 동의/인구통계 ---
     consent_research = data.get("consent_research", "")
     consent_privacy  = data.get("consent_privacy", "")
     gender = data.get("gender", "")
     age    = data.get("age", "")
 
+    # --- 의인화 30문항 ---
     anthro = data.get("anthro_responses", []) or []
     anthro_str = ",".join(map(str, anthro))
 
-    # --- 추론 결과(세션 값 우선) ---
+    # --- 추가 설문 26문항(6점) ---
+    achive = data.get("achive_responses", []) or []
+    achive_str = ",".join("" if v is None else str(v) for v in achive)
+
+    # --- 추론 과제 결과(세션 값 우선) ---
     answers  = st.session_state.get("inference_answers") or data.get("inference_answers") or []
     duration = st.session_state.get("inference_duration_sec") or data.get("inference_duration_sec") or ""
     score    = st.session_state.get("inference_score") or data.get("inference_score") or ""
 
-    # 정확도(소수 3자리). 문항 수가 비어있으면 10으로 가정
+    # 정확도
     n_items = len(answers) if len(answers) > 0 else 10
     try:
         accuracy = round((int(score) / n_items), 3) if score != "" else ""
     except Exception:
         accuracy = ""
 
-    # --- 문항별 필드(10×[selected, correct, is_correct, rationales]) ---
-    # 헤더 순서: Q1_selected Q1_correct Q1_is_correct Q1_rationales ... Q10_*
+    # --- 문항별 상세 10×(selected, correct, is_correct, rationales) ---
     per_q_fields = []
     for i in range(10):
         if i < len(answers):
@@ -62,23 +68,24 @@ def save_to_csv(data: dict, sheet_name: str = "resp") -> None:
     phone        = data.get("phone", "")
     end_iso      = data.get("endTime") or data.get("endTime_iso") or ""
 
-    # --- 최종 행 구성 (헤더와 1:1 매칭) ---
+    # --- 최종 행 (헤더와 1:1) ---
     row = [
-        date,
-        consent_research,
-        consent_privacy,
-        gender,
-        age,
-        anthro_str,
-        duration,
-        score,
-        accuracy,
-        *per_q_fields,
-        feedback_set,
-        motivation,
-        phone,
-        start_iso,
-        end_iso,
+        date,                 # A
+        consent_research,     # B
+        consent_privacy,      # C
+        gender,               # D
+        age,                  # E
+        anthro_str,           # F
+        achive_str,           # G  ✅ 추가 설문 26문항(6점)
+        duration,             # H
+        score,                # I
+        accuracy,             # J
+        *per_q_fields,        # K..AF (Q1~Q10 * 4칸)
+        feedback_set,         # AG
+        motivation,           # AH
+        phone,                # AI
+        start_iso,            # AJ
+        end_iso,              # AK
     ]
 
     append_row_to_sheet(row, worksheet=sheet_name)
