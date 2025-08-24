@@ -422,15 +422,30 @@ if st.session_state.phase == "start":
         st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
+        # 버튼 가로 정렬/최소폭 보정 (다른 버튼들과 동일 스타일)
+        st.markdown("""
+        <style>
+        .nav-row .stButton > button {
+        width: 100%;
+        min-width: 120px;
+        }
+        @media (max-width: 420px) {
+        .nav-row .stButton > button { min-width: auto; }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # 버튼 영역
+        st.markdown('<div class="nav-row">', unsafe_allow_html=True)
         left_col, right_col = st.columns([1, 1])
 
         with left_col:
-            if st.button("이전", key="consent_prev_btn"):
+            if st.button("이전", key="consent_prev_btn", use_container_width=True):
                 st.session_state.consent_step = "explain"
                 st.rerun()
 
         with right_col:
-            if st.button("다음", key="consent_next_btn"):
+            if st.button("다음", key="consent_next_btn", use_container_width=True):
                 if consent_research != "동의함":
                     st.warning("연구 참여에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
                 elif consent_privacy != "동의함":
@@ -444,6 +459,8 @@ if st.session_state.phase == "start":
                     })
                     st.session_state.phase = "demographic"
                     st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
