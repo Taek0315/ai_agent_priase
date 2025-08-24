@@ -486,7 +486,7 @@ elif st.session_state.phase == "demographic":
             st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2. 의인화 척도 (10점 슬라이더) — 10문항 단위 페이지네이션
+# 2. 의인화 척도 (5점 리커트 라디오) — 10문항 단위 페이지네이션
 elif st.session_state.phase == "anthro":
     scroll_top_js()
 
@@ -499,25 +499,24 @@ elif st.session_state.phase == "anthro":
     page_size = 10
     total_pages = (total_items + page_size - 1) // page_size  # 30 -> 3
 
-    # 페이지 상태 & 임시 응답 버퍼 초기화
+    # 페이지 상태 & 응답 버퍼 초기화 (초기 미선택: None)
     if "anthro_page" not in st.session_state:
         st.session_state["anthro_page"] = 1
     if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
-        st.session_state["anthro_responses"] = [0] * total_items
+        st.session_state["anthro_responses"] = [None] * total_items
 
     page = st.session_state["anthro_page"]
 
-    # ★ 추가: 페이지가 바뀐 순간이면 최상단 스크롤
+    # 페이지 전환 시 최상단 스크롤
     if st.session_state.get("_anthro_prev_page") != page:
         st.session_state["_anthro_prev_page"] = page
-        scroll_top_js()                 
+        scroll_top_js()
 
-    page = st.session_state["anthro_page"]
     start_idx = (page - 1) * page_size
     end_idx = min(start_idx + page_size, total_items)
     slice_questions = questions[start_idx:end_idx]
 
-    # 상단 안내(유지)
+    # 상단 안내
     st.markdown("""
         <style>
         .anthro-title{ text-align:center; font-weight:800;
@@ -532,59 +531,50 @@ elif st.session_state.phase == "anthro":
         <h2 class="anthro-title">의인화 척도 설문</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
-          <span><b>5점</b>: 보통이다</span><span>—</span>
-          <span><b>10점</b>: 매우 그렇다</span>
+          <span><b>3점</b>: 보통이다</span><span>—</span>
+          <span><b>5점</b>: 매우 그렇다</span>
         </div>
-        <div class="scale-note">※ 초깃값 0은 <b>“미응답”</b>을 의미합니다. 슬라이더를 움직여 1~10점 중 하나를 선택해 주세요.</div>
+        <div class="scale-note">※ 라디오 버튼은 <b>초기 미선택</b>입니다. 1~5점 중 하나를 선택해 주세요.</div>
     """, unsafe_allow_html=True)
 
-    # 진행도 표기 (예: 1페이지 1~10 / 총 30)
+    # 진행도 표기
     st.markdown(
         f"<div class='progress-note'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True
     )
 
-    # 현재 페이지의 슬라이더 렌더링
+    # 현재 페이지의 라디오 렌더링 (5점 리커트, 초기 미선택)
+    options = [1, 2, 3, 4, 5]
     for local_i, q in enumerate(slice_questions, start=1):
         global_idx = start_idx + local_i - 1  # 0-based
-        current_value = st.session_state["anthro_responses"][global_idx]
-        # 고유 키는 전체 문항 번호 기반으로 (안정 유지)
-        slider_key = f"anthro_{global_idx+1}"
+        current_value = st.session_state["anthro_responses"][global_idx]  # None 또는 1..5
+        radio_key = f"anthro_{global_idx+1}"
 
-        val = st.slider(
+        # 초기 미선택: index=None; 기존 선택값이 있으면 해당 인덱스 지정
+        index_val = (options.index(current_value) if current_value in options else None)
+
+        selected = st.radio(
             label=f"{global_idx+1}. {q}",
-            min_value=0,
-            max_value=10,
-            value=int(current_value) if isinstance(current_value, int) else 0,
-            step=1,
-            format="%d점",
-            key=slider_key,
-            help="0은 미응답을 의미합니다. 1~10점 중에서 선택해 주세요."
+            options=options,
+            index=index_val,                 # 초기 미선택 허용 (Streamlit 최신 버전)
+            format_func=lambda x: f"{x}점",
+            horizontal=True,
+            key=radio_key,
+            help="1~5점 중에서 선택해 주세요."
         )
-        # 상태에 즉시 반영
-        st.session_state["anthro_responses"][global_idx] = val
+
+        # 상태에 즉시 반영 (선택 없으면 None 유지)
+        st.session_state["anthro_responses"][global_idx] = selected if selected in options else None
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # 네비게이션 버튼 영역 (양끝 정렬 + 모바일 한 줄 유지)
-    # 가운데 정보(col_info)는 페이지 안내/검증 메시지 등 용도 그대로 사용 가능
-
-    # 버튼 최소폭/정렬을 살짝 보정 (선택사항이지만 모바일 안정성↑)
+    # 네비게이션 버튼 영역 (양끝 정렬 유지)
     st.markdown("""
     <style>
-    /* 이 블록 안의 버튼은 컬럼 폭을 가득 채워 양끝에 깔끔히 붙습니다 */
-    .nav-row .stButton > button {
-    width: 100%;
-    min-width: 120px;   /* 너무 좁아지는 것 방지 */
-    }
-    /* 매우 작은 화면에서는 최소폭을 풀어 과도한 가로 스크롤 방지 */
-    @media (max-width: 420px) {
-    .nav-row .stButton > button { min-width: auto; }
-    }
+    .nav-row .stButton > button { width: 100%; min-width: 120px; }
+    @media (max-width: 420px) { .nav-row .stButton > button { min-width: auto; } }
     </style>
     """, unsafe_allow_html=True)
 
-    # 한 줄 3분할: [이전]  [가운데 정보]  [다음]
-    # 1:2:1 비율이면 버튼이 양 끝에, 안내는 가운데로 안정적으로 배치됩니다.
     with st.container():
         st.markdown('<div class="nav-row">', unsafe_allow_html=True)
         col_prev, col_info, col_next = st.columns([1, 2, 1])
@@ -596,37 +586,32 @@ elif st.session_state.phase == "anthro":
                     st.rerun()
 
         with col_info:
-            # 필요 시 페이지 정보/안내 문구 표시 (너무 길면 자동 줄바꿈)
-            # 예: st.markdown(f"페이지 {page} / {total_pages}", help="현재 진행 상황")
-            pass
+            pass  # 필요 시 안내문 사용
 
         with col_next:
-            # 현재 페이지 유효성(모두 1~10 선택)
             current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
-            all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 10) for v in current_slice)
+            all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 5) for v in current_slice)
 
             if page < total_pages:
-                # 중간 페이지: 다음 10문항으로
                 if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
                     if not all_answered:
-                        st.warning("현재 페이지 모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                        st.warning("현재 페이지 모든 문항을 1~5점 중 하나로 선택해 주세요.")
                     else:
                         st.session_state["anthro_page"] = page + 1
                         st.rerun()
             else:
-                # 마지막 페이지: 다음 단계로
                 if st.button("다음", use_container_width=True, key="anthro_next_last"):
-                    # 전체 검사(안전)
-                    full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 10)
-                                for v in st.session_state["anthro_responses"])
+                    full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 5)
+                                  for v in st.session_state["anthro_responses"])
                     if not full_ok:
-                        st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                        st.warning("모든 문항을 1~5점 중 하나로 선택해 주세요.")
                     else:
                         st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
                         st.session_state["anthro_page"] = 1
-                        st.session_state.phase = "achive"   # 다음 단계로 이동
+                        st.session_state.phase = "achive"
                         st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
