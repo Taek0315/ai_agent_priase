@@ -422,11 +422,13 @@ if st.session_state.phase == "start":
         st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
-        left_col, spacer, right_col = st.columns([1, 8, 1])
+        left_col, right_col = st.columns([1, 1])
+
         with left_col:
             if st.button("이전", key="consent_prev_btn"):
                 st.session_state.consent_step = "explain"
                 st.rerun()
+
         with right_col:
             if st.button("다음", key="consent_next_btn"):
                 if consent_research != "동의함":
@@ -442,6 +444,8 @@ if st.session_state.phase == "start":
                     })
                     st.session_state.phase = "demographic"
                     st.rerun()
+
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1-1. 인적사항
@@ -544,42 +548,69 @@ elif st.session_state.phase == "anthro":
         st.session_state["anthro_responses"][global_idx] = val
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # 네비게이션 버튼 영역
-    col_prev, col_info, col_next = st.columns([1, 2, 1])
+    # 네비게이션 버튼 영역 (양끝 정렬 + 모바일 한 줄 유지)
+    # 가운데 정보(col_info)는 페이지 안내/검증 메시지 등 용도 그대로 사용 가능
 
-    with col_prev:
-        if page > 1:
-            if st.button("← 이전"):
-                st.session_state["anthro_page"] = page - 1
-                st.rerun()
+    # 버튼 최소폭/정렬을 살짝 보정 (선택사항이지만 모바일 안정성↑)
+    st.markdown("""
+    <style>
+    /* 이 블록 안의 버튼은 컬럼 폭을 가득 채워 양끝에 깔끔히 붙습니다 */
+    .nav-row .stButton > button {
+    width: 100%;
+    min-width: 120px;   /* 너무 좁아지는 것 방지 */
+    }
+    /* 매우 작은 화면에서는 최소폭을 풀어 과도한 가로 스크롤 방지 */
+    @media (max-width: 420px) {
+    .nav-row .stButton > button { min-width: auto; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    with col_next:
-        # 현재 페이지 유효성(모두 1~10 선택)
-        current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
-        all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 10) for v in current_slice)
+    # 한 줄 3분할: [이전]  [가운데 정보]  [다음]
+    # 1:2:1 비율이면 버튼이 양 끝에, 안내는 가운데로 안정적으로 배치됩니다.
+    with st.container():
+        st.markdown('<div class="nav-row">', unsafe_allow_html=True)
+        col_prev, col_info, col_next = st.columns([1, 2, 1])
 
-        if page < total_pages:
-            # 중간 페이지: 다음 10문항으로
-            if st.button("다음 →"):
-                if not all_answered:
-                    st.warning("현재 페이지 모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
-                else:
-                    st.session_state["anthro_page"] = page + 1
+        with col_prev:
+            if page > 1:
+                if st.button("← 이전", use_container_width=True, key="anthro_prev"):
+                    st.session_state["anthro_page"] = page - 1
                     st.rerun()
-        else:
-            # 마지막 페이지: 다음 단계로
-            if st.button("다음"):
-                # 마지막 페이지 슬라이스뿐 아니라 전체 검사 (안전)
-                full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 10)
-                              for v in st.session_state["anthro_responses"])
-                if not full_ok:
-                    st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
-                else:
-                    st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
-                    st.session_state["anthro_page"] = 1
-                    # 🔽 기존: st.session_state.phase = "writing_intro"
-                    st.session_state.phase = "achive"   # 🔥 의인화 다음에 성취/접근 관련 26문항 설문 진행
-                    st.rerun()
+
+        with col_info:
+            # 필요 시 페이지 정보/안내 문구 표시 (너무 길면 자동 줄바꿈)
+            # 예: st.markdown(f"페이지 {page} / {total_pages}", help="현재 진행 상황")
+            pass
+
+        with col_next:
+            # 현재 페이지 유효성(모두 1~10 선택)
+            current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
+            all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 10) for v in current_slice)
+
+            if page < total_pages:
+                # 중간 페이지: 다음 10문항으로
+                if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
+                    if not all_answered:
+                        st.warning("현재 페이지 모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                    else:
+                        st.session_state["anthro_page"] = page + 1
+                        st.rerun()
+            else:
+                # 마지막 페이지: 다음 단계로
+                if st.button("다음", use_container_width=True, key="anthro_next_last"):
+                    # 전체 검사(안전)
+                    full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 10)
+                                for v in st.session_state["anthro_responses"])
+                    if not full_ok:
+                        st.warning("모든 문항을 1~10점 중 하나로 선택해 주세요. (0은 미응답)")
+                    else:
+                        st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
+                        st.session_state["anthro_page"] = 1
+                        st.session_state.phase = "achive"   # 다음 단계로 이동
+                        st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -653,13 +684,33 @@ elif st.session_state.phase == "achive":
         st.session_state["achive_responses"][gi] = choice
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
-    # 네비게이션
+    # ── 버튼 가로 정렬/최소폭 보정 (초소형 화면 대응) ───────────────────
+    st.markdown("""
+    <style>
+    .nav-row .stButton > button {
+    width: 100%;
+    min-width: 120px;            /* 너무 작아지지 않게 */
+    }
+    @media (max-width: 420px) {
+    .nav-row .stButton > button { min-width: auto; }  /* 초소형 화면에서는 자동 */
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 네비게이션 (양 끝 버튼 + 가운데 안내)
+    st.markdown('<div class="nav-row">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
+
     with c1:
         if page > 1:
-            if st.button("← 이전", key="achive_prev"):
+            if st.button("← 이전", key="achive_prev", use_container_width=True):
                 st.session_state["achive_page"] = page - 1
                 st.rerun()
+
+    with c2:
+        # 필요하면 진행상황/안내 표시 (길면 자동 줄바꿈됨)
+        # 예시: st.markdown(f"페이지 {page} / {total_pages}", help="현재 진행 상황")
+        pass
 
     with c3:
         # 현재 페이지 필수 검증
@@ -667,7 +718,7 @@ elif st.session_state.phase == "achive":
         all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
 
         if page < total_pages:
-            if st.button("다음 →", key="achive_next"):
+            if st.button("다음 →", key="achive_next", use_container_width=True):
                 if not all_answered:
                     st.warning("현재 페이지의 모든 문항에 1~6 중 하나를 선택해 주세요.")
                 else:
@@ -675,7 +726,7 @@ elif st.session_state.phase == "achive":
                     st.rerun()
         else:
             # 마지막 페이지 → 전체 검증 후 다음 단계
-            if st.button("다음 (추론 과제 안내)", key="achive_done"):
+            if st.button("다음 (추론 과제 안내)", key="achive_done", use_container_width=True):
                 full_ok = all(v in [1,2,3,4,5,6] for v in st.session_state["achive_responses"])
                 if not full_ok:
                     st.warning("모든 문항에 응답해 주세요. (1~6)")
@@ -687,6 +738,8 @@ elif st.session_state.phase == "achive":
                     # 다음 단계로 진행
                     st.session_state.phase = "writing_intro"
                     st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 # 2-2. 추론 과제 지시문
 elif st.session_state.phase == "writing_intro":
