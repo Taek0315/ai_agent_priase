@@ -190,50 +190,240 @@ def run_mcp_motion():
         progress.progress(1.0, text=None)
 
 
+# ─────────────────────────────────────────────
+# 연구대상자 설명문 / 동의서 / 개인정보 동의서 HTML 원문
+# (사용자가 제공한 텍스트를 1자도 수정하지 않고 포함)
+# ─────────────────────────────────────────────
+
+CONSENT_HTML = """
+<div class="consent-wrap">
+
+  <h1>연구대상자 설명문</h1>
+
+  <div class="subtitle"><strong>연구제목: </strong><br>
+  인공지능의 칭찬 귀인이 학습 동기에 미치는 영향과 지각된 의인화의 조절 효과
+  </div>
+
+  <h2>1. 연구 목적</h2>
+  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
+  <p>본 연구는 학습 상황에서 AI 에이전트가 제공하는 칭찬의 귀인 방식(과정 귀인 칭찬, 능력 귀인 칭찬찬)이 학습자의 학습 동기에 어떠한 영향을 미치는지를 경험적으로 검증하고자 합니다. 또한, 참여자가 AI 에이전트를 얼마나 ‘인간처럼’ 지각하는지(지각된 의인화 수준)가 이 관계를 조절하는지를 함께 탐구합니다. 학습 동기는 과제의 지속 의지, 어려운 과제에 대한 도전 성향, 과제를 통한 성취감 등 다양한 심리적 요인을 바탕으로 측정되며, 이를 통해 AI 기반 학습 환경 설계에 필요한 심리적·교육적 시사점을 도출하고자 합니다.</p>
+
+  <h2>2. 연구 참여 대상</h2>
+  <p>참여 대상: 만 18세 이상 성인으로 한국어 사용자를 대상으로 합니다.</p>
+  <p>단, 한국어 사용이 미숙하여 주어진 문장을 이해하기 어렵거나, 단어를 파악하지 못하는 경우 연구 대상에서 제외됩니다.</p>
+
+  <h2>3. 연구 방법</h2>
+  <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 일반적인 의인화 경향성을 알아보는 문항 30개를 진행하고 화면에 주어진 3가지 단어를 바탕으로 창의적 글쓰기 과제를 3번 진행하고, 각 과제 이후에 AI 에이전트의 평가 문장을 받아볼 수 있습니다. 글쓰기 과제 후 7문항의 학습 동기 문항에 응답을 하게 됩니다.</p>
+  <p>전체 연구 참여 시간은 10분에서 15분 정도 진행됩니다.</p>
+
+  <h2>4. 연구 참여 기간</h2>
+  <p>연구 참여는 접속 링크가 살아있는 기간 언제든 참여가 가능하지만, 참여 가능 횟수는 1회입니다.</p>
+
+  <h2>5. 연구 참여에 따른 이익 및 보상</h2>
+  <p>연구 참여를 해주신 연구 대상자 분들에게는 1000원 상당의 기프티콘이 발송됩니다. 기프티콘 발송을 위해 핸드폰 번호를 기입해주셔야 하며, 핸드폰 번호를 기입하지 않을 경우 답례품 제공이 어려울 수 있습니다.</p>
+  <p>답례품은 개인당 1회에 한하여 제공됩니다.</p>
+
+  <h2>6. 연구 과정에서의 부작용 또는 위험요소 및 조치</h2>
+  <p>연구에 참여하시는 도중 불편감을 느끼신다면 언제든 화면을 종료하여 연구를 중단할 수 있습니다. 연구 중단시 어떠한 불이익도 존재하지 않습니다.</p>
+  <p>본 연구에서 예상되는 불편감은 과제의 지루함, AI 에이전트의 평가에 대한 불편감, 과제 지속을 해야하는 부담감 등이 예상됩니다.</p>
+  <p>연구를 통해 심리적 불편감을 호소하실 경우 연구책임자가 1회의 심리 상담 지원을 진행해드립니다.</p>
+
+  <h2>7. 개인정보와 비밀보장</h2>
+  <p>본 연구의 참여로 수집되는 개인정보는 다음과 같습니다. 성별, 연령, 핸드폰 번호를 수집하며 이 정보는 연구를 위해 3년간 사용되며 수집된 정보는 개인정보보호법에 따라 적절히 관리됩니다. 관련 정보는 본 연구자(들)만이 접근 가능한 클라우드 서버에 저장됩니다. 연구를 통해 얻은 모든 개인정보의 비밀보장을 위해 최선을 다할 것입니다. 이 연구에서 얻어진 개인정보가 학회지나 학회에 공개될 때 귀하의 이름과 정보는 사용되지 않을 것입니다. 그러나 만일 법이 요구하면 귀하의 개인정보는 제공될 수도 있습니다. 또한 가톨릭대학교 성심교정 생명윤리심의위원회가 연구대상자의 비밀보장을 침해하지 않고 관련 규정이 정하는 범위 안에서 본 연구의 실시 절차와 자료의 신뢰성을 검증하기 위해 연구 관련 자료를 직접 열람하거나 제출을 요청할 수 있습니다. 귀하가 본 동의서에 서명 또는 동의에 체크하는 것은, 이러한 사항에 대하여 사전에 알고 있었으며 이를 허용한다는 의사로 간주될 것입니다. 연구 종료 후 연구관련 자료(위원회 심의결과, 서면동의서(해당 경우), 개인정보수집/이용·제공현황, 연구종료보고서)는 「생명윤리 및 안전에 관한 법률」 시행규칙 제15조에 따라 연구종료 후 3년간 보관됩니다. 보관기간이 끝나면 분쇄 또는 파일 삭제 방법으로 폐기될 것입니다. </p>
+
+  <h2>8. 자발적 연구 참여와 중지</h2>
+  <p>본 연구는 자발적으로 참여 의사를 밝히신 분에 한하여 수행될 것입니다. 이에 따라 본 연구에 참여하지 않을 자유가 있으며 본 연구에 참여하지 않아도 귀하에게는 어떠한 불이익도 없습니다. 또한, 귀하는 연구에 참여하신 언제든지 도중에 그만 둘 수 있습니다. 만일 귀하가 연구에 참여하는 것을 그만두고 싶다면 연구 진행 도중 언제든 화면을 종료하고 연구를 중단할 수 있습니다. 참여 중지 시 귀하의 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다.</p>
+
+  <h2>* 연구 문의</h2>
+  <p>본 연구에 대해 질문이 있거나 연구 중간에 문제가 생길 시 다음 연구 담당자에게 언제든지 연락하십시오.<br>
+  가톨릭대학교<br>
+  전 공: <br>
+  발달심리학<br>
+  성 명:<br>
+  오현택<br>
+  전화번호:<br>
+  010-6532-3161<br>
+  이메일:<br>
+  toh315@gmail.com</p>
+
+  <p>만일 어느 때라도 연구대상자로서 귀하의 권리에 대한 질문이 있다면 다음의 가톨릭대학교 성심교정 생명윤리심의위원회에 연락하십시오.</p>
+  <p>가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 전화번호: 02-2164-4827</p>
+
+</div>
+""".strip()
+
+
+AGREE_HTML = """
+<div class="agree-wrap">
+
+  <div class="agree-title">동 의 서(온라인용)</div>
+
+  <p><strong>연구제목: </strong></p>
+
+  <ol class="agree-list">
+    <li><span class="agree-num">1.</span>나는 이 연구의 설명문을 읽고 충분히 이해하였습니다.</li>
+    <li><span class="agree-num">2.</span>나는 이 연구에 참여함으로써 발생할 위험과 이득을 숙지하였습니다.</li>
+    <li><span class="agree-num">3.</span>나는 이 연구에 참여하는 것에 대하여 자발적으로 동의합니다. </li>
+    <li><span class="agree-num">4.</span>나는 이 연구에서 얻어진 나에 대한 정보를 현행 법률과 가톨릭대학교 성심교정 생명윤리심의위원회 규정이 허용하는 범위 내에서 연구자가 수집하고 처리하는데 동의합니다.</li>
+    <li><span class="agree-num">5.</span>나는 담당 연구자나 위임 받은 대리인이 연구를 진행하거나 결과 관리를 하는 경우와 연구기관, 연구비지원기관 및 가톨릭대학교 성심교정 생명윤리심의위원회가 실태 조사를 하는 경우에는 비밀로 유지되는 나의 개인 신상 정보를 직접적으로 열람하는 것에 동의합니다.</li>
+    <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다. </li>
+  </ol>
+
+  <p>연구에 참여하는데 동의함 □<br>
+  연구 참여하는데 동의하지 않음 □</p>
+
+</div>
+""".strip()
+
+
+PRIVACY_HTML = """
+<div class="privacy-wrap">
+
+  <h1>연구참여자 개인정보 수집∙이용 동의서[온라인용]</h1>
+
+  <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
+
+  <table class="privacy-table">
+    <tr>
+      <th>수집하는<br>개인정보 항목</th>
+      <td>성별, 나이, 핸드폰 번호</td>
+    </tr>
+    <tr>
+      <th>개인정보의<br>수집 및<br>이용목적</th>
+      <td>
+        <p>제공하신 정보는 연구수행 및 논문작성 등을 위해서 사용합니다.</p>
+        <ol>
+          <li>연구수행을 위해 이용 :성별, 나이, 핸드폰 번호</li>
+          <li>단, 이용자의 기본적 인권 침해의 우려가 있는 민감한 개인정보 (인종 및 민족, 사상 및 신조, 정치적 성향 및 범죄기록 등)는 수집하지 않습니다.</li>
+        </ol>
+      </td>
+    </tr>
+    <tr>
+      <th>개인정보의 <br>제3자 제공 및 목적 외 이용</th>
+      <td>
+        법이 요구하거나 가톨릭대학교 성심교정 생명윤리심의위원회가 본 연구의 실시 절차와
+        자료의 신뢰성을 검증하기 위해 연구 결과를 직접 열람할 수 있습니다.
+      </td>
+    </tr>
+    <tr>
+      <th>개인정보의<br>보유 및 이용기간</th>
+      <td>
+        수집된 개인정보의 보유기간은 연구종료 후 3년 까지 입니다. 또한 파기(삭제)시 연구대상자의 개인정보를 재생이 불가능한 방법으로 즉시 파기합니다.
+      </td>
+    </tr>
+  </table>
+
+  <p class="privacy-note">
+    ※ 귀하는 이에 대한 동의를 거부할 수 있으며, 다만, 동의가 없을 경우 연구 참여가 불가능할 수 있음을 알려드립니다. 
+  </p>
+
+  <p>개인정보 수집 및 이용에 동의함 □ &nbsp;&nbsp;&nbsp;&nbsp;
+     개인정보 수집 및 이용에 동의하지 않음 □ </p>
+
+  <ul class="privacy-bullets">
+    <li>※ 개인정보 제공자가 동의한 내용외의 다른 목적으로 활용하지 않음</li>
+    <li>※ 만 18세 미만인 경우 반드시 법적대리인의 동의가 필요함</li>
+    <li>「개인정보보호법」등 관련 법규에 의거하여 상기 본인은 위와 같이 개인정보 수집 및 활용에 동의함.</li>
+  </ul>
+
+</div>
+""".strip()
+
+
+# ─────────────────────────────────────────────
+# 공통 렌더러 (모바일 가독성 + 인쇄 최적화 포함)
+# ─────────────────────────────────────────────
+def render_consent_doc():
+    fs = st.slider("설명문 글자 크기", 14, 22, 16, key="fs_consent")
+    lh = st.slider("설명문 행간", 140, 220, 170, step=5, key="lh_consent") / 100
+    st.markdown(f"""
+    <style>
+      .consent-wrap {{
+        box-sizing:border-box; max-width: 920px; margin:0 auto;
+        padding:18px 16px 24px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
+      }}
+      @media (max-width:640px) {{
+        .consent-wrap {{ padding:14px 12px 18px; border-radius:10px; }}
+      }}
+      .consent-wrap h1{{ font-size:1.5em; margin:0 0 12px; font-weight:800; letter-spacing:.2px; }}
+      .consent-wrap .subtitle{{ font-size:1.0em; color:#374151; margin-bottom:14px; }}
+      .consent-wrap h2{{ font-size:1.2em; margin:20px 0 8px; font-weight:700; border-top:1px solid #F3F4F6; padding-top:14px; }}
+      .consent-wrap p{{ margin:6px 0; }}
+      @media print {{
+        .consent-wrap {{ border:none; max-width:100%; }}
+        .stSlider, .stButton, .stAlert {{ display:none !important; }}
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+    st.markdown(CONSENT_HTML, unsafe_allow_html=True)
+
+
+def render_agree_doc():
+    fs = st.slider("동의서 글자 크기", 14, 22, 18, key="fs_agree")
+    lh = st.slider("동의서 행간", 140, 220, 165, step=5, key="lh_agree") / 100
+    st.markdown(f"""
+    <style>
+      .agree-wrap {{
+        box-sizing:border-box; max-width:920px; margin:0 auto;
+        padding:18px 16px 20px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
+      }}
+      .agree-title{{ font-weight:800; text-align:center; margin-bottom:12px; font-size:1.25em; }}
+      .agree-list{{ margin:10px 0 0 0; padding-left:0; list-style:none; }}
+      .agree-list li{{ margin:10px 0; }}
+      .agree-num{{ font-weight:800; margin-right:6px; }}
+      @media print {{
+        .agree-wrap {{ border:none; }}
+        .stSlider, .stButton, .stAlert {{ display:none !important; }}
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+    st.markdown(AGREE_HTML, unsafe_allow_html=True)
+
+
+def render_privacy_doc():
+    fs = st.slider("개인정보 동의서 글자 크기", 14, 22, 16, key="fs_priv")
+    lh = st.slider("개인정보 동의서 행간", 140, 220, 170, step=5, key="lh_priv") / 100
+    st.markdown(f"""
+    <style>
+      .privacy-wrap {{
+        box-sizing:border-box; max-width:920px; margin:0 auto;
+        padding:18px 16px 20px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
+      }}
+      .privacy-table{{ width:100%; border-collapse:collapse; table-layout:fixed; border:2px solid #111827; margin-bottom:14px; }}
+      .privacy-table th, .privacy-table td{{ border:1px solid #111827; padding:10px 12px; vertical-align:top; }}
+      .privacy-table th{{ width:28%; background:#F3F4F6; text-align:left; font-weight:700; }}
+      .privacy-note{{ margin:10px 0; padding:10px 12px; border:1px solid #111827; background:#F9FAFB; }}
+      .privacy-bullets{{ margin-top:12px; padding-left:18px; }}
+      .privacy-bullets li{{ margin:4px 0; }}
+      @media print {{
+        .privacy-wrap {{ border:none; }}
+        .stSlider, .stButton, .stAlert {{ display:none !important; }}
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+    st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
-# 1. 연구 동의 페이지
+# 1. 연구 동의 페이지 (기존 로직과 완전 호환, 이미지 사용 없음)
+# ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.phase == "start":
     scroll_top_js()
 
-    # # ── 페이지 상단/하단 패딩 & 제목 마진 조정 ─────────────────────────────
-    # st.markdown("""
-    # <style>
-    #   /* 메인 컨테이너 상단/하단 패딩 축소 */
-    #   section.main > div.block-container, .main .block-container {
-    #     padding-top: 6px !important;   /* 필요시 0~24px로 조정 */
-    #     padding-bottom: 24px !important;
-    #   }
-    #   /* 큰 제목/부제목 위아래 마진 최적화 */
-    #   h1, .stMarkdown h1 { 
-    #     margin-top: 4px !important; 
-    #     margin-bottom: 12px !important; 
-    #     line-height: 1.2;
-    #   }
-    #   h2, .stMarkdown h2 { 
-    #     margin-top: 10px !important; 
-    #     margin-bottom: 8px !important; 
-    #   }
-    # </style>
-    # """, unsafe_allow_html=True)
-    # # ────────────────────────────────────────────────────────────────────────
-
-    # 제목 변경
     st.title("AI 에이전트의 칭찬 방식이 학습 동기에 미치는 영향 연구")
 
     if "consent_step" not in st.session_state:
         st.session_state.consent_step = "explain"
 
-    EXPLAIN_IMG = os.path.join(BASE_DIR, "explane.png")
-    AGREE_IMG   = os.path.join(BASE_DIR, "agree.png")
-    PRIV_IMG    = os.path.join(BASE_DIR, "privinfo.png")
-
     if st.session_state.consent_step == "explain":
         scroll_top_js()
         st.subheader("연구대상자 설명문")
-        if os.path.exists(EXPLAIN_IMG):
-            st.image(EXPLAIN_IMG, use_container_width=True)
-        else:
-            st.info("설명문 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
+
+        # 설명문 HTML 렌더링
+        render_consent_doc()
 
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
         if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
@@ -243,24 +433,28 @@ if st.session_state.phase == "start":
     elif st.session_state.consent_step == "agree":
         scroll_top_js()
         st.subheader("연구 동의서")
-        if os.path.exists(AGREE_IMG):
-            st.image(AGREE_IMG, use_container_width=True)
-        else:
-            st.info("연구 동의서 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"],
-                                    horizontal=True, key="consent_research_radio")
+        # 연구 동의서(1~6항) HTML 렌더링
+        render_agree_doc()
+
+        consent_research = st.radio(
+            "연구 참여에 동의하십니까?",
+            ["동의함", "동의하지 않음"],
+            horizontal=True, key="consent_research_radio"
+        )
 
         st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 
         st.subheader("개인정보 수집·이용에 대한 동의")
-        if os.path.exists(PRIV_IMG):
-            st.image(PRIV_IMG, use_container_width=True)
-        else:
-            st.info("개인정보 동의 이미지를 찾을 수 없습니다. 경로/파일명을 확인하세요.")
 
-        consent_privacy = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"],
-                                   horizontal=True, key="consent_privacy_radio")
+        # 개인정보 동의 HTML 렌더링
+        render_privacy_doc()
+
+        consent_privacy = st.radio(
+            "개인정보 수집·이용에 동의하십니까?",
+            ["동의함", "동의하지 않음"],
+            horizontal=True, key="consent_privacy_radio"
+        )
 
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
         st.divider()
@@ -286,7 +480,6 @@ if st.session_state.phase == "start":
                     })
                     st.session_state.phase = "demographic"
                     st.rerun()
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1-1. 인적사항
