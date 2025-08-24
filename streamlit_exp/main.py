@@ -191,8 +191,8 @@ def run_mcp_motion():
 
 
 # ─────────────────────────────────────────────
-# 연구대상자 설명문 / 동의서 / 개인정보 동의서 HTML 원문
-# (사용자가 제공한 텍스트를 1자도 수정하지 않고 포함)
+# ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
+# 
 # ─────────────────────────────────────────────
 
 CONSENT_HTML = """
@@ -200,9 +200,7 @@ CONSENT_HTML = """
 
   <h1>연구대상자 설명문</h1>
 
-  <div class="subtitle"><strong>연구제목: </strong><br>
-  인공지능의 칭찬 귀인이 학습 동기에 미치는 영향과 지각된 의인화의 조절 효과
-  </div>
+  <div class="subtitle"><strong>연구제목: </strong>인공지능의 칭찬 귀인이 학습 동기에 미치는 영향과 지각된 의인화의 조절 효과</div>
 
   <h2>1. 연구 목적</h2>
   <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
@@ -235,16 +233,13 @@ CONSENT_HTML = """
   <p>본 연구는 자발적으로 참여 의사를 밝히신 분에 한하여 수행될 것입니다. 이에 따라 본 연구에 참여하지 않을 자유가 있으며 본 연구에 참여하지 않아도 귀하에게는 어떠한 불이익도 없습니다. 또한, 귀하는 연구에 참여하신 언제든지 도중에 그만 둘 수 있습니다. 만일 귀하가 연구에 참여하는 것을 그만두고 싶다면 연구 진행 도중 언제든 화면을 종료하고 연구를 중단할 수 있습니다. 참여 중지 시 귀하의 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다.</p>
 
   <h2>* 연구 문의</h2>
-  <p>본 연구에 대해 질문이 있거나 연구 중간에 문제가 생길 시 다음 연구 담당자에게 언제든지 연락하십시오.<br>
-  가톨릭대학교<br>
-  전 공: <br>
-  발달심리학<br>
-  성 명:<br>
-  오현택<br>
-  전화번호:<br>
-  010-6532-3161<br>
-  이메일:<br>
-  toh315@gmail.com</p>
+  <p>
+    가톨릭대학교<br>
+    <span class="inline-label">전 공:</span> 발달심리학<br>
+    <span class="inline-label">성 명:</span> 오현택<br>
+    <span class="inline-label">전화번호:</span> 010-6532-3161<br>
+    <span class="inline-label">이메일:</span> toh315@gmail.com
+  </p>
 
   <p>만일 어느 때라도 연구대상자로서 귀하의 권리에 대한 질문이 있다면 다음의 가톨릭대학교 성심교정 생명윤리심의위원회에 연락하십시오.</p>
   <p>가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 전화번호: 02-2164-4827</p>
@@ -256,7 +251,7 @@ CONSENT_HTML = """
 AGREE_HTML = """
 <div class="agree-wrap">
 
-  <div class="agree-title">동 의 서(온라인용)</div>
+  <div class="agree-title">동 의 서</div>
 
   <p><strong>연구제목: </strong></p>
 
@@ -269,8 +264,6 @@ AGREE_HTML = """
     <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다. </li>
   </ol>
 
-  <p>연구에 참여하는데 동의함 □<br>
-  연구 참여하는데 동의하지 않음 □</p>
 
 </div>
 """.strip()
@@ -279,7 +272,7 @@ AGREE_HTML = """
 PRIVACY_HTML = """
 <div class="privacy-wrap">
 
-  <h1>연구참여자 개인정보 수집∙이용 동의서[온라인용]</h1>
+  <h1>연구참여자 개인정보 수집∙이용 동의서</h1>
 
   <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
 
@@ -317,9 +310,6 @@ PRIVACY_HTML = """
     ※ 귀하는 이에 대한 동의를 거부할 수 있으며, 다만, 동의가 없을 경우 연구 참여가 불가능할 수 있음을 알려드립니다. 
   </p>
 
-  <p>개인정보 수집 및 이용에 동의함 □ &nbsp;&nbsp;&nbsp;&nbsp;
-     개인정보 수집 및 이용에 동의하지 않음 □ </p>
-
   <ul class="privacy-bullets">
     <li>※ 개인정보 제공자가 동의한 내용외의 다른 목적으로 활용하지 않음</li>
     <li>※ 만 18세 미만인 경우 반드시 법적대리인의 동의가 필요함</li>
@@ -331,84 +321,62 @@ PRIVACY_HTML = """
 
 
 # ─────────────────────────────────────────────
-# 공통 렌더러 (모바일 가독성 + 인쇄 최적화 포함)
+# 공통 CSS (슬라이더 제거 버전, 반응형 + 인쇄 최적화)
 # ─────────────────────────────────────────────
+COMMON_CSS = """
+<style>
+  :root { --fs-base:16px; --lh-base:1.65; }
+  .consent-wrap, .agree-wrap, .privacy-wrap{
+    box-sizing:border-box; max-width:920px; margin:0 auto 10px;
+    padding:18px 16px 22px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+    font-size:var(--fs-base); line-height:var(--lh-base); color:#111827; word-break:keep-all;
+  }
+  @media (max-width:640px){
+    .consent-wrap, .agree-wrap, .privacy-wrap{ padding:14px 12px 18px; border-radius:10px; }
+  }
+  .consent-wrap h1, .privacy-wrap h1{ font-size:1.5em; margin:0 0 12px; font-weight:800; letter-spacing:.2px; }
+  .agree-wrap .agree-title{ font-weight:800; text-align:center; margin-bottom:12px; font-size:1.25em; }
+  .consent-wrap .subtitle{ font-size:1.0em; color:#374151; margin-bottom:14px; }
+  .consent-wrap h2, .privacy-wrap h2{ font-size:1.2em; margin:20px 0 8px; font-weight:700; border-top:1px solid #F3F4F6; padding-top:14px; }
+  .consent-wrap p, .agree-wrap p, .privacy-wrap p{ margin:6px 0; }
+  .agree-list{ margin:10px 0 0 0; padding-left:0; list-style:none; }
+  .agree-list li{ margin:10px 0; }
+  .agree-num{ font-weight:800; margin-right:6px; }
+  .inline-label{ font-weight:600; }
+  /* 개인정보 표 */
+  .privacy-table{ width:100%; border-collapse:collapse; table-layout:fixed; border:2px solid #111827; margin-bottom:14px; }
+  .privacy-table th, .privacy-table td{ border:1px solid #111827; padding:10px 12px; vertical-align:top; }
+  .privacy-table th{ width:30%; background:#F3F4F6; text-align:left; font-weight:700; }
+  .privacy-note{ margin:10px 0; padding:10px 12px; border:1px solid #111827; background:#F9FAFB; }
+  .privacy-bullets{ margin-top:12px; padding-left:18px; }
+  .privacy-bullets li{ margin:4px 0; }
+  /* 인쇄 */
+  @media print{
+    .consent-wrap, .agree-wrap, .privacy-wrap{ border:none; max-width:100%; }
+    .stSlider, .stButton, .stAlert{ display:none !important; }
+  }
+</style>
+"""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 1) 렌더 함수 (슬라이더 제거: 고정 CSS만 주입)
+# ──────────────────────────────────────────────────────────────────────────────
 def render_consent_doc():
-    fs = st.slider("설명문 글자 크기", 14, 22, 16, key="fs_consent")
-    lh = st.slider("설명문 행간", 140, 220, 170, step=5, key="lh_consent") / 100
-    st.markdown(f"""
-    <style>
-      .consent-wrap {{
-        box-sizing:border-box; max-width: 920px; margin:0 auto;
-        padding:18px 16px 24px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
-        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
-      }}
-      @media (max-width:640px) {{
-        .consent-wrap {{ padding:14px 12px 18px; border-radius:10px; }}
-      }}
-      .consent-wrap h1{{ font-size:1.5em; margin:0 0 12px; font-weight:800; letter-spacing:.2px; }}
-      .consent-wrap .subtitle{{ font-size:1.0em; color:#374151; margin-bottom:14px; }}
-      .consent-wrap h2{{ font-size:1.2em; margin:20px 0 8px; font-weight:700; border-top:1px solid #F3F4F6; padding-top:14px; }}
-      .consent-wrap p{{ margin:6px 0; }}
-      @media print {{
-        .consent-wrap {{ border:none; max-width:100%; }}
-        .stSlider, .stButton, .stAlert {{ display:none !important; }}
-      }}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(CONSENT_HTML, unsafe_allow_html=True)
 
-
 def render_agree_doc():
-    fs = st.slider("동의서 글자 크기", 14, 22, 18, key="fs_agree")
-    lh = st.slider("동의서 행간", 140, 220, 165, step=5, key="lh_agree") / 100
-    st.markdown(f"""
-    <style>
-      .agree-wrap {{
-        box-sizing:border-box; max-width:920px; margin:0 auto;
-        padding:18px 16px 20px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
-        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
-      }}
-      .agree-title{{ font-weight:800; text-align:center; margin-bottom:12px; font-size:1.25em; }}
-      .agree-list{{ margin:10px 0 0 0; padding-left:0; list-style:none; }}
-      .agree-list li{{ margin:10px 0; }}
-      .agree-num{{ font-weight:800; margin-right:6px; }}
-      @media print {{
-        .agree-wrap {{ border:none; }}
-        .stSlider, .stButton, .stAlert {{ display:none !important; }}
-      }}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(AGREE_HTML, unsafe_allow_html=True)
 
-
 def render_privacy_doc():
-    fs = st.slider("개인정보 동의서 글자 크기", 14, 22, 16, key="fs_priv")
-    lh = st.slider("개인정보 동의서 행간", 140, 220, 170, step=5, key="lh_priv") / 100
-    st.markdown(f"""
-    <style>
-      .privacy-wrap {{
-        box-sizing:border-box; max-width:920px; margin:0 auto;
-        padding:18px 16px 20px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
-        font-size:{fs}px; line-height:{lh}; color:#111827; word-break:keep-all;
-      }}
-      .privacy-table{{ width:100%; border-collapse:collapse; table-layout:fixed; border:2px solid #111827; margin-bottom:14px; }}
-      .privacy-table th, .privacy-table td{{ border:1px solid #111827; padding:10px 12px; vertical-align:top; }}
-      .privacy-table th{{ width:28%; background:#F3F4F6; text-align:left; font-weight:700; }}
-      .privacy-note{{ margin:10px 0; padding:10px 12px; border:1px solid #111827; background:#F9FAFB; }}
-      .privacy-bullets{{ margin-top:12px; padding-left:18px; }}
-      .privacy-bullets li{{ margin:4px 0; }}
-      @media print {{
-        .privacy-wrap {{ border:none; }}
-        .stSlider, .stButton, .stAlert {{ display:none !important; }}
-      }}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 1. 연구 동의 페이지 (기존 로직과 완전 호환, 이미지 사용 없음)
+# 2) 연구 동의 페이지 (기존 로직 그대로, 이미지/슬라이더 없음)
 # ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.phase == "start":
     scroll_top_js()
@@ -421,8 +389,6 @@ if st.session_state.phase == "start":
     if st.session_state.consent_step == "explain":
         scroll_top_js()
         st.subheader("연구대상자 설명문")
-
-        # 설명문 HTML 렌더링
         render_consent_doc()
 
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
@@ -433,8 +399,6 @@ if st.session_state.phase == "start":
     elif st.session_state.consent_step == "agree":
         scroll_top_js()
         st.subheader("연구 동의서")
-
-        # 연구 동의서(1~6항) HTML 렌더링
         render_agree_doc()
 
         consent_research = st.radio(
@@ -446,8 +410,6 @@ if st.session_state.phase == "start":
         st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 
         st.subheader("개인정보 수집·이용에 대한 동의")
-
-        # 개인정보 동의 HTML 렌더링
         render_privacy_doc()
 
         consent_privacy = st.radio(
