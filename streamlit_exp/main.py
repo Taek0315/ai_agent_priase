@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # 필요한 모듈
 import streamlit as st
-
+import streamlit.components.v1 as components
 import time, random, json, os
 from datetime import datetime
 from utils.validation import validate_phone, validate_text
@@ -58,56 +58,71 @@ html, body { overflow-x: hidden !important; }
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 공통: 스크롤 항상 최상단
+def scroll_top_js(nonce: int | None = None):
+    """
+    페이지/섹션 렌더마다 '확실히' 최상단으로 스크롤.
+    - components.html 로 실제 DOM에서 스크립트를 실행 (markdown의 <script>는 실행 안 됨)
+    - key에 nonce를 섞어 매 렌더마다 컴포넌트를 재마운트 → 스크립트 재실행 보장
+    - 부모(section.main)와 iframe 내부 모두에 대해 즉시/RAF/지연 여러 번 시도
+    """
+    if "_scroll_nonce" not in st.session_state:
+        st.session_state["_scroll_nonce"] = 0
 
-def scroll_top_js(nonce=None):
-    """
-    페이지가 렌더될 때마다 최상단으로 스크롤.
-    - 부모 문서(section.main)와 iframe 내부(window) 둘 다 시도
-    - 여러 타이밍에 재시도 (즉시/RAF/지연)
-    - nonce를 넣어 매 호출마다 '새 스크립트'로 인식되도록 함
-    """
     if nonce is None:
-        nonce = st.session_state.get("_scroll_nonce", 0)
+        nonce = st.session_state["_scroll_nonce"]
 
-    st.markdown(
+    components.html(
         f"""
-        <script id="goTop-{nonce}">
+        <div id="__scroll_top_anchor_{nonce}"></div>
+        <script>
         (function(){{
-          function goTop() {{
+          function goTop(){{
             try {{
-              // 부모 문서(스트림릿 실제 뷰) 스크롤
-              var pdoc = window.parent && window.parent.document;
-              var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
-              if (sect && sect.scrollTo) sect.scrollTo({{top:0, left:0, behavior:'instant'}});
+              // 1) 현재 프레임 내부 (백업)
+              var el = document.getElementById("__scroll_top_anchor_{nonce}");
+              if (el && el.scrollIntoView) el.scrollIntoView({{block:"start", inline:"nearest"}});
+              window.scrollTo(0,0);
+              if (document.documentElement) document.documentElement.scrollTop = 0;
+              if (document.body) document.body.scrollTop = 0;
             }} catch(e) {{}}
 
             try {{
-              // iframe 내부(백업) 스크롤
-              window.scrollTo({{top:0, left:0, behavior:'instant'}});
-              document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
-              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
+              // 2) 부모 프레임(실제 Streamlit 뷰) 컨테이너
+              var pdoc = window.parent && window.parent.document;
+              if (pdoc) {{
+                var sect = pdoc.querySelector("section.main") ||
+                           pdoc.querySelector('[data-testid="stAppViewContainer"] .main') ||
+                           pdoc.querySelector('[data-testid="stAppViewContainer"]');
+                if (sect && sect.scrollTo) {{ sect.scrollTo(0,0); }}
+                else if (window.parent && window.parent.scrollTo) {{ window.parent.scrollTo(0,0); }}
+              }}
             }} catch(e) {{}}
           }}
 
-          // 즉시 실행 + 렌더 타이밍 대비 다회 실행
+          // 렌더 타이밍 편차를 커버하기 위해 다회 호출
           goTop();
           if (window.requestAnimationFrame) requestAnimationFrame(goTop);
-          setTimeout(goTop, 25);
-          setTimeout(goTop, 80);
-          setTimeout(goTop, 180);
-          setTimeout(goTop, 320);
+          setTimeout(goTop, 60);
+          setTimeout(goTop, 120);
+          setTimeout(goTop, 240);
+          setTimeout(goTop, 360);
         }})();
         </script>
         """,
-        unsafe_allow_html=True
+        height=0,          # 화면에 표시 공간 없음
+        scrolling=False,
+        key=f"__scroll_top_key_{nonce}"   # ← nonce로 '다른' 컴포넌트로 인식 → 매번 재실행
     )
 
+
 def rerun_with_scroll_top():
-    """스크롤 스크립트가 매번 새로 실행되도록 nonce 올리고 바로 rerun."""
+    """
+    페이지/섹션 전환 직전에 nonce를 1 증가시키고 즉시 rerun.
+    다음 렌더에서 scroll_top_js가 '새 key'로 실행되며 스크롤이 꼭대기로 이동.
+    """
     st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
     st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
