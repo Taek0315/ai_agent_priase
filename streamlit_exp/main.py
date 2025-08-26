@@ -940,77 +940,69 @@ elif st.session_state.phase == "analyzing":
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (라벨바 + 5요소 도넛 · 잔상 제거/임포트 가드)
+# 5. AI 피드백 (라벨: 텍스트박스 / 잔여 프로그레스바 완전 제거)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
-    # ── 0) 이전 단계 진행바/빈 컨테이너 잔상 제거 (유지 권장)
-    for k in ["prog_holder", "progress_holder", "loader_holder", "inference_progress"]:
-        holder = st.session_state.get(k)
-        try:
-            if holder is not None:
-                holder.empty()
-                st.session_state[k] = None
-        except Exception:
-            pass
-
-    # ── 1) 기본 완료 알림(굵은 초록 박스)
-    st.success("AI 분석 완료!")
-
-    # ── 1-1) 네이티브 progress 바는 전부 숨김 (우리가 커스텀 바를 사용)
+    # 0) 혹시 남아 있을 수 있는 진행바/플레이스홀더 강제 제거
+    #    - CSS: 보이지 않게
+    #    - JS: DOM 자체에서 삭제(스트림릿 버전 변화 대응)
     st.markdown("""
     <style>
-      div[data-testid="stProgress"], div[role="progressbar"] { display:none !important; }
+      div[data-testid="stProgress"],
+      div[role="progressbar"],
+      .stProgress, .stProgress > div { display:none !important; height:0 !important; }
     </style>
+    <script>
+      try {
+        const kill = (sel) => document.querySelectorAll(sel).forEach(el => {
+          // progressbar의 래퍼까지 제거 시, 빈 박스 자체가 사라짐
+          (el.parentElement || el).remove();
+        });
+        kill('div[data-testid="stProgress"]');
+        kill('[role="progressbar"]');
+        // 일부 버전에선 shadow host 내부에 생성 → 상위 섹션별로 한 번 더 검색
+        document.querySelectorAll('section.main *').forEach(node => {
+          if (node.getAttribute && node.getAttribute('role') === 'progressbar') {
+            (node.parentElement || node).remove();
+          }
+        });
+      } catch(e) {}
+    </script>
     """, unsafe_allow_html=True)
 
-    # ── 2) set1/set2와 동기화된 라벨바 (여기 문구만 수정)
+    # 1) 완료 알림
+    st.success("AI 분석 완료!")
+
+    # 2) 결과 라벨(텍스트 박스 스타일) — set1/set2 동기화
     set_key = st.session_state.get("feedback_set_key", "set1")
     LABEL_MAP = {
-        "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},  # ← 원하는 문구로 수정
-        "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}  # ← 원하는 문구로 수정
+        "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
+        "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}
     }
     label_title = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["title"]
     label_desc  = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["desc"]
 
-    # 커스텀 초록 라벨 바 (진짜 progress처럼 보이지만 내부 텍스트 가능)
-    fill_pct = 72  # 퍼센트는 고정 또는 살짝 랜덤해도 됨
     st.markdown(f"""
     <style>
-      .labelbar-wrap {{ margin: 8px 0 4px; }}
-      .labelbar {{
-        position: relative; height: 22px; border-radius: 999px;
-        background: #eaf7ed; border: 1.5px solid #2E7D32; overflow: hidden;
-        box-shadow: inset 0 0 0 1px rgba(46,125,50,.06);
+      .labelbox {{
+        border: 2px solid #2E7D32; border-radius: 12px;
+        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 6px;
+        box-shadow: 0 3px 10px rgba(46,125,50,.08);
       }}
-      .labelbar-fill {{
-        position:absolute; inset:0 auto 0 0; width:{fill_pct}%;
-        background: linear-gradient(90deg, #7bd389, #2E7D32);
-        animation: lbfill .8s ease-out forwards;
+      .labelbox .label-hd {{
+        font-weight: 800; color:#1B5E20; font-size: 15px; margin:0 0 6px 0;
+        display:flex; gap:8px; align-items:center;
       }}
-      @keyframes lbfill {{ from {{ width:0%; }} to {{ width:{fill_pct}%; }} }}
-      .labelbar-text {{
-        position:absolute; left:14px; top:50%; transform:translateY(-50%);
-        font-weight:700; font-size:13.5px; color:#0f3a17; letter-spacing:.2px;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; right:10px;
-      }}
+      .labelbox .label-bd {{ color:#0f3a17; font-size: 14.5px; line-height:1.65; }}
     </style>
-    <div class="labelbar-wrap">
-      <div class="labelbar">
-        <div class="labelbar-fill"></div>
-        <div class="labelbar-text">결과 라벨 · <b>{label_title}</b> — {label_desc}</div>
-      </div>
+    <div class="labelbox">
+      <div class="label-hd">결과 라벨</div>
+      <div class="label-bd"><b>{label_title}</b> — {label_desc}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 3) Plotly 임포트 가드
-    try:
-        import plotly.express as px
-        PLOTLY_OK = True
-    except Exception:
-        PLOTLY_OK = False
-
-    # ── 4) 카드 스타일
+    # 3) 결과 카드 + 도넛 그래프
     st.markdown("""
     <style>
       .result-card{
@@ -1023,7 +1015,6 @@ elif st.session_state.phase == "ai_feedback":
     </style>
     """, unsafe_allow_html=True)
 
-    # ── 5) 도넛 그래프 (5요소/단순값)
     st.markdown("<div class='result-card'>", unsafe_allow_html=True)
     st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
 
@@ -1033,18 +1024,32 @@ elif st.session_state.phase == "ai_feedback":
     jitter = [random.randint(-3, 3) for _ in labels]
     values = [max(10, b + j) for b, j in zip(base, jitter)]
 
-    if PLOTLY_OK:
+    try:
+        import plotly.express as px
         fig = px.pie(values=values, names=labels, hole=0.55)
         fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
         fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10),
                           showlegend=True, legend=dict(orientation="h", y=-0.1))
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    else:
-        st.write("시각화를 준비 중입니다.")
+    except Exception:
+        st.info("시각화를 준비 중입니다.")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── 6) 서술형 피드백 (set1/set2 일치 유지)
-    feedback = random.choice(feedback_sets[set_key])
+    # 4) 서술형 피드백(세트 유지/강조 처리)
+    feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
+    try:
+        with open(feedback_path, "r", encoding="utf-8") as f:
+            feedback_sets = json.load(f)
+        if not isinstance(feedback_sets, dict) or not feedback_sets:
+            raise ValueError
+    except Exception:
+        feedback_sets = {
+            "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
+            "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
+        }
+
+    feedback = random.choice(feedback_sets.get(set_key, feedback_sets["set1"]))
     highlight_words = [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
@@ -1070,12 +1075,13 @@ elif st.session_state.phase == "ai_feedback":
         """, unsafe_allow_html=True
     )
 
-    # ── 7) 하단 여백 & 다음 단계
+    # 5) 다음 단계 버튼
     st.markdown("&nbsp;", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 
 
