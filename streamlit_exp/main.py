@@ -139,8 +139,7 @@ fake_logs = [
     "[✔][COVNOX] Analysis complete. Rendering results…"
 ]
 
-# MCP 애니메이션 (정중앙)
-# MCP 애니메이션 (정중앙) — Streamlit st.progress 미사용(근본 해결)
+# MCP 애니메이션 (원복: st.progress 사용 + 완료 후 잔여 요소 완전 정리)
 def run_mcp_motion():
     # 중앙 배치 여백
     st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
@@ -153,16 +152,6 @@ def run_mcp_motion():
         .covnox-sub{
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
           font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
-        }
-        /* HTML 기반 프로그레스바 */
-        .covnox-bar-wrap{
-          width:min(640px, 88vw); height:10px; border-radius:999px;
-          background:#e9f7ec; margin:8px auto 0; overflow:hidden;
-          box-shadow:inset 0 0 0 1px rgba(46,125,50,.15);
-        }
-        .covnox-bar{
-          height:100%; width:0%; background:#2e7d32; border-radius:999px;
-          transition: width .18s ease;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -178,38 +167,46 @@ def run_mcp_motion():
 
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    # HTML 로그 + 가짜 프로그레스바 (모두 한 컨테이너에)
-    holder = st.empty()
-    with holder.container():
-        st.markdown("""
-        <div id="covnox-log" class="covnox-sub"></div>
-        <div class="covnox-bar-wrap"><div id="covnox-bar" class="covnox-bar"></div></div>
-        <script>
-        (function(){
-          const logs = %s;
-          const logEl = document.getElementById('covnox-log');
-          const barEl = document.getElementById('covnox-bar');
-          let i = 0;
-          const start = Date.now(), total = 8000;  // 8s
-          const timer = setInterval(()=>{
-            const t = Date.now() - start;
-            const p = Math.min(t/total, 1.0);
-            if (barEl) barEl.style.width = (p*100).toFixed(1) + '%%';
-            const msg = logs[i %% logs.length];
-            const now = new Date(); const ts = now.toTimeString().slice(0,8);
-            if (logEl) logEl.innerText = `[${ts}] ${msg}`;
-            i++;
-            if (p >= 1) { clearInterval(timer); }
-          }, 400);
-        })();
-        </script>
-        """ % json.dumps(fake_logs), unsafe_allow_html=True)
+    # 로그와 프로그레스바를 한 컨테이너에 묶어 레이아웃 흔들림 방지
+    holder = st.container()
+    with holder:
+        log_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        progress = progress_placeholder.progress(0, text=None)
 
-    # 8초 대기 (로그/바 애니메이션 동안)
-    time.sleep(8.0)
+        start = time.time()
+        total = 8.0  # 총 8초 애니메이션
+        step = 0
 
-    # 컨테이너 통째로 제거 → DOM 잔재 0
-    holder.empty()
+        try:
+            while True:
+                t = time.time() - start
+                if t >= total:
+                    break
+
+                # 진행률 업데이트
+                progress.progress(min(t/total, 1.0), text=None)
+
+                # 로그 업데이트
+                msg = fake_logs[step % len(fake_logs)]
+                timestamp = time.strftime("%H:%M:%S")
+                log_placeholder.markdown(
+                    f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
+                    unsafe_allow_html=True
+                )
+
+                step += 1
+                time.sleep(0.4)
+
+            # 마지막 100% 보장
+            progress.progress(1.0, text=None)
+
+        finally:
+            # ✅ 애니메이션 종료 후 잔여 요소 완전 제거 (빈 박스 남김 방지)
+            progress_placeholder.empty()
+            log_placeholder.empty()
+            holder.empty()
+
 
 
 
