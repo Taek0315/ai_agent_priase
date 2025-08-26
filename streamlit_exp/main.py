@@ -62,77 +62,82 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 def scroll_top_js(nonce: int | None = None):
     """
-    페이지/섹션 렌더마다 확실히 최상단으로 스크롤.
-    - components.html 로 실제 DOM에 JS를 삽입/실행
-    - 부모(section.main)와 iframe 내부 모두에서 즉시/RAF/지연 호출
-    - f-string 안 JS 객체 리터럴은 {{ }} 로 이스케이프 완료
+    페이지/섹션 렌더마다 '확실히' 최상단으로 스크롤.
+    - f-string을 쓰지 않고, 자리표시자 치환으로 JS를 구성 → 중괄호 이스케이프 문제 원천 차단
+    - components.html 에는 key를 절대 넘기지 않음 (버전 따라 오류)
+    - 부모(section.main)와 현재 iframe 모두에서 즉시/RAF/지연 호출
     """
-    # 안전한 nonce 계산 (외부에서 None/str/int로 넘어와도 OK)
+    # 안전한 nonce (외부에서 None/str/int가 들어와도 정수로 정규화)
     try:
         if nonce is None:
             nonce = int(st.session_state.get("_scroll_nonce", 0))
         else:
             nonce = int(nonce)
     except Exception:
-        nonce = int(st.session_state.get("_scroll_nonce", 0))
+        nonce = 0
+    st.session_state["_scroll_nonce"] = nonce
 
-    st.session_state["_scroll_nonce"] = nonce  # 상태 보관(선택사항)
+    # ── f-string 금지: JS 내 중괄호 그대로 사용 가능 ──
+    html_tmpl = """
+    <!-- nonce:$NONCE$ -->
+    <div id="__scroll_top_anchor_$NONCE$"></div>
+    <script>
+    (function(){
+      function goTop(){
+        try{
+          // 1) 현재 프레임 내부(백업): anchor로 이동 + 윈도우/문서 최상단
+          var el = document.getElementById("__scroll_top_anchor_$NONCE$");
+          if (el && el.scrollIntoView) el.scrollIntoView(true);  // 옵션 객체 대신 boolean로 안정 처리
+          window.scrollTo(0, 0);
+          if (document.documentElement) document.documentElement.scrollTop = 0;
+          if (document.body) document.body.scrollTop = 0;
+        }catch(e){}
 
-    # ⬇️ key 인자 제거! (components.html은 key를 받지 않음)
-    components.html(
-        f"""
-        <div id="__scroll_top_anchor_{nonce}"></div>
-        <script>
-        (function() {{
-          function goTop() {{
-            try {{
-              // 1) 현재 프레임 내부(백업): anchor로 이동 + 문서 최상단
-              var el = document.getElementById("__scroll_top_anchor_{nonce}");
-              if (el && el.scrollIntoView) el.scrollIntoView({{block: "start", inline: "nearest"}});
-              window.scrollTo(0, 0);
-              if (document.documentElement) document.documentElement.scrollTop = 0;
-              if (document.body) document.body.scrollTop = 0;
-            }} catch (e) {{}}
+        try{
+          // 2) 부모 프레임(실제 Streamlit 앱 컨테이너)
+          var pdoc = window.parent && window.parent.document;
+          if (pdoc){
+            var sect =
+              pdoc.querySelector("section.main") ||
+              pdoc.querySelector('[data-testid="stAppViewContainer"] .main') ||
+              pdoc.querySelector('[data-testid="stAppViewContainer"]');
+            if (sect){
+              if (sect.scrollTo) sect.scrollTo(0, 0);
+              else sect.scrollTop = 0;
+            } else if (window.parent && window.parent.scrollTo){
+              window.parent.scrollTo(0, 0);
+            }
+          }
+        }catch(e){}
+      }
 
-            try {{
-              // 2) 부모 프레임(실제 Streamlit 앱 컨테이너)
-              var pdoc = window.parent && window.parent.document;
-              if (pdoc) {{
-                var sect =
-                  pdoc.querySelector("section.main") ||
-                  pdoc.querySelector('[data-testid="stAppViewContainer"] .main') ||
-                  pdoc.querySelector('[data-testid="stAppViewContainer"]');
-                if (sect && sect.scrollTo) {{
-                  sect.scrollTo(0, 0);
-                }} else if (window.parent && window.parent.scrollTo) {{
-                  window.parent.scrollTo(0, 0);
-                }}
-              }}
-            }} catch (e) {{}}
-          }}
+      // 렌더 타이밍 편차를 커버하기 위해 다회 호출
+      goTop();
+      if (window.requestAnimationFrame) requestAnimationFrame(goTop);
+      setTimeout(goTop, 50);
+      setTimeout(goTop, 120);
+      setTimeout(goTop, 240);
+      setTimeout(goTop, 360);
+    })();
+    </script>
+    """
 
-          // 렌더 타이밍 편차를 커버하기 위해 다회 호출
-          goTop();
-          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
-          setTimeout(goTop, 60);
-          setTimeout(goTop, 120);
-          setTimeout(goTop, 240);
-          setTimeout(goTop, 360);
-        }})();
-        </script>
-        """,
-        height=1,          # 일부 환경에서 height=0이 레이아웃 이슈 유발 → 1로 안전
-        scrolling=False
-    )
+    html = html_tmpl.replace("$NONCE$", str(nonce))
+    # key 인자 절대 사용하지 않음
+    components.html(html, height=0, scrolling=False)
 
 
 def rerun_with_scroll_top():
     """
     페이지/섹션 전환 직전에 nonce를 1 증가시키고 즉시 rerun.
-    다음 렌더에서 scroll_top_js가 실행되어 꼭대기로 스크롤.
+    다음 렌더에서 scroll_top_js()가 실행되며 꼭대기로 이동.
     """
     st.session_state["_scroll_nonce"] = int(st.session_state.get("_scroll_nonce", 0)) + 1
-    st.rerun()
+    # Streamlit 1.28+ 에서 st.rerun 권장 (구버전은 experimental_rerun)
+    try:
+        st.rerun()
+    except Exception:
+        st.experimental_rerun()
 
 
 
