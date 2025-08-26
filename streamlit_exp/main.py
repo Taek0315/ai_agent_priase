@@ -58,45 +58,57 @@ html, body { overflow-x: hidden !important; }
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+#스크롤 상단 함수
+
 def scroll_top_js(nonce: int | None = None):
     """
-    페이지/섹션 렌더마다 '확실히' 최상단으로 스크롤.
-    - components.html 로 실제 DOM에서 스크립트를 실행 (markdown의 <script>는 실행 안 됨)
-    - key에 nonce를 섞어 매 렌더마다 컴포넌트를 재마운트 → 스크립트 재실행 보장
-    - 부모(section.main)와 iframe 내부 모두에 대해 즉시/RAF/지연 여러 번 시도
+    페이지/섹션 렌더마다 확실히 최상단으로 스크롤.
+    - components.html 로 실제 DOM에 스크립트를 삽입·실행
+    - key에 nonce를 섞어 매 렌더마다 재마운트 → 스크립트 재실행 보장
+    - 부모(section.main)와 iframe 내부 모두에서 즉시/RAF/지연 호출
     """
-    if "_scroll_nonce" not in st.session_state:
-        st.session_state["_scroll_nonce"] = 0
+    # 안전한 nonce 계산 (외부에서 None/str/int로 넘어와도 OK)
+    try:
+        if nonce is None:
+            nonce = int(st.session_state.get("_scroll_nonce", 0))
+        else:
+            nonce = int(nonce)
+    except Exception:
+        nonce = int(st.session_state.get("_scroll_nonce", 0))
 
-    if nonce is None:
-        nonce = st.session_state["_scroll_nonce"]
+    # state에 보관(다른 곳에서 사용 중이어도 문제 없음)
+    st.session_state["_scroll_nonce"] = nonce
 
     components.html(
         f"""
         <div id="__scroll_top_anchor_{nonce}"></div>
         <script>
-        (function(){{
-          function goTop(){{
+        (function() {{
+          function goTop() {{
             try {{
-              // 1) 현재 프레임 내부 (백업)
+              // 1) 현재 프레임 내부(백업) — anchor로 이동 + 윈도우/문서 최상단
               var el = document.getElementById("__scroll_top_anchor_{nonce}");
-              if (el && el.scrollIntoView) el.scrollIntoView({{block:"start", inline:"nearest"}});
-              window.scrollTo(0,0);
+              if (el && el.scrollIntoView) el.scrollIntoView({{block: "start", inline: "nearest"}});
+              window.scrollTo(0, 0);
               if (document.documentElement) document.documentElement.scrollTop = 0;
               if (document.body) document.body.scrollTop = 0;
-            }} catch(e) {{}}
+            }} catch (e) {{}}
 
             try {{
-              // 2) 부모 프레임(실제 Streamlit 뷰) 컨테이너
+              // 2) 부모 프레임(실제 Streamlit 앱 컨테이너)
               var pdoc = window.parent && window.parent.document;
               if (pdoc) {{
-                var sect = pdoc.querySelector("section.main") ||
-                           pdoc.querySelector('[data-testid="stAppViewContainer"] .main') ||
-                           pdoc.querySelector('[data-testid="stAppViewContainer"]');
-                if (sect && sect.scrollTo) {{ sect.scrollTo(0,0); }}
-                else if (window.parent && window.parent.scrollTo) {{ window.parent.scrollTo(0,0); }}
+                var sect =
+                  pdoc.querySelector("section.main") ||
+                  pdoc.querySelector('[data-testid="stAppViewContainer"] .main') ||
+                  pdoc.querySelector('[data-testid="stAppViewContainer"]');
+                if (sect && sect.scrollTo) {{
+                  sect.scrollTo(0, 0);
+                }} else if (window.parent && window.parent.scrollTo) {{
+                  window.parent.scrollTo(0, 0);
+                }}
               }}
-            }} catch(e) {{}}
+            }} catch (e) {{}}
           }}
 
           // 렌더 타이밍 편차를 커버하기 위해 다회 호출
@@ -109,19 +121,20 @@ def scroll_top_js(nonce: int | None = None):
         }})();
         </script>
         """,
-        height=0,          # 화면에 표시 공간 없음
+        height=1,                 # 0 대신 1로 (일부 환경에서 0이 레이아웃 이슈 유발)
         scrolling=False,
-        key=f"__scroll_top_key_{nonce}"   # ← nonce로 '다른' 컴포넌트로 인식 → 매번 재실행
+        key=f"__scroll_top_key_{nonce}"   # nonce를 섞어 매번 재마운트
     )
 
 
 def rerun_with_scroll_top():
     """
     페이지/섹션 전환 직전에 nonce를 1 증가시키고 즉시 rerun.
-    다음 렌더에서 scroll_top_js가 '새 key'로 실행되며 스크롤이 꼭대기로 이동.
+    다음 렌더에서 scroll_top_js가 '새 key'로 실행되어 꼭대기로 스크롤.
     """
-    st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
+    st.session_state["_scroll_nonce"] = int(st.session_state.get("_scroll_nonce", 0)) + 1
     st.rerun()
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
