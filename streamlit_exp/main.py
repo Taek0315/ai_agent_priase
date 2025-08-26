@@ -61,28 +61,53 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
 
-def scroll_top_js():
+def scroll_top_js(nonce=None):
+    """
+    페이지가 렌더될 때마다 최상단으로 스크롤.
+    - 부모 문서(section.main)와 iframe 내부(window) 둘 다 시도
+    - 여러 타이밍에 재시도 (즉시/RAF/지연)
+    - nonce를 넣어 매 호출마다 '새 스크립트'로 인식되도록 함
+    """
+    if nonce is None:
+        nonce = st.session_state.get("_scroll_nonce", 0)
+
     st.markdown(
-        """
-        <script>
-        (function(){
-          const goTop = () => {
-            try {
-              const sect = document.querySelector('section.main');
-              if (sect) sect.scrollTo({top:0, left:0, behavior:'instant'});
-              window.scrollTo({top:0, left:0, behavior:'instant'});
-            } catch (e) {}
-          };
-          // 즉시 + 약간 지연 2번 더(렌더 타이밍 대비)
+        f"""
+        <script id="goTop-{nonce}">
+        (function(){{
+          function goTop() {{
+            try {{
+              // 부모 문서(스트림릿 실제 뷰) 스크롤
+              var pdoc = window.parent && window.parent.document;
+              var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
+              if (sect && sect.scrollTo) sect.scrollTo({{top:0, left:0, behavior:'instant'}});
+            }} catch(e) {{}}
+
+            try {{
+              // iframe 내부(백업) 스크롤
+              window.scrollTo({{top:0, left:0, behavior:'instant'}});
+              document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
+              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
+            }} catch(e) {{}}
+          }}
+
+          // 즉시 실행 + 렌더 타이밍 대비 다회 실행
           goTop();
-          setTimeout(goTop, 50);
-          setTimeout(goTop, 200);
-        })();
+          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
+          setTimeout(goTop, 25);
+          setTimeout(goTop, 80);
+          setTimeout(goTop, 180);
+          setTimeout(goTop, 320);
+        }})();
         </script>
         """,
         unsafe_allow_html=True
     )
 
+def rerun_with_scroll_top():
+    """스크롤 스크립트가 매번 새로 실행되도록 nonce 올리고 바로 rerun."""
+    st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
+    st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
@@ -92,6 +117,7 @@ if "phase" not in st.session_state:
     st.session_state.current_kw_index = 0
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
+    st.session_state["_scroll_nonce"] = 0  # nonce 초기화
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 피드백 세트 로드 (안전 로드 + 폴백)
@@ -107,8 +133,6 @@ except Exception as e:
         "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
         "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
     }
-# ──────────────────────────────────────────────────────────────────────────────
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # COVNOX 로그 (EN)
@@ -207,10 +231,6 @@ def run_mcp_motion():
             log_placeholder.empty()
             holder.empty()
 
-
-
-
-
 # ─────────────────────────────────────────────
 # ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
 # 
@@ -268,7 +288,6 @@ CONSENT_HTML = """
 </div>
 """.strip()
 
-
 AGREE_HTML = """
 <div class="agree-wrap">
 
@@ -285,10 +304,8 @@ AGREE_HTML = """
     <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다. </li>
   </ol>
 
-
 </div>
 """.strip()
-
 
 PRIVACY_HTML = """
 <div class="privacy-wrap">
@@ -340,7 +357,6 @@ PRIVACY_HTML = """
 </div>
 """.strip()
 
-
 # ─────────────────────────────────────────────
 # 공통 CSS (슬라이더 제거 버전, 반응형 + 인쇄 최적화)
 # ─────────────────────────────────────────────
@@ -379,7 +395,6 @@ COMMON_CSS = """
 </style>
 """
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # 1) 렌더 함수 (슬라이더 제거: 고정 CSS만 주입)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -395,12 +410,11 @@ def render_privacy_doc():
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # 2) 연구 동의 페이지 (기존 로직 그대로, 이미지/슬라이더 없음)
 # ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.phase == "start":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.title("AI 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구")
 
@@ -408,17 +422,17 @@ if st.session_state.phase == "start":
         st.session_state.consent_step = "explain"
 
     if st.session_state.consent_step == "explain":
-        scroll_top_js()
+        scroll_top_js(st.session_state.get("_scroll_nonce"))
         st.subheader("연구대상자 설명문")
         render_consent_doc()
 
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
         if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
             st.session_state.consent_step = "agree"
-            st.rerun()
+            rerun_with_scroll_top()
 
     elif st.session_state.consent_step == "agree":
-        scroll_top_js()
+        scroll_top_js(st.session_state.get("_scroll_nonce"))
         st.subheader("연구 동의서")
         render_agree_doc()
 
@@ -443,7 +457,7 @@ if st.session_state.phase == "start":
         st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
-        # 버튼 가로 정렬/최소폭 보정 (다른 버튼들과 동일 스타일)
+        # 버튼 가로 정렬/최소폭 보정
         st.markdown("""
         <style>
         .nav-row .stButton > button {
@@ -463,7 +477,7 @@ if st.session_state.phase == "start":
         with left_col:
             if st.button("이전", key="consent_prev_btn", use_container_width=True):
                 st.session_state.consent_step = "explain"
-                st.rerun()
+                rerun_with_scroll_top()
 
         with right_col:
             if st.button("다음", key="consent_next_btn", use_container_width=True):
@@ -479,20 +493,14 @@ if st.session_state.phase == "start":
                         "startTime": datetime.now().isoformat()
                     })
                     st.session_state.phase = "demographic"
-                    st.rerun()
+                    rerun_with_scroll_top()
         st.markdown('</div>', unsafe_allow_html=True)
-
-
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1-1. 인적사항
 elif st.session_state.phase == "demographic":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
-    # logo_path = os.path.join(BASE_DIR, "logo.png")
-    # if os.path.exists(logo_path):
-    #     st.image(logo_path, width=150)
     st.title("인적사항 입력")
 
     gender = st.radio("성별", ["남자", "여자"])
@@ -504,12 +512,12 @@ elif st.session_state.phase == "demographic":
         else:
             st.session_state.data.update({"gender": gender, "age": age_group})
             st.session_state.phase = "anthro"
-            st.rerun()
+            rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 2. 의인화 척도 (5점 리커트 라디오) — 10문항 단위 페이지네이션
 elif st.session_state.phase == "anthro":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     # 질문 로드
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
@@ -531,7 +539,7 @@ elif st.session_state.phase == "anthro":
     # 페이지 전환 시 최상단 스크롤
     if st.session_state.get("_anthro_prev_page") != page:
         st.session_state["_anthro_prev_page"] = page
-        scroll_top_js()
+        scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     start_idx = (page - 1) * page_size
     end_idx = min(start_idx + page_size, total_items)
@@ -576,7 +584,7 @@ elif st.session_state.phase == "anthro":
         selected = st.radio(
             label=f"{global_idx+1}. {q}",
             options=options,
-            index=index_val,                 # 초기 미선택 허용 (Streamlit 최신 버전)
+            index=index_val,                 # 초기 미선택 허용
             format_func=lambda x: f"{x}점",
             horizontal=True,
             key=radio_key,
@@ -603,10 +611,10 @@ elif st.session_state.phase == "anthro":
             if page > 1:
                 if st.button("← 이전", use_container_width=True, key="anthro_prev"):
                     st.session_state["anthro_page"] = page - 1
-                    st.rerun()
+                    rerun_with_scroll_top()
 
         with col_info:
-            pass  # 필요 시 안내문 사용
+            pass
 
         with col_next:
             current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
@@ -618,7 +626,7 @@ elif st.session_state.phase == "anthro":
                         st.warning("현재 페이지 모든 문항을 1~5점 중 하나로 선택해 주세요.")
                     else:
                         st.session_state["anthro_page"] = page + 1
-                        st.rerun()
+                        rerun_with_scroll_top()
             else:
                 if st.button("다음", use_container_width=True, key="anthro_next_last"):
                     full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 5)
@@ -629,14 +637,13 @@ elif st.session_state.phase == "anthro":
                         st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
                         st.session_state["anthro_page"] = 1
                         st.session_state.phase = "achive"
-                        st.rerun()
+                        rerun_with_scroll_top()
         st.markdown('</div>', unsafe_allow_html=True)
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 2-1. 성취/접근 관련 추가 설문(6점 리커트) — 10/10/6 페이지네이션
 elif st.session_state.phase == "achive":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 선택해 주세요.</h2>", unsafe_allow_html=True)
     st.markdown("""
@@ -650,7 +657,7 @@ elif st.session_state.phase == "achive":
     </div>
     """, unsafe_allow_html=True)
 
-    # 질문 로드 (의인화 문항과 같은 폴더/규칙 가정: BASE_DIR/data)
+    # 질문 로드
     achive_path = os.path.join(BASE_DIR, "data", "questions_achive.json")
     try:
         with open(achive_path, "r", encoding="utf-8") as f:
@@ -660,8 +667,6 @@ elif st.session_state.phase == "achive":
         achive_questions = []
 
     total_items = len(achive_questions)  # 기대: 26
-    # 10, 10, 6으로 슬라이스
-    page_breaks = [10, 20, total_items]  # 각 페이지의 끝 인덱스(1-based 해석을 0-based 슬라이스로 변환)
     page_size_list = [10, 10, total_items - 20] if total_items >= 20 else [total_items]
     total_pages = len(page_size_list)
 
@@ -676,9 +681,9 @@ elif st.session_state.phase == "achive":
     # 페이지 전환 시 스크롤 최상단
     if st.session_state.get("_achive_prev_page") != page:
         st.session_state["_achive_prev_page"] = page
-        scroll_top_js()
+        scroll_top_js(st.session_state.get("_scroll_nonce"))
 
-    # 현재 페이지의 시작/끝 인덱스(0-based, end exclusive)
+    # 현재 페이지의 시작/끝 인덱스
     if page == 1:
         start_idx, end_idx = 0, min(10, total_items)
     elif page == 2:
@@ -704,20 +709,20 @@ elif st.session_state.phase == "achive":
         st.session_state["achive_responses"][gi] = choice
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
-    # ── 버튼 가로 정렬/최소폭 보정 (초소형 화면 대응) ───────────────────
+    # 버튼 가로 정렬/최소폭 보정
     st.markdown("""
     <style>
     .nav-row .stButton > button {
     width: 100%;
-    min-width: 120px;            /* 너무 작아지지 않게 */
+    min-width: 120px;
     }
     @media (max-width: 420px) {
-    .nav-row .stButton > button { min-width: auto; }  /* 초소형 화면에서는 자동 */
+    .nav-row .stButton > button { min-width: auto; }
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # 네비게이션 (양 끝 버튼 + 가운데 안내)
+    # 네비게이션
     st.markdown('<div class="nav-row">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
 
@@ -725,15 +730,12 @@ elif st.session_state.phase == "achive":
         if page > 1:
             if st.button("← 이전", key="achive_prev", use_container_width=True):
                 st.session_state["achive_page"] = page - 1
-                st.rerun()
+                rerun_with_scroll_top()
 
     with c2:
-        # 필요하면 진행상황/안내 표시 (길면 자동 줄바꿈됨)
-        # 예시: st.markdown(f"페이지 {page} / {total_pages}", help="현재 진행 상황")
         pass
 
     with c3:
-        # 현재 페이지 필수 검증
         curr_slice = st.session_state["achive_responses"][start_idx:end_idx]
         all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
 
@@ -743,7 +745,7 @@ elif st.session_state.phase == "achive":
                     st.warning("현재 페이지의 모든 문항에 1~6 중 하나를 선택해 주세요.")
                 else:
                     st.session_state["achive_page"] = page + 1
-                    st.rerun()
+                    rerun_with_scroll_top()
         else:
             # 마지막 페이지 → 전체 검증 후 다음 단계
             if st.button("다음 (추론 과제 안내)", key="achive_done", use_container_width=True):
@@ -751,19 +753,15 @@ elif st.session_state.phase == "achive":
                 if not full_ok:
                     st.warning("모든 문항에 응답해 주세요. (1~6)")
                 else:
-                    # 저장
                     st.session_state.data["achive_responses"] = st.session_state["achive_responses"]
-                    # 페이지 인덱스 초기화
                     st.session_state["achive_page"] = 1
-                    # 다음 단계로 진행
                     st.session_state.phase = "writing_intro"
-                    st.rerun()
+                    rerun_with_scroll_top()
     st.markdown('</div>', unsafe_allow_html=True)
-
 
 # 2-2. 추론 과제 지시문
 elif st.session_state.phase == "writing_intro":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
     st.markdown("""
@@ -786,12 +784,12 @@ elif st.session_state.phase == "writing_intro":
     """)
     if st.button("추론 과제 시작"):
         st.session_state.phase = "writing"
-        st.rerun()
+        rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 3. 추론 기반 객관식 과제
 elif st.session_state.phase == "writing":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     if "inference_started_ts" not in st.session_state:
         st.session_state.inference_started_ts = time.time()
@@ -898,14 +896,14 @@ elif st.session_state.phase == "writing":
                     "options": questions[i]["options"],
                     "selected_idx": selected_idx[i],
                     "correct_idx": int(questions[i]["ans"]),
-                    "rationales": rationales[i]  # ✅ 각 문항 근거 최소 1개 보장
+                    "rationales": rationales[i]
                 } for i in range(len(questions))]
 
                 st.session_state.inference_answers = detail
                 st.session_state.inference_score = int(score)
                 st.session_state.inference_duration_sec = duration
 
-                # 🔸 저장 버퍼에 즉시 기록
+                # 저장 버퍼에 즉시 기록
                 st.session_state.data["inference_answers"] = detail
                 st.session_state.data["inference_score"] = int(score)
                 st.session_state.data["inference_duration_sec"] = duration
@@ -916,13 +914,12 @@ elif st.session_state.phase == "writing":
                 st.session_state["_mcp_started"] = False
                 st.session_state["_mcp_done"] = False
                 st.session_state.phase = "analyzing"
-                st.rerun()
-
+                rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 4. MCP 분석 모션 (완전 분리)
 elif st.session_state.phase == "analyzing":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
     page = st.empty()
     with page.container():
         st.markdown("""
@@ -937,9 +934,9 @@ elif st.session_state.phase == "analyzing":
 
         if not st.session_state.get("_mcp_started", False):
             st.session_state["_mcp_started"] = True
-            run_mcp_motion()                  # ← HTML 기반, st.progress 사용 안함
+            run_mcp_motion()
             st.session_state["_mcp_done"] = True
-            st.rerun()
+            rerun_with_scroll_top()
 
         if st.session_state.get("_mcp_done", False):
             st.markdown("""
@@ -957,14 +954,13 @@ elif st.session_state.phase == "analyzing":
                     st.session_state["_mcp_started"] = False
                     st.session_state["_mcp_done"] = False
                     st.session_state.phase = "ai_feedback"
-                    st.rerun()
+                    rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (근본 정리: 시스템 위젯 배너/분리 렌더 제거)
+# 5. AI 피드백
 elif st.session_state.phase == "ai_feedback":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
-    # 0) 시스템 success 위젯 대신 커스텀 배너(불필요한 래퍼 제거)
     st.markdown("""
     <style>
       .banner-ok{
@@ -992,7 +988,6 @@ elif st.session_state.phase == "ai_feedback":
     <div class="banner-ok">AI 분석 완료!</div>
     """, unsafe_allow_html=True)
 
-    # 1) 라벨 데이터
     set_key = st.session_state.get("feedback_set_key", "set1")
     LABEL_MAP = {
         "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
@@ -1000,7 +995,6 @@ elif st.session_state.phase == "ai_feedback":
     }
     label = LABEL_MAP.get(set_key, LABEL_MAP["set1"])
 
-    # 2) 라벨 + 분석 카드(제목)까지 한 번에 렌더 → 중간 빈 컨테이너 생성 원천 차단
     st.markdown(f"""
     <div class="labelbox">
       <div class="label-hd">요약 결과</div>
@@ -1011,23 +1005,55 @@ elif st.session_state.phase == "ai_feedback":
     </div>
     """, unsafe_allow_html=True)
 
-    # 3) 차트 렌더 (카드 내부에 이어서 붙도록 컨테이너 사용)
-    #    - plotly는 별도의 위젯 컨테이너를 쓰므로 직전 카드에 이어 배치됨
-    labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
-    base   = [24, 22, 18, 20, 16]
-    jitter = [random.randint(-3, 3) for _ in labels]
+    # 3) 차트
+    labels = ["논리적 사고", "패턴 발견", "창의성", "주의 집중", "끈기"]
+    CHART_PRESETS = {
+        "set1": {
+            "base": [18, 24, 20, 40, 36],
+            "colors": ["#CDECCB", "#7AC779", "#B1E3AE", "#5BAF5A", "#92D091"],
+        },
+        "set2": {
+            "base": [32, 36, 38, 18, 24],
+            "colors": ["#A5D6A7", "#66BB6A", "#81C784", "#43A047", "#2E7D32"],
+        },
+    }
+    preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
+    base = preset["base"]
+    palette = preset["colors"]
+
+    if "chart_seed" not in st.session_state:
+        st.session_state.chart_seed = random.randint(1_000, 9_999)
+    rng = random.Random(st.session_state.chart_seed)
+    jitter = [rng.randint(-2, 2) for _ in labels]
     values = [max(10, b + j) for b, j in zip(base, jitter)]
+
     try:
         import plotly.express as px
-        fig = px.pie(values=values, names=labels, hole=0.55)
-        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
-        fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10),
-                          showlegend=True, legend=dict(orientation="h", y=-0.1))
+        fig = px.pie(
+            values=values,
+            names=labels,
+            hole=0.55,
+            color=labels,
+            color_discrete_sequence=palette
+        )
+        fig.update_traces(
+            textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>",
+            marker=dict(line=dict(width=1, color="white"))
+        )
+        fig.update_layout(
+            height=340,
+            margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=True,
+            legend=dict(orientation="h", y=-0.1),
+            uniformtext_minsize=12,
+            uniformtext_mode="hide"
+        )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
-    # 4) 서술형 피드백 카드(이것도 한 번에 렌더)
+    # 4) 서술형 피드백
     feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
     try:
         with open(feedback_path, "r", encoding="utf-8") as f:
@@ -1070,16 +1096,15 @@ elif st.session_state.phase == "ai_feedback":
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
-        st.rerun()
+        rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
 elif st.session_state.phase == "motivation":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
 
-    # 가로 폭 축소 시 잘림 방지
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:30px;'>
@@ -1105,7 +1130,7 @@ elif st.session_state.phase == "motivation":
     for i, q in enumerate(motivation_q, start=1):
         choice = st.radio(
             label=f"{i}. {q}",
-            options=list(range(1, 6)),
+            options=list(range(1, 5+1)),
             index=None,
             horizontal=True,
             key=f"motivation_{i}",
@@ -1120,12 +1145,12 @@ elif st.session_state.phase == "motivation":
         else:
             st.session_state.data["motivation_responses"] = motivation_responses
             st.session_state.phase = "phone_input"
-            st.rerun()
+            rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6-1. 휴대폰 번호 입력
 elif st.session_state.phase == "phone_input":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.title("휴대폰 번호 입력")
     st.markdown("""
@@ -1143,19 +1168,19 @@ elif st.session_state.phase == "phone_input":
             st.session_state.data["endTime"] = datetime.now().isoformat()
             save_to_csv(st.session_state.data)
             st.session_state.phase = "result"
-            st.rerun()
+            rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 7. 완료 화면
 elif st.session_state.phase == "result":
-    scroll_top_js()
+    scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     if "result_submitted" not in st.session_state:
         st.success("모든 과제가 완료되었습니다. 감사합니다!")
         st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
         if st.button("제출"):
             st.session_state.result_submitted = True
-            st.rerun()
+            rerun_with_scroll_top()
     else:
         st.success("응답이 저장되었습니다.")
         st.markdown("""
