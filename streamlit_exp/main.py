@@ -63,9 +63,9 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 def scroll_top_js(nonce: int | None = None):
     """
     페이지/섹션 렌더마다 확실히 최상단으로 스크롤.
-    - components.html 로 실제 DOM에서 JS를 실행 (markdown의 <script>는 실행 안 됨)
-    - key에 nonce를 섞어 매 렌더마다 재마운트 → 스크립트 재실행 보장
+    - components.html 로 실제 DOM에 JS를 삽입/실행
     - 부모(section.main)와 iframe 내부 모두에서 즉시/RAF/지연 호출
+    - f-string 안 JS 객체 리터럴은 {{ }} 로 이스케이프 완료
     """
     # 안전한 nonce 계산 (외부에서 None/str/int로 넘어와도 OK)
     try:
@@ -76,9 +76,9 @@ def scroll_top_js(nonce: int | None = None):
     except Exception:
         nonce = int(st.session_state.get("_scroll_nonce", 0))
 
-    # state에 저장(다른 곳에서 사용 중이어도 문제 없음)
-    st.session_state["_scroll_nonce"] = nonce
+    st.session_state["_scroll_nonce"] = nonce  # 상태 보관(선택사항)
 
+    # ⬇️ key 인자 제거! (components.html은 key를 받지 않음)
     components.html(
         f"""
         <div id="__scroll_top_anchor_{nonce}"></div>
@@ -86,7 +86,7 @@ def scroll_top_js(nonce: int | None = None):
         (function() {{
           function goTop() {{
             try {{
-              // 1) 현재 프레임 내부(백업): anchor로 이동 + 윈도우/문서 최상단
+              // 1) 현재 프레임 내부(백업): anchor로 이동 + 문서 최상단
               var el = document.getElementById("__scroll_top_anchor_{nonce}");
               if (el && el.scrollIntoView) el.scrollIntoView({{block: "start", inline: "nearest"}});
               window.scrollTo(0, 0);
@@ -121,19 +121,19 @@ def scroll_top_js(nonce: int | None = None):
         }})();
         </script>
         """,
-        height=1,                 # 일부 환경에서 height=0이 레이아웃 이슈를 유발 → 1로 안전하게
-        scrolling=False,
-        key=f"__scroll_top_key_{nonce}"   # nonce를 섞어 매번 재마운트 → 스크립트 재실행
+        height=1,          # 일부 환경에서 height=0이 레이아웃 이슈 유발 → 1로 안전
+        scrolling=False
     )
 
 
 def rerun_with_scroll_top():
     """
     페이지/섹션 전환 직전에 nonce를 1 증가시키고 즉시 rerun.
-    다음 렌더에서 scroll_top_js가 '새 key'로 실행되어 꼭대기로 스크롤.
+    다음 렌더에서 scroll_top_js가 실행되어 꼭대기로 스크롤.
     """
     st.session_state["_scroll_nonce"] = int(st.session_state.get("_scroll_nonce", 0)) + 1
     st.rerun()
+
 
 
 
