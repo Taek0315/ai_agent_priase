@@ -940,8 +940,7 @@ elif st.session_state.phase == "analyzing":
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (간단한 5요소 그래프 버전 · 잔상 제거/임포트 가드 + 상단 라벨 배너)
+# 5. AI 피드백 (라벨바 + 5요소 도넛 · 잔상 제거/임포트 가드)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
@@ -951,38 +950,67 @@ elif st.session_state.phase == "ai_feedback":
         try:
             if holder is not None:
                 holder.empty()
-                st.session_state[k] = None  # 깔끔히 초기화
+                st.session_state[k] = None
         except Exception:
             pass
 
-   # ── 1) 상단 라벨 배너 (set1 / set2에 따라 다른 문구)
+    # ── 1) 기본 완료 알림(굵은 초록 박스)
+    st.success("AI 분석 완료!")
+
+    # ── 1-1) 네이티브 progress 바는 전부 숨김 (우리가 커스텀 바를 사용)
+    st.markdown("""
+    <style>
+      div[data-testid="stProgress"], div[role="progressbar"] { display:none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── 2) set1/set2와 동기화된 라벨바 (여기 문구만 수정)
     set_key = st.session_state.get("feedback_set_key", "set1")
-
     LABEL_MAP = {
-        "set1": {
-            "title": "추론 과정에서 열심히 노력한 흔적이 보입니다.",  # TODO: 원하는 라벨명으로 수정
-            "desc":  "과정 중 노력과 고민"  # TODO: 원하는 설명으로 수정
-        },
-        "set2": {
-            "title": "추론 과정에서 추론 능력이 돋보입니다.",  # TODO: 원하는 라벨명으로 수정
-            "desc":  "빠른 단서 파악, 구조 연결 능력이 두드러짐"     # TODO: 원하는 설명으로 수정
-        }
+        "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},  # ← 원하는 문구로 수정
+        "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}  # ← 원하는 문구로 수정
     }
-
     label_title = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["title"]
-    #label_desc  = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["desc"]
+    label_desc  = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["desc"]
 
-    # Streamlit 초록 success 박스를 활용
-    st.success(f"결과 라벨 · **{label_title}**")
+    # 커스텀 초록 라벨 바 (진짜 progress처럼 보이지만 내부 텍스트 가능)
+    fill_pct = 72  # 퍼센트는 고정 또는 살짝 랜덤해도 됨
+    st.markdown(f"""
+    <style>
+      .labelbar-wrap {{ margin: 8px 0 4px; }}
+      .labelbar {{
+        position: relative; height: 22px; border-radius: 999px;
+        background: #eaf7ed; border: 1.5px solid #2E7D32; overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(46,125,50,.06);
+      }}
+      .labelbar-fill {{
+        position:absolute; inset:0 auto 0 0; width:{fill_pct}%;
+        background: linear-gradient(90deg, #7bd389, #2E7D32);
+        animation: lbfill .8s ease-out forwards;
+      }}
+      @keyframes lbfill {{ from {{ width:0%; }} to {{ width:{fill_pct}%; }} }}
+      .labelbar-text {{
+        position:absolute; left:14px; top:50%; transform:translateY(-50%);
+        font-weight:700; font-size:13.5px; color:#0f3a17; letter-spacing:.2px;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; right:10px;
+      }}
+    </style>
+    <div class="labelbar-wrap">
+      <div class="labelbar">
+        <div class="labelbar-fill"></div>
+        <div class="labelbar-text">결과 라벨 · <b>{label_title}</b> — {label_desc}</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── 2) Plotly 임포트 가드 ───────────────────────────────────────────────
+    # ── 3) Plotly 임포트 가드
     try:
         import plotly.express as px
         PLOTLY_OK = True
     except Exception:
         PLOTLY_OK = False
 
-    # ── 3) 카드 스타일 ─────────────────────────────────────────────────────
+    # ── 4) 카드 스타일
     st.markdown("""
     <style>
       .result-card{
@@ -995,33 +1023,27 @@ elif st.session_state.phase == "ai_feedback":
     </style>
     """, unsafe_allow_html=True)
 
-    # ── 4) 도넛 그래프 (5요소/단순값) ───────────────────────────────────────
+    # ── 5) 도넛 그래프 (5요소/단순값)
     st.markdown("<div class='result-card'>", unsafe_allow_html=True)
     st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
 
     labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
-
     import random
-    base = [24, 22, 18, 20, 16]
+    base   = [24, 22, 18, 20, 16]
     jitter = [random.randint(-3, 3) for _ in labels]
     values = [max(10, b + j) for b, j in zip(base, jitter)]
 
     if PLOTLY_OK:
         fig = px.pie(values=values, names=labels, hole=0.55)
         fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
-        fig.update_layout(
-            height=340,
-            margin=dict(l=10, r=10, t=10, b=10),
-            showlegend=True,
-            legend=dict(orientation="h", y=-0.1)
-        )
+        fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10),
+                          showlegend=True, legend=dict(orientation="h", y=-0.1))
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
         st.write("시각화를 준비 중입니다.")
-
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── 5) 서술형 피드백 (기존 하이라이트 유지) ──────────────────────────
+    # ── 6) 서술형 피드백 (set1/set2 일치 유지)
     feedback = random.choice(feedback_sets[set_key])
     highlight_words = [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
@@ -1045,18 +1067,16 @@ elif st.session_state.phase == "ai_feedback":
             <h2>📢 AI 평가 결과</h2>
             <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{feedback.replace("\n","<br>")}</p>
         </div>
-        """,
-        unsafe_allow_html=True
+        """, unsafe_allow_html=True
     )
 
-    # ── 6) 하단 여백(과잉 공백 방지) ────────────────────────────────────────
+    # ── 7) 하단 여백 & 다음 단계
     st.markdown("&nbsp;", unsafe_allow_html=True)
-
-    # ── 7) 다음 단계 버튼 ──────────────────────────────────────────────────
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 
 
