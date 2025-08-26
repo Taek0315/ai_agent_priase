@@ -140,8 +140,9 @@ fake_logs = [
 ]
 
 # MCP 애니메이션 (정중앙)
+# MCP 애니메이션 (정중앙) — 완료 후 잔여 박스 완전 제거 버전
 def run_mcp_motion():
-    # 위쪽에 살짝 뷰포트 여백을 넣어 중앙 근처에 배치
+    # 중앙 배치 여백
     st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
 
     st.markdown("""
@@ -156,6 +157,7 @@ def run_mcp_motion():
         </style>
     """, unsafe_allow_html=True)
 
+    # 로고
     try:
         base_dir = os.getcwd()
         logo_path = os.path.join(base_dir, "covnox.png")
@@ -166,7 +168,7 @@ def run_mcp_motion():
 
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    # 로그와 프로그레스를 한 컨테이너에 묶어 레이아웃 흔들림 방지
+    # 로그 + 프로그레스 (레이아웃 고정)
     with st.container():
         log_placeholder = st.empty()
         progress = st.progress(0, text=None)
@@ -174,20 +176,35 @@ def run_mcp_motion():
         start = time.time()
         total = 8.0
         step = 0
-        while True:
-            t = time.time() - start
-            if t >= total: break
-            progress.progress(min(t/total, 1.0), text=None)
-            msg = fake_logs[step % len(fake_logs)]
-            timestamp = time.strftime("%H:%M:%S")
-            log_placeholder.markdown(
-                f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
-                unsafe_allow_html=True
-            )
-            step += 1
-            time.sleep(0.4)
 
-        progress.progress(1.0, text=None)
+        try:
+            while True:
+                t = time.time() - start
+                if t >= total:
+                    break
+
+                # 진행 상태 업데이트
+                progress.progress(min(t/total, 1.0), text=None)
+
+                # 로그 출력
+                msg = fake_logs[step % len(fake_logs)]
+                timestamp = time.strftime("%H:%M:%S")
+                log_placeholder.markdown(
+                    f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
+                    unsafe_allow_html=True
+                )
+
+                step += 1
+                time.sleep(0.4)
+
+            # 마지막 100% 보장
+            progress.progress(1.0, text=None)
+
+        finally:
+            # ✅ 애니메이션 종료 후 잔여 요소 완전 제거
+            progress.empty()
+            log_placeholder.empty()
+
 
 
 # ─────────────────────────────────────────────
@@ -940,41 +957,42 @@ elif st.session_state.phase == "analyzing":
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (라벨: 텍스트박스 / 잔여 프로그레스바 완전 제거)
+# 5. AI 피드백 (라벨: 텍스트박스 / 잔여 박스 완전 제거)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
-    # 0) 혹시 남아 있을 수 있는 진행바/플레이스홀더 강제 제거
-    #    - CSS: 보이지 않게
-    #    - JS: DOM 자체에서 삭제(스트림릿 버전 변화 대응)
+    # 0) 전역 진행바/플레이스홀더 1차 제거
     st.markdown("""
     <style>
+      /* 스트림릿/타 라이브러리 진행바 케이스 전부 숨김 */
       div[data-testid="stProgress"],
       div[role="progressbar"],
-      .stProgress, .stProgress > div { display:none !important; height:0 !important; }
+      .stProgress, .stProgress * ,
+      div[aria-valuemin][aria-valuemax],
+      [data-baseweb="progress-bar"] {
+        display:none !important; height:0 !important; overflow:hidden !important;
+      }
     </style>
     <script>
-      try {
-        const kill = (sel) => document.querySelectorAll(sel).forEach(el => {
-          // progressbar의 래퍼까지 제거 시, 빈 박스 자체가 사라짐
-          (el.parentElement || el).remove();
-        });
+      try{
+        const kill = (sel)=>document.querySelectorAll(sel).forEach(el => (el.parentElement||el).remove());
         kill('div[data-testid="stProgress"]');
         kill('[role="progressbar"]');
-        // 일부 버전에선 shadow host 내부에 생성 → 상위 섹션별로 한 번 더 검색
-        document.querySelectorAll('section.main *').forEach(node => {
-          if (node.getAttribute && node.getAttribute('role') === 'progressbar') {
-            (node.parentElement || node).remove();
-          }
+        kill('[aria-valuemin][aria-valuemax]');
+        kill('[data-baseweb="progress-bar"]');
+        // 섹션 내부 깊은 곳까지 한 번 더
+        document.querySelectorAll('section.main *').forEach(n=>{
+          const role = (n.getAttribute && n.getAttribute('role'))||'';
+          if(role==='progressbar'){ (n.parentElement||n).remove(); }
         });
-      } catch(e) {}
+      }catch(e){}
     </script>
     """, unsafe_allow_html=True)
 
     # 1) 완료 알림
     st.success("AI 분석 완료!")
 
-    # 2) 결과 라벨(텍스트 박스 스타일) — set1/set2 동기화
+    # 2) 결과 라벨(텍스트 박스) — f-string(변수 삽입 O)
     set_key = st.session_state.get("feedback_set_key", "set1")
     LABEL_MAP = {
         "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
@@ -985,37 +1003,78 @@ elif st.session_state.phase == "ai_feedback":
 
     st.markdown(f"""
     <style>
-      .labelbox {{
+    .labelbox {{
         border: 2px solid #2E7D32; border-radius: 12px;
         background: #F9FFF9; padding: 12px 14px; margin: 8px 0 6px;
         box-shadow: 0 3px 10px rgba(46,125,50,.08);
-      }}
-      .labelbox .label-hd {{
+    }}
+    .labelbox .label-hd {{
         font-weight: 800; color:#1B5E20; font-size: 15px; margin:0 0 6px 0;
         display:flex; gap:8px; align-items:center;
-      }}
-      .labelbox .label-bd {{ color:#0f3a17; font-size: 14.5px; line-height:1.65; }}
+    }}
+    .labelbox .label-bd {{ color:#0f3a17; font-size: 14.5px; line-height:1.65; }}
     </style>
-    <div class="labelbox">
-      <div class="label-hd">결과 라벨</div>
-      <div class="label-bd"><b>{label_title}</b> — {label_desc}</div>
+    <div id="ai-label-box" class="labelbox">
+    <div class="label-hd">요약 결과</div>
+    <div class="label-bd"><b>{label_title}</b> — {label_desc}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 3) 결과 카드 + 도넛 그래프
+    # ⬇️ 유령 박스 제거 스크립트 — f-string 아님(변수 없음, 중괄호 이스케이프 불필요)
     st.markdown("""
-    <style>
-      .result-card{
-        border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
-        box-shadow:0 6px 14px rgba(46,125,50,.08);
-        animation: fadeUp .6s ease-out both;
-      }
-      .result-card h2{ text-align:center; margin:0 0 12px; color:#1B5E20; }
-      @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
-    </style>
+    <script>
+    try {
+    const label = document.getElementById('ai-label-box');
+    // 그래프 카드(#analysis-start)가 렌더된 뒤 동작하도록 소폭 지연
+    setTimeout(() => {
+        if (!label) return;
+        let node = label.nextElementSibling;
+        let guard = 0;
+        while (node && guard < 12 && node.id !== 'analysis-start') {
+        const cs   = getComputedStyle(node);
+        const h    = node.getBoundingClientRect().height;
+        const txt  = (node.textContent || '').trim();
+        const role = (node.getAttribute('role') || '').toLowerCase();
+        const bg   = (cs.backgroundColor || '').replace(/\\s/g,'').toLowerCase();
+
+        const looksProgress =
+            role.includes('progressbar') ||
+            node.matches('div[data-testid="stProgress"], .stProgress, .stProgress *, [aria-valuemin][aria-valuemax], [data-baseweb="progress-bar"]');
+
+        const thinOrEmpty = (h <= 90) && (txt.length === 0 || txt === "\\u200b");
+        const greenish = bg.includes('rgb(249,255,249)') || bg.includes('rgb(240,255,240)') || bg.includes('rgb(233,255,233)');
+
+        if (looksProgress || thinOrEmpty || greenish) {
+            const next = node.nextElementSibling;
+            (node.parentElement || node).remove();
+            node = next; guard++; continue;
+        }
+        node = node.nextElementSibling; guard++;
+        }
+        // 마지막 안전망
+        document.querySelectorAll('[role="progressbar"], div[data-testid="stProgress"], [aria-valuemin][aria-valuemax], [data-baseweb="progress-bar"]').forEach(
+        el => (el.parentElement || el).remove()
+        );
+    }, 60);
+    } catch(e) {}
+    </script>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        .result-card{
+            border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
+            box-shadow:0 6px 14px rgba(46,125,50,.08);
+            animation: fadeUp .6s ease-out both;
+        }
+        .result-card h2{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }
+        @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+        </style>
+        """, unsafe_allow_html=True)
+
+
+    # 그래프 카드 시작 앵커(id) 부여
+    st.markdown("<div id='analysis-start' class='result-card'>", unsafe_allow_html=True)
     st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
 
     labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
@@ -1030,13 +1089,13 @@ elif st.session_state.phase == "ai_feedback":
         fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
         fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10),
                           showlegend=True, legend=dict(orientation="h", y=-0.1))
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 4) 서술형 피드백(세트 유지/강조 처리)
+    # 4) 서술형 피드백
     feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
     try:
         with open(feedback_path, "r", encoding="utf-8") as f:
@@ -1049,6 +1108,7 @@ elif st.session_state.phase == "ai_feedback":
             "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
         }
 
+    import random
     feedback = random.choice(feedback_sets.get(set_key, feedback_sets["set1"]))
     highlight_words = [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
@@ -1081,11 +1141,6 @@ elif st.session_state.phase == "ai_feedback":
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
-
-
-
-
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
