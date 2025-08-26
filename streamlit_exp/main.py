@@ -941,22 +941,39 @@ elif st.session_state.phase == "analyzing":
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (간단한 5요소 그래프 버전 · 잔상 제거/임포트 가드 포함)
+# 5. AI 피드백 (간단한 5요소 그래프 버전 · 잔상 제거/임포트 가드 + 상단 라벨 배너)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
-    # ── 0) 이전 단계 진행바/빈 컨테이너 잔상 제거 ───────────────────────────
-    # 추론 단계 등에서 사용했을 수 있는 holder를 안전하게 비움
+    # ── 0) 이전 단계 진행바/빈 컨테이너 잔상 제거 (유지 권장)
     for k in ["prog_holder", "progress_holder", "loader_holder", "inference_progress"]:
         holder = st.session_state.get(k)
         try:
             if holder is not None:
                 holder.empty()
+                st.session_state[k] = None  # 깔끔히 초기화
         except Exception:
             pass
 
-    # ── 1) 상단 알림 ────────────────────────────────────────────────────────
-    st.success("AI 분석 완료!")
+   # ── 1) 상단 라벨 배너 (set1 / set2에 따라 다른 문구)
+    set_key = st.session_state.get("feedback_set_key", "set1")
+
+    LABEL_MAP = {
+        "set1": {
+            "title": "추론 과정에서 열심히 노력한 흔적이 보입니다.",  # TODO: 원하는 라벨명으로 수정
+            "desc":  "과정 중 노력과 고민"  # TODO: 원하는 설명으로 수정
+        },
+        "set2": {
+            "title": "추론 과정에서 추론 능력이 돋보입니다.",  # TODO: 원하는 라벨명으로 수정
+            "desc":  "빠른 단서 파악, 구조 연결 능력이 두드러짐"     # TODO: 원하는 설명으로 수정
+        }
+    }
+
+    label_title = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["title"]
+    #label_desc  = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["desc"]
+
+    # Streamlit 초록 success 박스를 활용
+    st.success(f"결과 라벨 · **{label_title}**")
 
     # ── 2) Plotly 임포트 가드 ───────────────────────────────────────────────
     try:
@@ -965,7 +982,7 @@ elif st.session_state.phase == "ai_feedback":
     except Exception:
         PLOTLY_OK = False
 
-    # ── 3) 스타일 ───────────────────────────────────────────────────────────
+    # ── 3) 카드 스타일 ─────────────────────────────────────────────────────
     st.markdown("""
     <style>
       .result-card{
@@ -985,7 +1002,6 @@ elif st.session_state.phase == "ai_feedback":
     labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
 
     import random
-    # 과도한 인상 피하려고 범위를 좁은 합리적 값대에서 샘플링
     base = [24, 22, 18, 20, 16]
     jitter = [random.randint(-3, 3) for _ in labels]
     values = [max(10, b + j) for b, j in zip(base, jitter)]
@@ -1001,13 +1017,12 @@ elif st.session_state.phase == "ai_feedback":
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
-        # Plotly 설치 전이라면 간단 텍스트로 대체(화면 붕괴 방지)
         st.write("시각화를 준비 중입니다.")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── 5) 서술형 피드백 ───────────────────────────────────────────────────
-    feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
+    # ── 5) 서술형 피드백 (기존 하이라이트 유지) ──────────────────────────
+    feedback = random.choice(feedback_sets[set_key])
     highlight_words = [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
@@ -1039,9 +1054,10 @@ elif st.session_state.phase == "ai_feedback":
 
     # ── 7) 다음 단계 버튼 ──────────────────────────────────────────────────
     if st.button("학습동기 설문으로 이동"):
-        st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
+        st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 
 
@@ -1050,7 +1066,7 @@ elif st.session_state.phase == "ai_feedback":
 elif st.session_state.phase == "motivation":
     scroll_top_js()
 
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 과제 이후 나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
 
     # 가로 폭 축소 시 잘림 방지
     st.markdown("""
