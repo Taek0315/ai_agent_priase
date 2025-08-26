@@ -960,57 +960,63 @@ elif st.session_state.phase == "analyzing":
                     st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (간소화: 삭제 스크립트 없음)
+# 5. AI 피드백 (근본 정리: 시스템 위젯 배너/분리 렌더 제거)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
-    st.success("AI 분석 완료!")
+    # 0) 시스템 success 위젯 대신 커스텀 배너(불필요한 래퍼 제거)
+    st.markdown("""
+    <style>
+      .banner-ok{
+        background:#0f3a17; color:#e6ffe6; border-radius:10px; padding:12px 14px;
+        font-weight:700; margin:6px 0 12px; text-align:left;
+      }
+      .labelbox{
+        border: 2px solid #2E7D32; border-radius: 12px;
+        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 12px;
+        box-shadow: 0 3px 10px rgba(46,125,50,.08);
+      }
+      .labelbox .label-hd{
+        font-weight:800; color:#1B5E20; font-size:15px; margin:0 0 6px 0;
+        display:flex; gap:8px; align-items:center;
+      }
+      .labelbox .label-bd{ color:#0f3a17; font-size:14.5px; line-height:1.65; }
+      .result-card{
+        border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
+        box-shadow:0 6px 14px rgba(46,125,50,.08);
+        animation: fadeUp .6s ease-out both;
+      }
+      .result-card h2{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }
+      @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+    </style>
+    <div class="banner-ok">AI 분석 완료!</div>
+    """, unsafe_allow_html=True)
 
-    # 결과 라벨(텍스트 박스)
+    # 1) 라벨 데이터
     set_key = st.session_state.get("feedback_set_key", "set1")
     LABEL_MAP = {
         "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
         "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}
     }
-    label_title = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["title"]
-    label_desc  = LABEL_MAP.get(set_key, LABEL_MAP["set1"])["desc"]
+    label = LABEL_MAP.get(set_key, LABEL_MAP["set1"])
 
+    # 2) 라벨 + 분석 카드(제목)까지 한 번에 렌더 → 중간 빈 컨테이너 생성 원천 차단
     st.markdown(f"""
-    <style>
-      .labelbox {{
-        border: 2px solid #2E7D32; border-radius: 12px;
-        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 6px;
-        box-shadow: 0 3px 10px rgba(46,125,50,.08);
-      }}
-      .labelbox .label-hd {{
-        font-weight: 800; color:#1B5E20; font-size: 15px; margin:0 0 6px 0;
-        display:flex; gap:8px; align-items:center;
-      }}
-      .labelbox .label-bd {{ color:#0f3a17; font-size: 14.5px; line-height:1.65; }}
-      .result-card{{
-        border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
-        box-shadow:0 6px 14px rgba(46,125,50,.08);
-        animation: fadeUp .6s ease-out both;
-      }}
-      .result-card h2{{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }}
-      @keyframes fadeUp{{ from{{opacity:0; transform:translateY(6px);}} to{{opacity:1; transform:none;}} }}
-    </style>
     <div class="labelbox">
       <div class="label-hd">요약 결과</div>
-      <div class="label-bd"><b>{label_title}</b> — {label_desc}</div>
+      <div class="label-bd"><b>{label['title']}</b> — {label['desc']}</div>
+    </div>
+    <div class="result-card" id="analysis-start">
+      <h2>📊 추론 결과 분석</h2>
     </div>
     """, unsafe_allow_html=True)
 
-    # 분석 카드
-    st.markdown("<div id='analysis-start' class='result-card'>", unsafe_allow_html=True)
-    st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
-
+    # 3) 차트 렌더 (카드 내부에 이어서 붙도록 컨테이너 사용)
+    #    - plotly는 별도의 위젯 컨테이너를 쓰므로 직전 카드에 이어 배치됨
     labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
-    import random
     base   = [24, 22, 18, 20, 16]
     jitter = [random.randint(-3, 3) for _ in labels]
     values = [max(10, b + j) for b, j in zip(base, jitter)]
-
     try:
         import plotly.express as px
         fig = px.pie(values=values, names=labels, hole=0.55)
@@ -1021,23 +1027,21 @@ elif st.session_state.phase == "ai_feedback":
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # 서술형 피드백
+    # 4) 서술형 피드백 카드(이것도 한 번에 렌더)
     feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
     try:
         with open(feedback_path, "r", encoding="utf-8") as f:
-            feedback_sets = json.load(f)
-        if not isinstance(feedback_sets, dict) or not feedback_sets:
+            fs = json.load(f)
+        if not isinstance(fs, dict) or not fs:
             raise ValueError
     except Exception:
-        feedback_sets = {
+        fs = {
             "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
             "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
         }
 
-    feedback = random.choice(feedback_sets.get(set_key, feedback_sets["set1"]))
-    highlight_words = [
+    feedback = random.choice(fs.get(set_key, fs["set1"]))
+    for phrase in [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "지속적인 탐색과 시도",
@@ -1049,8 +1053,7 @@ elif st.session_state.phase == "ai_feedback":
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
         "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
         "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력",
-    ]
-    for phrase in highlight_words:
+    ]:
         feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
     st.markdown(
@@ -1062,12 +1065,12 @@ elif st.session_state.phase == "ai_feedback":
         """, unsafe_allow_html=True
     )
 
+    # 5) 다음 단계
     st.markdown("&nbsp;", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
