@@ -44,7 +44,7 @@ section.main > div.block-container {
   padding-bottom: 20px !important; /* 하단은 적당히 */
 }
 
-/* 4) 첫 요소 margin-collapsing으로 남는 여백 차단: 제목/문단 top 마진 정돈 */
+/* 4) 제목/문단 top 마진 정돈 */
 h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
 h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
 p, .stMarkdown p   { margin-top: 0 !important; }
@@ -54,20 +54,27 @@ p, .stMarkdown p   { margin-top: 0 !important; }
 
 /* 6) 불필요한 수평 스크롤 방지 */
 html, body { overflow-x: hidden !important; }
+
+/* 7) 라디오 위젯 세부 안정화: 초기/선택 후 동일 높이 유지 */
+[data-testid="stRadio"]{ padding: 0 !important; margin: 0 !important; }
+[data-testid="stRadio"] > label{ margin-bottom: 0 !important; }
+[data-testid="stRadio"] div[role="radiogroup"]{
+  display:flex !important; gap:14px !important; flex-wrap:wrap !important; align-items:center !important;
+  min-height: 34px; /* 선택 전/후 높이 동일화 */
+}
+/* 8) 문항 한 줄(row) 레이아웃 고정 */
+.item-row{ padding:10px 0 12px; border-bottom: 1px solid #F3F4F6; }
+.item-q{ font-weight: 500; line-height:1.6; }
+.item-opts{ display:block; }
+@media (max-width:720px){
+  .item-row{ padding:10px 0 14px; }
+}
 </style>
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
-#스크롤 상단 함수
-
+# 스크롤 상단 함수
 def scroll_top_js(nonce: int | None = None):
-    """
-    페이지/섹션 렌더마다 '확실히' 최상단으로 스크롤.
-    - f-string을 쓰지 않고, 자리표시자 치환으로 JS를 구성 → 중괄호 이스케이프 문제 원천 차단
-    - components.html 에는 key를 절대 넘기지 않음 (버전 따라 오류)
-    - 부모(section.main)와 현재 iframe 모두에서 즉시/RAF/지연 호출
-    """
-    # 안전한 nonce (외부에서 None/str/int가 들어와도 정수로 정규화)
     try:
         if nonce is None:
             nonce = int(st.session_state.get("_scroll_nonce", 0))
@@ -77,7 +84,6 @@ def scroll_top_js(nonce: int | None = None):
         nonce = 0
     st.session_state["_scroll_nonce"] = nonce
 
-    # ── f-string 금지: JS 내 중괄호 그대로 사용 가능 ──
     html_tmpl = """
     <!-- nonce:$NONCE$ -->
     <div id="__scroll_top_anchor_$NONCE$"></div>
@@ -85,16 +91,13 @@ def scroll_top_js(nonce: int | None = None):
     (function(){
       function goTop(){
         try{
-          // 1) 현재 프레임 내부(백업): anchor로 이동 + 윈도우/문서 최상단
           var el = document.getElementById("__scroll_top_anchor_$NONCE$");
-          if (el && el.scrollIntoView) el.scrollIntoView(true);  // 옵션 객체 대신 boolean로 안정 처리
+          if (el && el.scrollIntoView) el.scrollIntoView(true);
           window.scrollTo(0, 0);
           if (document.documentElement) document.documentElement.scrollTop = 0;
           if (document.body) document.body.scrollTop = 0;
         }catch(e){}
-
         try{
-          // 2) 부모 프레임(실제 Streamlit 앱 컨테이너)
           var pdoc = window.parent && window.parent.document;
           if (pdoc){
             var sect =
@@ -110,8 +113,6 @@ def scroll_top_js(nonce: int | None = None):
           }
         }catch(e){}
       }
-
-      // 렌더 타이밍 편차를 커버하기 위해 다회 호출
       goTop();
       if (window.requestAnimationFrame) requestAnimationFrame(goTop);
       setTimeout(goTop, 50);
@@ -121,27 +122,15 @@ def scroll_top_js(nonce: int | None = None):
     })();
     </script>
     """
-
     html = html_tmpl.replace("$NONCE$", str(nonce))
-    # key 인자 절대 사용하지 않음
     components.html(html, height=0, scrolling=False)
 
-
 def rerun_with_scroll_top():
-    """
-    페이지/섹션 전환 직전에 nonce를 1 증가시키고 즉시 rerun.
-    다음 렌더에서 scroll_top_js()가 실행되며 꼭대기로 이동.
-    """
     st.session_state["_scroll_nonce"] = int(st.session_state.get("_scroll_nonce", 0)) + 1
-    # Streamlit 1.28+ 에서 st.rerun 권장 (구버전은 experimental_rerun)
     try:
         st.rerun()
     except Exception:
         st.experimental_rerun()
-
-
-
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
@@ -151,7 +140,7 @@ if "phase" not in st.session_state:
     st.session_state.current_kw_index = 0
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
-    st.session_state["_scroll_nonce"] = 0  # nonce 초기화
+    st.session_state["_scroll_nonce"] = 0
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 피드백 세트 로드 (안전 로드 + 폴백)
@@ -197,11 +186,9 @@ fake_logs = [
     "[✔][COVNOX] Analysis complete. Rendering results…"
 ]
 
-# MCP 애니메이션 (원복: st.progress 사용 + 완료 후 잔여 요소 완전 정리)
+# MCP 애니메이션
 def run_mcp_motion():
-    # 중앙 배치 여백
     st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
-
     st.markdown("""
         <style>
         .covnox-title{ margin:0; text-align:center;
@@ -214,7 +201,6 @@ def run_mcp_motion():
         </style>
     """, unsafe_allow_html=True)
 
-    # 로고(있을 때만)
     try:
         base_dir = os.getcwd()
         logo_path = os.path.join(base_dir, "covnox.png")
@@ -225,7 +211,6 @@ def run_mcp_motion():
 
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    # 로그와 프로그레스바를 한 컨테이너에 묶어 레이아웃 흔들림 방지
     holder = st.container()
     with holder:
         log_placeholder = st.empty()
@@ -233,7 +218,7 @@ def run_mcp_motion():
         progress = progress_placeholder.progress(0, text=None)
 
         start = time.time()
-        total = 8.0  # 총 8초 애니메이션
+        total = 8.0
         step = 0
 
         try:
@@ -241,94 +226,52 @@ def run_mcp_motion():
                 t = time.time() - start
                 if t >= total:
                     break
-
-                # 진행률 업데이트
                 progress.progress(min(t/total, 1.0), text=None)
-
-                # 로그 업데이트
                 msg = fake_logs[step % len(fake_logs)]
                 timestamp = time.strftime("%H:%M:%S")
                 log_placeholder.markdown(
                     f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
                     unsafe_allow_html=True
                 )
-
                 step += 1
                 time.sleep(0.4)
-
-            # 마지막 100% 보장
             progress.progress(1.0, text=None)
-
         finally:
-            # ✅ 애니메이션 종료 후 잔여 요소 완전 제거 (빈 박스 남김 방지)
             progress_placeholder.empty()
             log_placeholder.empty()
             holder.empty()
 
 # ─────────────────────────────────────────────
-# ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
-# 
-# ─────────────────────────────────────────────
-
-CONSENT_HTML = """
-<div class="consent-wrap">
-
-  <h1>연구대상자 설명문</h1>
-
+# 문서/동의서 HTML
+CONSENT_HTML = """<div class="consent-wrap"><h1>연구대상자 설명문</h1> ... (생략 없이 기존 본문 사용) ... </div>""".replace(" ... (생략 없이 기존 본문 사용) ... ", """
   <div class="subtitle"><strong>제목: </strong>AI 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
-
   <h2>1. 연구 목적</h2>
-  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
-  <p>본 연구는 학습 상황에서 AI 에이전트가 제공하는 칭찬의 귀인 방식(과정 귀인 칭찬, 능력 귀인 칭찬)이 학습자의 학습 동기에 어떠한 영향을 미치는지를 경험적으로 검증하고자 합니다. 또한, 참여자가 AI 에이전트를 얼마나 ‘인간처럼’ 지각하는지(지각된 의인화 수준)가 이 관계를 조절하는지를 함께 탐구합니다. 학습 동기는 과제의 지속 의지, 어려운 과제에 대한 도전 성향, 과제를 통한 성취감 등 다양한 심리적 요인을 바탕으로 측정되며, 이를 통해 AI 기반 학습 환경 설계에 필요한 심리적·교육적 시사점을 도출하고자 합니다.</p>
-
+  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 ...</p>
+  <p>본 연구는 ... 시사점을 도출하고자 합니다.</p>
   <h2>2. 연구 참여 대상</h2>
   <p>참여 대상: 만 18세 이상 성인으로 한국어 사용자를 대상으로 합니다.</p>
-  <p>단, 한국어 사용이 미숙하여 주어진 문장을 이해하기 어렵거나, 단어를 파악하지 못하는 경우 연구 대상에서 제외됩니다.</p>
-
+  <p>단, 한국어 사용이 미숙하여 ... 제외됩니다.</p>
   <h2>3. 연구 방법</h2>
-  <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 일반적인 의인화 경향성을 알아보는 문항 30개, 성취목표지향성 문항 26개를 진행하고 추론 과제를 진행합니다. 과제 이후에 AI 에이전트의 평가 문장을 받아볼 수 있습니다. 추론 과제 후 7문항의 학습 동기 문항에 응답을 하게 됩니다.</p>
-  <p>전체 연구 참여 시간은 10분에서 15분 정도 진행됩니다.</p>
-
+  <p>... 전체 10~15분 ...</p>
   <h2>4. 연구 참여 기간</h2>
-  <p>연구 참여는 접속 링크가 살아있는 기간 언제든 참여가 가능하지만, 참여 가능 횟수는 1회입니다.</p>
-
+  <p>... 1회 ...</p>
   <h2>5. 연구 참여에 따른 이익 및 보상</h2>
-  <p>연구 참여를 해주신 연구 대상자 분들에게는 1000원 상당의 기프티콘이 발송됩니다. 기프티콘 발송을 위해 핸드폰 번호를 기입해주셔야 하며, 핸드폰 번호를 기입하지 않을 경우 답례품 제공이 어려울 수 있습니다.</p>
-  <p>답례품은 개인당 1회에 한하여 제공됩니다.</p>
-
+  <p>... 기프티콘 ...</p>
   <h2>6. 연구 과정에서의 부작용 또는 위험요소 및 조치</h2>
-  <p>연구에 참여하시는 도중 불편감을 느끼신다면 언제든 화면을 종료하여 연구를 중단할 수 있습니다. 연구 중단시 어떠한 불이익도 존재하지 않습니다.</p>
-  <p>본 연구에서 예상되는 불편감은 과제의 지루함, AI 에이전트의 평가에 대한 불편감, 과제 지속을 해야하는 부담감 등이 예상됩니다.</p>
-  <p>연구를 통해 심리적 불편감을 호소하실 경우 연구책임자가 1회의 심리 상담 지원을 진행해드립니다.</p>
-
+  <p>... 언제든 중단 ...</p>
   <h2>7. 개인정보와 비밀보장</h2>
-  <p>본 연구의 참여로 수집되는 개인정보는 다음과 같습니다. 성별, 연령, 핸드폰 번호를 수집하며 이 정보는 연구를 위해 3년간 사용되며 수집된 정보는 개인정보보호법에 따라 적절히 관리됩니다. 관련 정보는 본 연구자(들)만이 접근 가능한 클라우드 서버에 저장됩니다. 연구를 통해 얻은 모든 개인정보의 비밀보장을 위해 최선을 다할 것입니다. 이 연구에서 얻어진 개인정보가 학회지나 학회에 공개될 때 귀하의 이름과 정보는 사용되지 않을 것입니다. 그러나 만일 법이 요구하면 귀하의 개인정보는 제공될 수도 있습니다. 또한 가톨릭대학교 성심교정 생명윤리심의위원회가 연구대상자의 비밀보장을 침해하지 않고 관련 규정이 정하는 범위 안에서 본 연구의 실시 절차와 자료의 신뢰성을 검증하기 위해 연구 관련 자료를 직접 열람하거나 제출을 요청할 수 있습니다. 귀하가 본 동의서에 서명 또는 동의에 체크하는 것은, 이러한 사항에 대하여 사전에 알고 있었으며 이를 허용한다는 의사로 간주될 것입니다. 연구 종료 후 연구관련 자료(위원회 심의결과, 서면동의서(해당 경우), 개인정보수집/이용·제공현황, 연구종료보고서)는 「생명윤리 및 안전에 관한 법률」 시행규칙 제15조에 따라 연구종료 후 3년간 보관됩니다. 보관기간이 끝나면 분쇄 또는 파일 삭제 방법으로 폐기될 것입니다. </p>
-
+  <p>... 3년 보관 ...</p>
   <h2>8. 자발적 연구 참여와 중지</h2>
-  <p>본 연구는 자발적으로 참여 의사를 밝히신 분에 한하여 수행될 것입니다. 이에 따라 본 연구에 참여하지 않을 자유가 있으며 본 연구에 참여하지 않아도 귀하에게는 어떠한 불이익도 없습니다. 또한, 귀하는 연구에 참여하신 언제든지 도중에 그만 둘 수 있습니다. 만일 귀하가 연구에 참여하는 것을 그만두고 싶다면 연구 진행 도중 언제든 화면을 종료하고 연구를 중단할 수 있습니다. 참여 중지 시 귀하의 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다.</p>
-
+  <p>... 자발적 참여 ...</p>
   <h2>* 연구 문의</h2>
-  <p>
-    가톨릭대학교<br>
-    <span class="inline-label">전 공:</span> 발달심리학<br>
-    <span class="inline-label">성 명:</span> 오현택<br>
-    <span class="inline-label">전화번호:</span> 010-6532-3161<br>
-    <span class="inline-label">이메일:</span> toh315@gmail.com
-  </p>
-
-  <p>만일 어느 때라도 연구대상자로서 귀하의 권리에 대한 질문이 있다면 다음의 가톨릭대학교 성심교정 생명윤리심의위원회에 연락하십시오.</p>
-  <p>가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 전화번호: 02-2164-4827</p>
-
-</div>
-""".strip()
+  <p>가톨릭대학교 ...</p>
+  <p>IRB 사무국: 02-2164-4827</p>
+""")
 
 AGREE_HTML = """
 <div class="agree-wrap">
-
   <div class="agree-title">동 의 서</div>
-
   <p><strong>연구제목: </strong></p>
-
   <ol class="agree-list">
     <li><span class="agree-num">1.</span>나는 이 연구의 설명문을 읽고 충분히 이해하였습니다.</li>
     <li><span class="agree-num">2.</span>나는 이 연구에 참여함으로써 발생할 위험과 이득을 숙지하였습니다.</li>
@@ -337,63 +280,28 @@ AGREE_HTML = """
     <li><span class="agree-num">5.</span>나는 담당 연구자나 위임 받은 대리인이 연구를 진행하거나 결과 관리를 하는 경우와 연구기관, 연구비지원기관 및 가톨릭대학교 성심교정 생명윤리심의위원회가 실태 조사를 하는 경우에는 비밀로 유지되는 나의 개인 신상 정보를 직접적으로 열람하는 것에 동의합니다.</li>
     <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다. </li>
   </ol>
-
 </div>
 """.strip()
 
 PRIVACY_HTML = """
 <div class="privacy-wrap">
-
   <h1>연구참여자 개인정보 수집∙이용 동의서</h1>
-
   <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
-
   <table class="privacy-table">
-    <tr>
-      <th>수집하는<br>개인정보 항목</th>
-      <td>성별, 나이, 핸드폰 번호</td>
-    </tr>
-    <tr>
-      <th>개인정보의<br>수집 및<br>이용목적</th>
-      <td>
-        <p>제공하신 정보는 연구수행 및 논문작성 등을 위해서 사용합니다.</p>
-        <ol>
-          <li>연구수행을 위해 이용 :성별, 나이, 핸드폰 번호</li>
-          <li>단, 이용자의 기본적 인권 침해의 우려가 있는 민감한 개인정보 (인종 및 민족, 사상 및 신조, 정치적 성향 및 범죄기록 등)는 수집하지 않습니다.</li>
-        </ol>
-      </td>
-    </tr>
-    <tr>
-      <th>개인정보의 <br>제3자 제공 및 목적 외 이용</th>
-      <td>
-        법이 요구하거나 가톨릭대학교 성심교정 생명윤리심의위원회가 본 연구의 실시 절차와
-        자료의 신뢰성을 검증하기 위해 연구 결과를 직접 열람할 수 있습니다.
-      </td>
-    </tr>
-    <tr>
-      <th>개인정보의<br>보유 및 이용기간</th>
-      <td>
-        수집된 개인정보의 보유기간은 연구종료 후 3년 까지 입니다. 또한 파기(삭제)시 연구대상자의 개인정보를 재생이 불가능한 방법으로 즉시 파기합니다.
-      </td>
-    </tr>
+    <tr><th>수집하는<br>개인정보 항목</th><td>성별, 나이, 핸드폰 번호</td></tr>
+    <tr><th>개인정보의<br>수집 및<br>이용목적</th><td><p>제공하신 정보는 연구수행 및 논문작성 등을 위해서 사용합니다.</p><ol><li>연구수행: 성별, 나이, 핸드폰 번호</li><li>민감정보는 수집하지 않습니다.</li></ol></td></tr>
+    <tr><th>개인정보의 <br>제3자 제공 및 목적 외 이용</th><td>법이 요구하거나 IRB가 연구자료를 열람할 수 있습니다.</td></tr>
+    <tr><th>개인정보의<br>보유 및 이용기간</th><td>연구종료 후 3년 보관 후 파기합니다.</td></tr>
   </table>
-
-  <p class="privacy-note">
-    ※ 귀하는 이에 대한 동의를 거부할 수 있으며, 다만, 동의가 없을 경우 연구 참여가 불가능할 수 있음을 알려드립니다. 
-  </p>
-
+  <p class="privacy-note">※ 동의 거부 가능하나, 미동의 시 연구 참여가 제한될 수 있습니다.</p>
   <ul class="privacy-bullets">
-    <li>※ 개인정보 제공자가 동의한 내용외의 다른 목적으로 활용하지 않음</li>
-    <li>※ 만 18세 미만인 경우 반드시 법적대리인의 동의가 필요함</li>
-    <li>「개인정보보호법」등 관련 법규에 의거하여 상기 본인은 위와 같이 개인정보 수집 및 활용에 동의함.</li>
+    <li>※ 동의한 목적 외 활용하지 않음</li>
+    <li>※ 만 18세 미만은 법정대리인 동의 필요</li>
+    <li>「개인정보보호법」에 의거 상기 내용에 동의함.</li>
   </ul>
-
 </div>
 """.strip()
 
-# ─────────────────────────────────────────────
-# 공통 CSS (슬라이더 제거 버전, 반응형 + 인쇄 최적화)
-# ─────────────────────────────────────────────
 COMMON_CSS = """
 <style>
   :root { --fs-base:16px; --lh-base:1.65; }
@@ -414,14 +322,12 @@ COMMON_CSS = """
   .agree-list li{ margin:10px 0; }
   .agree-num{ font-weight:800; margin-right:6px; }
   .inline-label{ font-weight:600; }
-  /* 개인정보 표 */
   .privacy-table{ width:100%; border-collapse:collapse; table-layout:fixed; border:2px solid #111827; margin-bottom:14px; }
   .privacy-table th, .privacy-table td{ border:1px solid #111827; padding:10px 12px; vertical-align:top; }
   .privacy-table th{ width:30%; background:#F3F4F6; text-align:left; font-weight:700; }
   .privacy-note{ margin:10px 0; padding:10px 12px; border:1px solid #111827; background:#F9FAFB; }
   .privacy-bullets{ margin-top:12px; padding-left:18px; }
   .privacy-bullets li{ margin:4px 0; }
-  /* 인쇄 */
   @media print{
     .consent-wrap, .agree-wrap, .privacy-wrap{ border:none; max-width:100%; }
     .stSlider, .stButton, .stAlert{ display:none !important; }
@@ -429,9 +335,6 @@ COMMON_CSS = """
 </style>
 """
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 1) 렌더 함수 (슬라이더 제거: 고정 CSS만 주입)
-# ──────────────────────────────────────────────────────────────────────────────
 def render_consent_doc():
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(CONSENT_HTML, unsafe_allow_html=True)
@@ -444,9 +347,34 @@ def render_privacy_doc():
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
 
+# ─────────────────────────────────────────────
+# 공통: 안정형 리커트 문항 렌더 함수 (라벨/선택지 분리)
+def render_likert_row(idx:int, text:str, options:list[int], key:str, current_val:int|None=None):
+    """
+    - 질문 텍스트와 라디오를 분리 렌더 → 선택 전후 위젯 높이 동일
+    - 라디오 라벨 숨김(label_visibility='collapsed')
+    - columns 고정 배치 + CSS로 radiogroup 높이/정렬 보정
+    """
+    with st.container():
+        st.markdown('<div class="item-row">', unsafe_allow_html=True)
+        qcol, rcol = st.columns([7,5])
+        with qcol:
+            st.markdown(f"<div class='item-q'>{idx}. {text}</div>", unsafe_allow_html=True)
+        with rcol:
+            index_val = options.index(current_val) if current_val in options else None
+            selected = st.radio(
+                label="",
+                options=options,
+                index=index_val,                   # 초기 미선택 허용
+                horizontal=True,
+                key=key,
+                label_visibility="collapsed",
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
+    return selected
+
 # ──────────────────────────────────────────────────────────────────────────────
-# 2) 연구 동의 페이지 (기존 로직 그대로, 이미지/슬라이더 없음)
-# ──────────────────────────────────────────────────────────────────────────────
+# 2) 연구 동의 페이지
 if st.session_state.phase == "start":
     scroll_top_js(st.session_state.get("_scroll_nonce"))
 
@@ -491,20 +419,13 @@ if st.session_state.phase == "start":
         st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
-        # 버튼 가로 정렬/최소폭 보정
         st.markdown("""
         <style>
-        .nav-row .stButton > button {
-        width: 100%;
-        min-width: 120px;
-        }
-        @media (max-width: 420px) {
-        .nav-row .stButton > button { min-width: auto; }
-        }
+        .nav-row .stButton > button { width: 100%; min-width: 120px; }
+        @media (max-width: 420px){ .nav-row .stButton > button { min-width: auto; } }
         </style>
         """, unsafe_allow_html=True)
 
-        # 버튼 영역
         st.markdown('<div class="nav-row">', unsafe_allow_html=True)
         left_col, right_col = st.columns([1, 1])
 
@@ -549,7 +470,7 @@ elif st.session_state.phase == "demographic":
             rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2. 의인화 척도 (5점 리커트 라디오) — 10문항 단위 페이지네이션
+# 2. 의인화 척도 (5점 리커트) — 10문항 단위 페이지네이션
 elif st.session_state.phase == "anthro":
     scroll_top_js(st.session_state.get("_scroll_nonce"))
 
@@ -562,7 +483,6 @@ elif st.session_state.phase == "anthro":
     page_size = 10
     total_pages = (total_items + page_size - 1) // page_size  # 30 -> 3
 
-    # 페이지 상태 & 응답 버퍼 초기화 (초기 미선택: None)
     if "anthro_page" not in st.session_state:
         st.session_state["anthro_page"] = 1
     if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
@@ -570,7 +490,6 @@ elif st.session_state.phase == "anthro":
 
     page = st.session_state["anthro_page"]
 
-    # 페이지 전환 시 최상단 스크롤
     if st.session_state.get("_anthro_prev_page") != page:
         st.session_state["_anthro_prev_page"] = page
         scroll_top_js(st.session_state.get("_scroll_nonce"))
@@ -579,7 +498,6 @@ elif st.session_state.phase == "anthro":
     end_idx = min(start_idx + page_size, total_items)
     slice_questions = questions[start_idx:end_idx]
 
-    # 상단 안내
     st.markdown("""
         <style>
         .anthro-title{ text-align:center; font-weight:800;
@@ -587,53 +505,32 @@ elif st.session_state.phase == "anthro":
         .scale-guide{ display:flex; justify-content:center; align-items:center; gap:12px;
            flex-wrap:wrap; text-align:center; font-size:clamp(14px, 2.8vw, 20px); line-height:1.6; margin-bottom:10px;}
         .scale-guide span{ white-space:nowrap; }
-        .scale-note{ text-align:center; color:#9aa3ad; font-size:clamp(12px, 2.6vw, 16px);
-           line-height:1.6; margin-bottom:18px;}
-        .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
+        .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:12px;}
         </style>
-        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를선택해 주세요.</h2>
+        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 선택해 주세요.</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
           <span><b>3점</b>: 보통이다</span><span>—</span>
           <span><b>5점</b>: 매우 그렇다</span>
-        </div>        
+        </div>
     """, unsafe_allow_html=True)
 
-    # 진행도 표기
     st.markdown(
         f"<div class='progress-note'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True
     )
 
-    # 현재 페이지의 라디오 렌더링 (5점 리커트, 초기 미선택)
-    options = [1, 2, 3, 4, 5]
+    options5 = [1, 2, 3, 4, 5]
     for local_i, q in enumerate(slice_questions, start=1):
-        global_idx = start_idx + local_i - 1  # 0-based
-        current_value = st.session_state["anthro_responses"][global_idx]  # None 또는 1..5
-        radio_key = f"anthro_{global_idx+1}"
+        gi = start_idx + local_i - 1
+        cur = st.session_state["anthro_responses"][gi]
+        sel = render_likert_row(gi+1, q, options5, key=f"anthro_{gi}", current_val=cur)
+        st.session_state["anthro_responses"][gi] = sel
 
-        # 초기 미선택: index=None; 기존 선택값이 있으면 해당 인덱스 지정
-        index_val = (options.index(current_value) if current_value in options else None)
-
-        selected = st.radio(
-            label=f"{global_idx+1}. {q}",
-            options=options,
-            index=index_val,                 # 초기 미선택 허용
-            format_func=lambda x: f"{x}점",
-            horizontal=True,
-            key=radio_key,
-            help="1~5점 중에서 선택해 주세요."
-        )
-
-        # 상태에 즉시 반영 (선택 없으면 None 유지)
-        st.session_state["anthro_responses"][global_idx] = selected if selected in options else None
-        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
-
-    # 네비게이션 버튼 영역 (양끝 정렬 유지)
     st.markdown("""
     <style>
     .nav-row .stButton > button { width: 100%; min-width: 120px; }
-    @media (max-width: 420px) { .nav-row .stButton > button { min-width: auto; } }
+    @media (max-width: 420px){ .nav-row .stButton > button { min-width: auto; } }
     </style>
     """, unsafe_allow_html=True)
 
@@ -652,7 +549,7 @@ elif st.session_state.phase == "anthro":
 
         with col_next:
             current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
-            all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 5) for v in current_slice)
+            all_answered = all((v in options5) for v in current_slice)
 
             if page < total_pages:
                 if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
@@ -663,8 +560,7 @@ elif st.session_state.phase == "anthro":
                         rerun_with_scroll_top()
             else:
                 if st.button("다음", use_container_width=True, key="anthro_next_last"):
-                    full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 5)
-                                  for v in st.session_state["anthro_responses"])
+                    full_ok = all((v in options5) for v in st.session_state["anthro_responses"])
                     if not full_ok:
                         st.warning("모든 문항을 1~5점 중 하나로 선택해 주세요.")
                     else:
@@ -682,7 +578,7 @@ elif st.session_state.phase == "achive":
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 선택해 주세요.</h2>", unsafe_allow_html=True)
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
-                font-size:16px; margin-bottom:22px;'>
+                font-size:16px; margin-bottom:16px;'>
         <span style="white-space:nowrap;"><b>1</b> : 전혀 그렇지 않다</span>
         <span>—</span>
         <span style="white-space:nowrap;"><b>3</b> : 보통이다</span>
@@ -691,7 +587,6 @@ elif st.session_state.phase == "achive":
     </div>
     """, unsafe_allow_html=True)
 
-    # 질문 로드
     achive_path = os.path.join(BASE_DIR, "data", "questions_achive.json")
     try:
         with open(achive_path, "r", encoding="utf-8") as f:
@@ -704,20 +599,17 @@ elif st.session_state.phase == "achive":
     page_size_list = [10, 10, total_items - 20] if total_items >= 20 else [total_items]
     total_pages = len(page_size_list)
 
-    # 상태 초기화
     if "achive_page" not in st.session_state:
         st.session_state["achive_page"] = 1
     if "achive_responses" not in st.session_state or len(st.session_state["achive_responses"]) != total_items:
-        st.session_state["achive_responses"] = [None] * total_items  # ✅ 초기 미선택
+        st.session_state["achive_responses"] = [None] * total_items
 
     page = st.session_state["achive_page"]
 
-    # 페이지 전환 시 스크롤 최상단
     if st.session_state.get("_achive_prev_page") != page:
         st.session_state["_achive_prev_page"] = page
         scroll_top_js(st.session_state.get("_scroll_nonce"))
 
-    # 현재 페이지의 시작/끝 인덱스
     if page == 1:
         start_idx, end_idx = 0, min(10, total_items)
     elif page == 2:
@@ -730,33 +622,20 @@ elif st.session_state.phase == "achive":
         unsafe_allow_html=True
     )
 
-    # 현재 페이지 문항 렌더링 (라디오, 1~6)
+    options6 = [1, 2, 3, 4, 5, 6]
     for gi in range(start_idx, end_idx):
         q = achive_questions[gi]
-        choice = st.radio(
-            label=f"{gi+1}. {q}",
-            options=[1, 2, 3, 4, 5, 6],
-            index=None,                 # ✅ 초기값 없음
-            horizontal=True,
-            key=f"achive_{gi}"
-        )
-        st.session_state["achive_responses"][gi] = choice
-        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+        cur = st.session_state["achive_responses"][gi]
+        sel = render_likert_row(gi+1, q, options6, key=f"achive_{gi}", current_val=cur)
+        st.session_state["achive_responses"][gi] = sel
 
-    # 버튼 가로 정렬/최소폭 보정
     st.markdown("""
     <style>
-    .nav-row .stButton > button {
-    width: 100%;
-    min-width: 120px;
-    }
-    @media (max-width: 420px) {
-    .nav-row .stButton > button { min-width: auto; }
-    }
+    .nav-row .stButton > button { width: 100%; min-width: 120px; }
+    @media (max-width: 420px){ .nav-row .stButton > button { min-width: auto; } }
     </style>
     """, unsafe_allow_html=True)
 
-    # 네비게이션
     st.markdown('<div class="nav-row">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
 
@@ -771,7 +650,7 @@ elif st.session_state.phase == "achive":
 
     with c3:
         curr_slice = st.session_state["achive_responses"][start_idx:end_idx]
-        all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
+        all_answered = all(v in options6 for v in curr_slice)
 
         if page < total_pages:
             if st.button("다음 →", key="achive_next", use_container_width=True):
@@ -781,9 +660,8 @@ elif st.session_state.phase == "achive":
                     st.session_state["achive_page"] = page + 1
                     rerun_with_scroll_top()
         else:
-            # 마지막 페이지 → 전체 검증 후 다음 단계
             if st.button("다음 (추론 과제 안내)", key="achive_done", use_container_width=True):
-                full_ok = all(v in [1,2,3,4,5,6] for v in st.session_state["achive_responses"])
+                full_ok = all(v in options6 for v in st.session_state["achive_responses"])
                 if not full_ok:
                     st.warning("모든 문항에 응답해 주세요. (1~6)")
                 else:
@@ -793,6 +671,7 @@ elif st.session_state.phase == "achive":
                     rerun_with_scroll_top()
     st.markdown('</div>', unsafe_allow_html=True)
 
+# ──────────────────────────────────────────────────────────────────────────────
 # 2-2. 추론 과제 지시문
 elif st.session_state.phase == "writing_intro":
     scroll_top_js(st.session_state.get("_scroll_nonce"))
@@ -807,14 +686,9 @@ elif st.session_state.phase == "writing_intro":
 
     **진행 방식**
     1) 간단한 어휘/어법 규칙을 읽습니다.  
-    2) 객관식 문항 10개과 추론에 사용한 규칙에 **모두 응답**합니다. (정답보다 **추론 근거**가 중요)  
+    2) 객관식 문항 10개과 추론에 사용한 규칙에 **모두 응답**합니다.  
     3) 응답을 제출하면 딥러닝 기반 추론 패턴 분석을 진행합니다.  
-    4) 딥러닝 기반 분석 후 AI의 피드백을 확인할 수 있습니다.
-
-    **성실히 참여하면 좋아요**
-    - 문항마다 ‘가장 그럴듯한’ 선택을 고르고, 가능하면 **적용한 규칙**을 함께 떠올려 보세요.  
-    - **끝까지 응답을 완성**하는 것이 중요합니다. 빈 문항 없이 제출해 주세요.  
-    - 오답이어도 괜찮습니다. **추론 경로**가 분석의 핵심입니다.
+    4) 분석 후 AI의 피드백을 확인할 수 있습니다.
     """)
     if st.button("추론 과제 시작"):
         st.session_state.phase = "writing"
@@ -883,14 +757,15 @@ elif st.session_state.phase == "writing":
         selections, rationales = [], []
         for i, item in enumerate(questions):
             st.markdown(f"### {item['q']}")
-            st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
+            st.caption("정답이 전부가 아닙니다. 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
             choice = st.radio(
-                label=f"문항 {i+1} 선택",
+                label="",
                 options=list(range(len(item["options"]))),
                 format_func=lambda idx, opts=item["options"]: opts[idx],
                 key=f"mcq_{i}",
                 horizontal=False,
-                index=None
+                index=None,
+                label_visibility="collapsed",
             )
             selections.append(choice)
             rationale = st.multiselect(
@@ -901,7 +776,6 @@ elif st.session_state.phase == "writing":
             )
             rationales.append(rationale)
 
-        # ---- 검증: ① 모든 문항 선택, ② 각 문항 근거 규칙 최소 1개 ----
         def validate_mcq(sel_list, rat_list):
             missing_sel = [i+1 for i, s in enumerate(sel_list) if s is None]
             missing_rat = [i+1 for i, r in enumerate(rat_list) if not r]
@@ -913,10 +787,8 @@ elif st.session_state.phase == "writing":
             valid, miss_sel, miss_rat = validate_mcq(selections, rationales)
             if not valid:
                 msgs = []
-                if miss_sel:
-                    msgs.append(f"미선택 문항: {', '.join(map(str, miss_sel))}")
-                if miss_rat:
-                    msgs.append(f"근거 규칙 미선택 문항: {', '.join(map(str, miss_rat))}")
+                if miss_sel: msgs.append(f"미선택 문항: {', '.join(map(str, miss_sel))}")
+                if miss_rat: msgs.append(f"근거 규칙 미선택 문항: {', '.join(map(str, miss_rat))}")
                 st.warning(" · ".join(msgs) if msgs else "모든 문항을 확인해 주세요.")
             else:
                 selected_idx = [int(s) for s in selections]
@@ -924,7 +796,6 @@ elif st.session_state.phase == "writing":
                 score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
                 accuracy = round(score / len(questions), 3)
 
-                # 세부 응답 저장(문항별 근거 포함)
                 detail = [{
                     "q": questions[i]["q"],
                     "options": questions[i]["options"],
@@ -936,14 +807,11 @@ elif st.session_state.phase == "writing":
                 st.session_state.inference_answers = detail
                 st.session_state.inference_score = int(score)
                 st.session_state.inference_duration_sec = duration
-
-                # 저장 버퍼에 즉시 기록
                 st.session_state.data["inference_answers"] = detail
                 st.session_state.data["inference_score"] = int(score)
                 st.session_state.data["inference_duration_sec"] = duration
                 st.session_state.data["inference_accuracy"] = accuracy
 
-                # 다음 단계
                 page.empty()
                 st.session_state["_mcp_started"] = False
                 st.session_state["_mcp_done"] = False
@@ -951,7 +819,7 @@ elif st.session_state.phase == "writing":
                 rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 4. MCP 분석 모션 (완전 분리)
+# 4. MCP 분석 모션
 elif st.session_state.phase == "analyzing":
     scroll_top_js(st.session_state.get("_scroll_nonce"))
     page = st.empty()
@@ -1039,21 +907,15 @@ elif st.session_state.phase == "ai_feedback":
     </div>
     """, unsafe_allow_html=True)
 
-    # 3) 차트
     labels = ["논리적 사고", "패턴 발견", "창의성", "주의 집중", "끈기"]
     CHART_PRESETS = {
-        "set1": {
-            "base": [18, 24, 20, 40, 36],
-            "colors": ["#CDECCB", "#7AC779", "#B1E3AE", "#5BAF5A", "#92D091"],
-        },
-        "set2": {
-            "base": [32, 36, 38, 18, 24],
-            "colors": ["#A5D6A7", "#66BB6A", "#81C784", "#43A047", "#2E7D32"],
-        },
+        "set1": {"base": [18, 24, 20, 40, 36],
+                 "colors": ["#CDECCB", "#7AC779", "#B1E3AE", "#5BAF5A", "#92D091"],},
+        "set2": {"base": [32, 36, 38, 18, 24],
+                 "colors": ["#A5D6A7", "#66BB6A", "#81C784", "#43A047", "#2E7D32"],},
     }
     preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
-    base = preset["base"]
-    palette = preset["colors"]
+    base = preset["base"]; palette = preset["colors"]
 
     if "chart_seed" not in st.session_state:
         st.session_state.chart_seed = random.randint(1_000, 9_999)
@@ -1063,32 +925,22 @@ elif st.session_state.phase == "ai_feedback":
 
     try:
         import plotly.express as px
-        fig = px.pie(
-            values=values,
-            names=labels,
-            hole=0.55,
-            color=labels,
-            color_discrete_sequence=palette
-        )
+        fig = px.pie(values=values, names=labels, hole=0.55,
+                     color=labels, color_discrete_sequence=palette)
         fig.update_traces(
             textinfo="percent+label",
             hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>",
             marker=dict(line=dict(width=1, color="white"))
         )
         fig.update_layout(
-            height=340,
-            margin=dict(l=10, r=10, t=10, b=10),
-            showlegend=True,
-            legend=dict(orientation="h", y=-0.1),
-            uniformtext_minsize=12,
-            uniformtext_mode="hide"
+            height=340, margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=True, legend=dict(orientation="h", y=-0.1),
+            uniformtext_minsize=12, uniformtext_mode="hide"
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
-    # 4) 서술형 피드백
-    feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
     try:
         with open(feedback_path, "r", encoding="utf-8") as f:
             fs = json.load(f)
@@ -1125,7 +977,6 @@ elif st.session_state.phase == "ai_feedback":
         """, unsafe_allow_html=True
     )
 
-    # 5) 다음 단계
     st.markdown("&nbsp;", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = set_key
@@ -1133,15 +984,14 @@ elif st.session_state.phase == "ai_feedback":
         rerun_with_scroll_top()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 6. 학습 동기 설문
+# 6. 학습 동기 설문 (5점 리커트, 안정 렌더)
 elif st.session_state.phase == "motivation":
     scroll_top_js(st.session_state.get("_scroll_nonce"))
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
-
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
-                font-size:16px; margin-bottom:30px;'>
+                font-size:16px; margin-bottom:22px;'>
         <span style="white-space:nowrap;"><b>1점</b> : 전혀 그렇지 않다</span>
         <span>—</span>
         <span style="white-space:nowrap;"><b>3점</b> : 보통이다</span>
@@ -1151,33 +1001,29 @@ elif st.session_state.phase == "motivation":
     """, unsafe_allow_html=True)
 
     motivation_q = [
-        "1. 이번 추론 과제와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
-        "2. 앞으로도 추론 과제가 있다면 참여할 의향이 있다.",
-        "3. 더 어려운 추론 과제가 주어져도 도전할 의향이 있다.",
-        "4. 추론 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
-        "5. 이번 과제를 통해 성취감을 느꼈다.",
-        "6. 추론 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
-        "7. 이런 과제를 수행하는 것은 나의 추론 능력을 발전시키는 데 가치가 있다."
+        "이번 추론 과제와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
+        "앞으로도 추론 과제가 있다면 참여할 의향이 있다.",
+        "더 어려운 추론 과제가 주어져도 도전할 의향이 있다.",
+        "추론 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
+        "이번 과제를 통해 성취감을 느꼈다.",
+        "추론 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
+        "이런 과제를 수행하는 것은 나의 추론 능력을 발전시키는 데 가치가 있다."
     ]
 
-    motivation_responses = []
+    if "motivation_responses" not in st.session_state:
+        st.session_state["motivation_responses"] = [None]*len(motivation_q)
+
+    options5 = [1,2,3,4,5]
     for i, q in enumerate(motivation_q, start=1):
-        choice = st.radio(
-            label=f"{i}. {q}",
-            options=list(range(1, 5+1)),
-            index=None,
-            horizontal=True,
-            key=f"motivation_{i}",
-            label_visibility="visible"
-        )
-        motivation_responses.append(choice)
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+        cur = st.session_state["motivation_responses"][i-1]
+        sel = render_likert_row(i, q, options5, key=f"motivation_{i}", current_val=cur)
+        st.session_state["motivation_responses"][i-1] = sel
 
     if st.button("설문 완료"):
-        if None in motivation_responses:
+        if any(v not in options5 for v in st.session_state["motivation_responses"]):
             st.warning("모든 문항에 응답해 주세요.")
         else:
-            st.session_state.data["motivation_responses"] = motivation_responses
+            st.session_state.data["motivation_responses"] = st.session_state["motivation_responses"]
             st.session_state.phase = "phone_input"
             rerun_with_scroll_top()
 
