@@ -200,7 +200,7 @@ CONSENT_HTML = """
 
   <h1>연구대상자 설명문</h1>
 
-  <div class="subtitle"><strong>연구제목: </strong>인공지능의 칭찬 귀인이 학습 동기에 미치는 영향과 지각된 의인화의 조절 효과</div>
+  <div class="subtitle"><strong>제목: </strong>AI 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
 
   <h2>1. 연구 목적</h2>
   <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
@@ -381,7 +381,7 @@ def render_privacy_doc():
 if st.session_state.phase == "start":
     scroll_top_js()
 
-    st.title("AI 에이전트의 칭찬 방식이 학습 동기에 미치는 영향 연구")
+    st.title("AI 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구")
 
     if "consent_step" not in st.session_state:
         st.session_state.consent_step = "explain"
@@ -528,7 +528,7 @@ elif st.session_state.phase == "anthro":
            line-height:1.6; margin-bottom:18px;}
         .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
         </style>
-        <h2 class="anthro-title">의인화 척도 설문</h2>
+        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 1점(전혀 그렇지 않다)부터 5점(매우 그렇다) 사이에서 선택해 주세요.</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
           <span><b>3점</b>: 보통이다</span><span>—</span>
@@ -618,7 +618,7 @@ elif st.session_state.phase == "anthro":
 elif st.session_state.phase == "achive":
     scroll_top_js()
 
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추가 설문</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 1점(전혀 그렇지 않다)부터 6점(매우 그렇다) 사이에서 선택해 주세요.</h2>", unsafe_allow_html=True)
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:22px;'>
@@ -941,24 +941,57 @@ elif st.session_state.phase == "analyzing":
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. AI 피드백 (간단한 5요소 그래프 버전)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
+    import plotly.express as px
 
     st.success("AI 분석 완료!")
 
-    feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
+    # -----------------------------
+    # 도넛 그래프 (5개 요소, 값은 랜덤)
+    # -----------------------------
+    labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
+    import random
+    values = [random.randint(15, 30) for _ in labels]  # 매번 조금 다른 값
+    fig = px.pie(values=values, names=labels, hole=0.55)
+    fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
+    fig.update_layout(
+        height=340,
+        margin=dict(l=10, r=10, t=10, b=10),
+        showlegend=True,
+        legend=dict(orientation="h", y=-0.1)
+    )
 
-    # 정확 일치 구절 하이라이트(세트 문장 기반)
+    st.markdown("""
+    <style>
+      .result-card{
+        border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
+        box-shadow:0 6px 14px rgba(46,125,50,.08);
+        animation: fadeUp .6s ease-out both;
+      }
+      .result-card h2{ text-align:center; margin:0 0 12px; color:#1B5E20; }
+      @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+    st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # -----------------------------
+    # 서술형 피드백 (기존)
+    # -----------------------------
+    feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
     highlight_words = [
-        # set1(노력)
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
         "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
         "지속적인 탐색과 시도",
         "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
         "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
         "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
-        # set2(능력)
         "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
         "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
         "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
@@ -968,22 +1001,21 @@ elif st.session_state.phase == "ai_feedback":
     for phrase in highlight_words:
         feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
-    feedback_with_breaks = feedback.replace("\n", "<br>")
     st.markdown(
         f"""
-        <div style='border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background-color: #F9FFF9;'>
-            <h2 style='text-align:center; color:#2E7D32; margin-bottom:10px;'>📢 AI 평가 결과</h2>
-            <p style='font-size:16px; line-height:1.6; text-align:left; color:#333;'>{feedback_with_breaks}</p>
+        <div class='result-card' style='margin-top:16px;'>
+            <h2>📢 AI 평가 결과</h2>
+            <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{feedback.replace("\n","<br>")}</p>
         </div>
-        """,
-        unsafe_allow_html=True
+        """, unsafe_allow_html=True
     )
 
-    st.markdown("<div style='margin-top:30px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
