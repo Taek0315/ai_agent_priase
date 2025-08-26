@@ -528,13 +528,12 @@ elif st.session_state.phase == "anthro":
            line-height:1.6; margin-bottom:18px;}
         .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
         </style>
-        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 1점(전혀 그렇지 않다)부터 5점(매우 그렇다) 사이에서 선택해 주세요.</h2>
+        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를선택해 주세요.</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
           <span><b>3점</b>: 보통이다</span><span>—</span>
           <span><b>5점</b>: 매우 그렇다</span>
-        </div>
-        <div class="scale-note">※ 라디오 버튼은 <b>초기 미선택</b>입니다. 1~5점 중 하나를 선택해 주세요.</div>
+        </div>        
     """, unsafe_allow_html=True)
 
     # 진행도 표기
@@ -618,7 +617,7 @@ elif st.session_state.phase == "anthro":
 elif st.session_state.phase == "achive":
     scroll_top_js()
 
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 1점(전혀 그렇지 않다)부터 6점(매우 그렇다) 사이에서 선택해 주세요.</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 선택해 주세요.</h2>", unsafe_allow_html=True)
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:22px;'>
@@ -942,28 +941,31 @@ elif st.session_state.phase == "analyzing":
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백 (간단한 5요소 그래프 버전)
+# 5. AI 피드백 (간단한 5요소 그래프 버전 · 잔상 제거/임포트 가드 포함)
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
-    import plotly.express as px
 
+    # ── 0) 이전 단계 진행바/빈 컨테이너 잔상 제거 ───────────────────────────
+    # 추론 단계 등에서 사용했을 수 있는 holder를 안전하게 비움
+    for k in ["prog_holder", "progress_holder", "loader_holder", "inference_progress"]:
+        holder = st.session_state.get(k)
+        try:
+            if holder is not None:
+                holder.empty()
+        except Exception:
+            pass
+
+    # ── 1) 상단 알림 ────────────────────────────────────────────────────────
     st.success("AI 분석 완료!")
 
-    # -----------------------------
-    # 도넛 그래프 (5개 요소, 값은 랜덤)
-    # -----------------------------
-    labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
-    import random
-    values = [random.randint(15, 30) for _ in labels]  # 매번 조금 다른 값
-    fig = px.pie(values=values, names=labels, hole=0.55)
-    fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
-    fig.update_layout(
-        height=340,
-        margin=dict(l=10, r=10, t=10, b=10),
-        showlegend=True,
-        legend=dict(orientation="h", y=-0.1)
-    )
+    # ── 2) Plotly 임포트 가드 ───────────────────────────────────────────────
+    try:
+        import plotly.express as px
+        PLOTLY_OK = True
+    except Exception:
+        PLOTLY_OK = False
 
+    # ── 3) 스타일 ───────────────────────────────────────────────────────────
     st.markdown("""
     <style>
       .result-card{
@@ -976,14 +978,35 @@ elif st.session_state.phase == "ai_feedback":
     </style>
     """, unsafe_allow_html=True)
 
+    # ── 4) 도넛 그래프 (5요소/단순값) ───────────────────────────────────────
     st.markdown("<div class='result-card'>", unsafe_allow_html=True)
     st.markdown("<h2>📊 추론 결과 분석</h2>", unsafe_allow_html=True)
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    labels = ["논리적 사고", "집중도", "창의성", "일관성", "추론 속도"]
+
+    import random
+    # 과도한 인상 피하려고 범위를 좁은 합리적 값대에서 샘플링
+    base = [24, 22, 18, 20, 16]
+    jitter = [random.randint(-3, 3) for _ in labels]
+    values = [max(10, b + j) for b, j in zip(base, jitter)]
+
+    if PLOTLY_OK:
+        fig = px.pie(values=values, names=labels, hole=0.55)
+        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: %{value}점")
+        fig.update_layout(
+            height=340,
+            margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=True,
+            legend=dict(orientation="h", y=-0.1)
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else:
+        # Plotly 설치 전이라면 간단 텍스트로 대체(화면 붕괴 방지)
+        st.write("시각화를 준비 중입니다.")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # -----------------------------
-    # 서술형 피드백 (기존)
-    # -----------------------------
+    # ── 5) 서술형 피드백 ───────────────────────────────────────────────────
     feedback = random.choice(feedback_sets[st.session_state.feedback_set_key])
     highlight_words = [
         "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
@@ -1007,14 +1030,19 @@ elif st.session_state.phase == "ai_feedback":
             <h2>📢 AI 평가 결과</h2>
             <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{feedback.replace("\n","<br>")}</p>
         </div>
-        """, unsafe_allow_html=True
+        """,
+        unsafe_allow_html=True
     )
 
-    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+    # ── 6) 하단 여백(과잉 공백 방지) ────────────────────────────────────────
+    st.markdown("&nbsp;", unsafe_allow_html=True)
+
+    # ── 7) 다음 단계 버튼 ──────────────────────────────────────────────────
     if st.button("학습동기 설문으로 이동"):
         st.session_state.data["feedback_set"] = st.session_state.feedback_set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1022,7 +1050,7 @@ elif st.session_state.phase == "ai_feedback":
 elif st.session_state.phase == "motivation":
     scroll_top_js()
 
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>학습동기 설문</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 과제 이후 나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
 
     # 가로 폭 축소 시 잘림 방지
     st.markdown("""
