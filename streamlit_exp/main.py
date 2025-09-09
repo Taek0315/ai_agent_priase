@@ -1203,7 +1203,7 @@ elif st.session_state.phase == "phone_input":
     """)
     phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678")
 
-    if st.button("제출"):
+    if st.button("완료"):
         if phone.strip() and not validate_phone(phone):
             st.warning("올바른 형식이 아닙니다. (예: 010-1234-5678)")
         else:
