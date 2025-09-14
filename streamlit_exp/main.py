@@ -103,14 +103,6 @@ def scroll_top_js(nonce: int | None = None):
         unsafe_allow_html=True
     )
 
-    def rerun_with_scroll_top():
-        """
-        스크립트가 매번 새로 실행되도록 nonce 올리고 rerun.
-        """
-        st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
-        st.rerun()
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
 if "phase" not in st.session_state:
@@ -120,6 +112,11 @@ if "phase" not in st.session_state:
     st.session_state.writing_answers = []
     # ✅ 집단 무작위 배정(노력 set1 / 능력 set2). 성과와 무관하게 세션 내 고정.
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
+    # ✅ 2회차 과제 및 피드백 중복 방지용 상태
+    st.session_state.used_feedback_indices = set()
+    st.session_state.praise_once = False
+    st.session_state.round1_started_ts = None
+    st.session_state.round2_started_ts = None
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 피드백 세트 로드 (안전 로드 + 폴백)
@@ -166,7 +163,7 @@ fake_logs = [
 ]
 
 # MCP 애니메이션
-def run_mcp_motion():
+def run_mcp_motion(duration_sec: float = 8.0):
     st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
     st.markdown("""
         <style>
@@ -197,7 +194,7 @@ def run_mcp_motion():
         progress = progress_placeholder.progress(0, text=None)
 
         start = time.time()
-        total = 8.0
+        total = float(duration_sec)
         step = 0
 
         try:
@@ -401,6 +398,21 @@ def render_privacy_doc():
     st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
+# 도구/유틸: 피드백 문구 선택(중복 방지)
+def pick_feedback_text(set_key: str) -> str:
+    fs = feedback_sets.get(set_key, [])
+    if not fs:
+        return "수고하셨습니다. 추론 과정에서의 노력과 성찰이 돋보였습니다."
+    # 아직 사용하지 않은 인덱스가 있으면 그 중에서, 아니면 아무거나
+    remaining = [i for i in range(len(fs)) if i not in st.session_state.used_feedback_indices]
+    if not remaining:
+        idx = random.randrange(len(fs))
+    else:
+        idx = random.choice(remaining)
+    st.session_state.used_feedback_indices.add(idx)
+    return fs[idx]
+
+# ──────────────────────────────────────────────────────────────────────────────
 # 2) 연구 동의 페이지
 # ──────────────────────────────────────────────────────────────────────────────
 if st.session_state.phase == "start":
@@ -429,7 +441,7 @@ if st.session_state.phase == "start":
         consent_research = st.radio(
             "연구 참여에 동의하십니까?",
             ["동의함", "동의하지 않음"],
-            horizontal=True, key="consent_research_radio"
+            horizontal=True, key="consent_research_radio", index=None
         )
 
         st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
@@ -440,7 +452,7 @@ if st.session_state.phase == "start":
         consent_privacy = st.radio(
             "개인정보 수집·이용에 동의하십니까?",
             ["동의함", "동의하지 않음"],
-            horizontal=True, key="consent_privacy_radio"
+            horizontal=True, key="consent_privacy_radio", index=None
         )
 
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
@@ -490,8 +502,8 @@ elif st.session_state.phase == "demographic":
     scroll_top_js()
     st.title("인적사항 입력")
 
-    gender = st.radio("성별", ["남자", "여자"])
-    age_group = st.selectbox("연령대", ["10대", "20대", "30대", "40대", "50대", "60대 이상"])
+    gender = st.radio("성별", ["남자", "여자"], index=None)
+    age_group = st.radio("연령대", ["10대", "20대", "30대", "40대", "50대", "60대 이상"], index=None)
 
     if st.button("설문 시작"):
         if not gender or not age_group:
@@ -540,7 +552,7 @@ elif st.session_state.phase == "anthro":
            line-height:1.6; margin-bottom:18px;}
         .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
         </style>
-        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를선택해 주세요.</h2>
+        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 선택해 주세요.</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
           <span><b>3점</b>: 보통이다</span><span>—</span>
@@ -728,165 +740,171 @@ elif st.session_state.phase == "achive":
                     st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 2-2. 추론 과제 지시문
+# 2-2. 추론 과제 지시문 (2회차 공지 포함)
 elif st.session_state.phase == "writing_intro":
     scroll_top_js()
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
     st.markdown("""
     이번 단계에서는 **이누이트 언어(Inuktut-like)**의 간단한 규칙을 읽고,  
-    총 **10개**의 객관식 문항에 답하는 **추론 과제**를 수행합니다.
+    총 **10개**의 객관식 문항에 답하는 **추론 과제**를 **2회** 수행합니다.
 
     이 과제의 목표는 **정답률 자체가 아니라 ‘낯선 규칙에서 끝까지 추론하려는 과정’**을 관찰하는 것입니다.  
-    즉, 정답을 모두 맞추는 것보다 **단서를 찾고, 비교하고, 일관된 근거로 선택**하는 과정이 더 중요합니다.
+    정답을 모두 맞추는 것보다 **단서를 찾고, 비교하고, 일관된 근거로 선택**하는 과정이 더 중요합니다.
 
-    **진행 방식**
-    1) 간단한 어휘/어법 규칙을 읽습니다.  
-    2) 객관식 문항 10개과 추론에 사용한 규칙에 **모두 응답**합니다. (정답보다 **추론 근거**가 중요)  
-    3) 응답을 제출하면 딥러닝 기반 추론 패턴 분석을 진행합니다.  
-    4) 딥러닝 기반 분석 후 AI의 피드백을 확인할 수 있습니다.
-
-    **성실히 참여하면 좋아요**
-    - 문항마다 ‘가장 그럴듯한’ 선택을 고르고, 가능하면 **적용한 규칙**을 함께 떠올려 보세요.  
-    - **끝까지 응답을 완성**하는 것이 중요합니다. 빈 문항 없이 제출해 주세요.  
-    - 오답이어도 괜찮습니다. **추론 경로**가 분석의 핵심입니다.
+    **진행 순서**
+    1) 1차 과제(10문항) → 분석 모션 → AI 칭찬 피드백 → **다음 과제 난이도(1~10) 선택**
+    2) 2차 과제(10문항) → 분석 모션 → AI 칭찬 피드백
+    3) 학습동기 설문(7문항) → 휴대폰(선택) → **추가 난이도(1~10) 선택** → 최종 제출/디브리핑
     """)
-    if st.button("추론 과제 시작"):
-        st.session_state.phase = "writing"
+    if st.button("1차 추론 과제 시작"):
+        st.session_state.phase = "writing_round1"
+        st.session_state.round1_started_ts = time.time()
         st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 3. 추론 기반 객관식 과제 (성과 기반 분류 제거: 집단 무작위 배정 유지)
-elif st.session_state.phase == "writing":
+# 공통 문항(10개)
+def build_questions():
+    return [
+        {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
+         "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
+        {"q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
+         "options": ["ika-ka sua niri-na", "sua-ka ika niri-tu", "sua taku-na ika-ka", "ika sua-ka niri-na"], "ans": 0},
+        {"q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-t pira-ka siku-tu", "nuk pira-ka siku-na", "pira nuk-t-ka siku-na", "nuk-mi pira siku-tu"], "ans": 0},
+        {"q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
+         "options": ["sua ama nuk ani-ka taku-na", "sua-ka ama nuk-ka ani taku-na", "ani-ka sua ama nuk taku-tu", "sua ama nuk-mi ani taku-na"], "ans": 0},
+        {"q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk-mi sua-t pira-ka taku-na", "nuk-t-mi sua pira-ka taku-na", "sua-t nuk pira-ka taku-na", "nuk-mi sua pira taku-na"], "ans": 0},
+        {"q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-t sua-mi ani-ka taku-tu", "nuk sua-mi ani-ka taku-na", "nuk-t sua ani-ka taku-tu", "sua-mi nuk-t ani-ka taku-na"], "ans": 0},
+        {"q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["nuk-mi sua ika-ka siku-tu", "sua-mi nuk ika-ka siku-na", "nuk-mi sua-ka ika siku-tu", "nuk-t sua ika-ka siku-tu"], "ans": 0},
+        {"q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk ama sua pira-ka niri-na", "nuk pira-ka ama sua niri-na", "nuk ama sua pira niri-tu", "nuk-t ama sua pira-ka niri-na"], "ans": 0},
+        {"q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
+         "options": ["nuk-t ika ama pira-ka taku-na", "nuk-t ika-ka ama pira-ka taku-na", "nuk ika ama pira-ka taku-na", "nuk-t ika ama pira taku-na"], "ans": 0},
+        {"q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
+         "options": ["sua-t nuk-mi ani-ka siku-tu", "sua nuk-mi ani-ka siku-na", "sua-t nuk ani-ka siku-tu", "sua-t nuk-mi ani siku-na"], "ans": 0},
+    ]
+
+RATIONALE_TAGS = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
+
+def render_inference_round(round_no: int):
     scroll_top_js()
+    st.title(f"추론 과제 {round_no}/2 · 이누이트 언어 학습(Inuktut-like)")
 
-    if "inference_started_ts" not in st.session_state:
-        st.session_state.inference_started_ts = time.time()
+    with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
+        st.markdown("""
+        이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
+        아래의 간단한 규칙을 참고해 10개의 객관식 문항에 답해주세요.
 
-    page = st.empty()
-    with page.container():
-        st.title("추론 과제 1/1 · 이누이트 언어 학습(Inuktut-like)")
+        **어휘 예시**
+        - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
+        - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
-        with st.expander("📘 과제 안내 · 간단 규칙(반드시 읽어주세요)", expanded=True):
-            st.markdown("""
-            이 과제는 **정답 여부보다 '어려운 조건에서 끝까지 추론하려는 노력'**을 봅니다.
-            아래의 간단한 규칙을 참고해 10개의 객관식 문항에 답해주세요.
+        **어법 규칙(간단화)**
+        1) **소유**: 명사 뒤에 `-mi` → “~의”  (예: *nuk-mi ani* = 사람의 집)  
+        2) **복수**: 명사 뒤에 `-t`  (예: *nuk-t* = 사람들)  
+        3) **목적 표시**: 목적어에 `-ka`  (예: *pira-ka niri* = 음식을 먹다)  
+        4) **시제**: 동사 뒤에 `-na`(현재), `-tu`(과거)  
+        5) **연결**: 문장 연결에 *ama* = 그리고
+        """)
 
-            **어휘 예시**
-            - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
-            - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
+    questions = build_questions()
 
-            **어법 규칙(간단화)**
-            1) **소유**: 명사 뒤에 `-mi` → “~의”  (예: *nuk-mi ani* = 사람의 집)
-            2) **복수**: 명사 뒤에 `-t`  (예: *nuk-t* = 사람들)
-            3) **목적 표시**: 목적어에 `-ka`  (예: *pira-ka niri* = 음식을 먹다)
-            4) **시제**: 동사 뒤에 `-na`(현재), `-tu`(과거)  
-            5) **연결**: 문장 연결에 *ama* = 그리고
-            """)
+    st.markdown(
+        "<div style='margin:6px 0 16px; padding:10px; border-radius:8px; background:#202b20; color:#fff;'>"
+        "※ 모든 문항은 <b>정답보다 '추론하려는 과정'</b>을 봅니다. 각 문항에서 <b>선택지</b>와 <b>근거 규칙</b>을 모두 선택해 주세요."
+        "</div>", unsafe_allow_html=True
+    )
 
-        questions = [
-            {"q": "Q1. ‘사람의 집(단수)’에 가장 가까운 것은?",
-             "options": ["ani-mi nuk", "nuk-mi ani", "nuk-t ani", "ani-ka nuk"], "ans": 1},
-            {"q": "Q2. ‘개가 물을 마신다(현재)’과 가장 가까운 구조는?  ※ niri=먹다(유사 동작), siku=만들다, taku=보다",
-             "options": ["ika-ka sua niri-na", "sua-ka ika niri-tu", "sua taku-na ika-ka", "ika sua-ka niri-na"], "ans": 0},
-            {"q": "Q3. ‘사람들이 음식을 만들었다(과거)’에 가장 가까운 것은?",
-             "options": ["nuk-t pira-ka siku-tu", "nuk pira-ka siku-na", "pira nuk-t-ka siku-na", "nuk-mi pira siku-tu"], "ans": 0},
-            {"q": "Q4. ‘개와 사람이 집을 본다(현재)’와 가장 가까운 것은?",
-             "options": ["sua ama nuk ani-ka taku-na", "sua-ka ama nuk-ka ani taku-na", "ani-ka sua ama nuk taku-tu", "sua ama nuk-mi ani taku-na"], "ans": 0},
-            {"q": "Q5. ‘사람의 개들이 음식을 본다(현재)’에 가장 가까운 것은?",
-             "options": ["nuk-mi sua-t pira-ka taku-na", "nuk-t-mi sua pira-ka taku-na", "sua-t nuk pira-ka taku-na", "nuk-mi sua pira taku-na"], "ans": 0},
-            {"q": "Q6. ‘사람들이 개의 집을 보았다(과거)’에 가장 가까운 것은?",
-             "options": ["nuk-t sua-mi ani-ka taku-tu", "nuk sua-mi ani-ka taku-na", "nuk-t sua ani-ka taku-tu", "sua-mi nuk-t ani-ka taku-na"], "ans": 0},
-            {"q": "Q7. ‘사람의 개가 물을 만들었다(과거)’에 가장 가까운 것은?",
-             "options": ["nuk-mi sua ika-ka siku-tu", "sua-mi nuk ika-ka siku-na", "nuk-mi sua-ka ika siku-tu", "nuk-t sua ika-ka siku-tu"], "ans": 0},
-            {"q": "Q8. ‘사람과 개가 음식을 먹는다(현재)’에 가장 가까운 것은?",
-             "options": ["nuk ama sua pira-ka niri-na", "nuk pira-ka ama sua niri-na", "nuk ama sua pira niri-tu", "nuk-t ama sua pira-ka niri-na"], "ans": 0},
-            {"q": "Q9. ‘사람들이 물과 음식을 본다(현재)’에 가장 가까운 것은?",
-             "options": ["nuk-t ika ama pira-ka taku-na", "nuk-t ika-ka ama pira-ka taku-na", "nuk ika ama pira-ka taku-na", "nuk-t ika ama pira taku-na"], "ans": 0},
-            {"q": "Q10. ‘개들이 사람의 집을 만들었다(과거)’에 가장 가까운 것은?",
-             "options": ["sua-t nuk-mi ani-ka siku-tu", "sua nuk-mi ani-ka siku-na", "sua-t nuk ani-ka siku-tu", "sua-t nuk-mi ani siku-na"], "ans": 0},
-        ]
-
-        st.markdown(
-            "<div style='margin:6px 0 16px; padding:10px; border-radius:8px; background:#202b20;'>"
-            "※ 모든 문항은 <b>정답보다 '추론하려는 과정'</b>을 봅니다. 끝까지 선택해 주세요."
-            "</div>", unsafe_allow_html=True
+    selections, rationales = [], []
+    for i, item in enumerate(questions):
+        st.markdown(f"### {item['q']}")
+        st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
+        choice = st.radio(
+            label=f"문항 {i+1} 선택",
+            options=list(range(len(item["options"]))),
+            format_func=lambda idx, opts=item["options"]: opts[idx],
+            key=f"round{round_no}_mcq_{i}",
+            horizontal=False,
+            index=None
         )
+        selections.append(choice)
+        rationale = st.multiselect(
+            f"문항 {i+1}에서 참고한 규칙(최소 1개 이상)",
+            options=RATIONALE_TAGS,
+            key=f"round{round_no}_rat_{i}",
+            help="최소 1개 이상 선택해야 제출할 수 있습니다."
+        )
+        rationales.append(rationale)
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
-        rationale_tags = ["소유(-mi)", "복수(-t)", "목적표시(-ka)", "시제(-na/-tu)", "연결어(ama)"]
+    # 검증
+    def validate_mcq(sel_list, rat_list):
+        missing_sel = [i+1 for i, s in enumerate(sel_list) if s is None]
+        missing_rat = [i+1 for i, r in enumerate(rat_list) if not r]
+        all_selected = (len(sel_list) == len(questions)) and not missing_sel
+        all_rationale = (len(rat_list) == len(questions)) and not missing_rat
+        return (all_selected and all_rationale), missing_sel, missing_rat
 
-        selections, rationales = [], []
-        for i, item in enumerate(questions):
-            st.markdown(f"### {item['q']}")
-            st.caption("이 문항은 **정답이 전부가 아닙니다.** 규칙을 참고해 가장 그럴듯한 선택지를 고르세요.")
-            choice = st.radio(
-                label=f"문항 {i+1} 선택",
-                options=list(range(len(item["options"]))),
-                format_func=lambda idx, opts=item["options"]: opts[idx],
-                key=f"mcq_{i}",
-                horizontal=False,
-                index=None
-            )
-            selections.append(choice)
-            rationale = st.multiselect(
-                f"문항 {i+1}에서 참고한 규칙(최소 1개 이상)",
-                options=rationale_tags,
-                key=f"mcq_rationale_{i}",
-                help="최소 1개 이상 선택해야 제출할 수 있습니다."
-            )
-            rationales.append(rationale)
-
-        # 검증
-        def validate_mcq(sel_list, rat_list):
-            missing_sel = [i+1 for i, s in enumerate(sel_list) if s is None]
-            missing_rat = [i+1 for i, r in enumerate(rat_list) if not r]
-            all_selected = (len(sel_list) == len(questions)) and not missing_sel
-            all_rationale = (len(rat_list) == len(questions)) and not missing_rat
-            return (all_selected and all_rationale), missing_sel, missing_rat
-
-        if st.button("제출"):
-            valid, miss_sel, miss_rat = validate_mcq(selections, rationales)
-            if not valid:
-                msgs = []
-                if miss_sel:
-                    msgs.append(f"미선택 문항: {', '.join(map(str, miss_sel))}")
-                if miss_rat:
-                    msgs.append(f"근거 규칙 미선택 문항: {', '.join(map(str, miss_rat))}")
-                st.warning(" · ".join(msgs) if msgs else "모든 문항을 확인해 주세요.")
+    if st.button("제출", key=f"submit_round{round_no}"):
+        valid, miss_sel, miss_rat = validate_mcq(selections, rationales)
+        if not valid:
+            msgs = []
+            if miss_sel:
+                msgs.append(f"미선택 문항: {', '.join(map(str, miss_sel))}")
+            if miss_rat:
+                msgs.append(f"근거 규칙 미선택 문항: {', '.join(map(str, miss_rat))}")
+            st.warning(" · ".join(msgs) if msgs else "모든 문항을 확인해 주세요.")
+        else:
+            selected_idx = [int(s) for s in selections]
+            if round_no == 1:
+                duration = int(time.time() - st.session_state.round1_started_ts) if st.session_state.round1_started_ts else None
             else:
-                selected_idx = [int(s) for s in selections]
-                duration = int(time.time() - st.session_state.inference_started_ts)
-                score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
-                accuracy = round(score / len(questions), 3)
+                duration = int(time.time() - st.session_state.round2_started_ts) if st.session_state.round2_started_ts else None
+            score = sum(int(selected_idx[i] == q["ans"]) for i, q in enumerate(questions))
+            accuracy = round(score / len(questions), 3)
 
-                detail = [{
-                    "q": questions[i]["q"],
-                    "options": questions[i]["options"],
-                    "selected_idx": selected_idx[i],
-                    "correct_idx": int(questions[i]["ans"]),
-                    "rationales": rationales[i]
-                } for i in range(len(questions))]
+            detail = [{
+                "q": questions[i]["q"],
+                "options": questions[i]["options"],
+                "selected_idx": selected_idx[i],
+                "correct_idx": int(questions[i]["ans"]),
+                "rationales": rationales[i]
+            } for i in range(len(questions))]
 
-                st.session_state.inference_answers = detail
-                st.session_state.inference_score = int(score)
-                st.session_state.inference_duration_sec = duration
+            st.session_state.data[f"inference_round{round_no}"] = {
+                "answers": detail,
+                "score": int(score),
+                "duration_sec": duration,
+                "accuracy": accuracy
+            }
 
-                st.session_state.data["inference_answers"] = detail
-                st.session_state.data["inference_score"] = int(score)
-                st.session_state.data["inference_duration_sec"] = duration
-                st.session_state.data["inference_accuracy"] = accuracy
-
-                # 다음 단계 (집단 배정은 초기 무작위값 유지)
-                page.empty()
-                st.session_state["_mcp_started"] = False
-                st.session_state["_mcp_done"] = False
-                st.session_state.phase = "analyzing"
-                st.rerun()
+            # 다음 단계: MCP 모션
+            st.session_state[f"_mcp_started_{round_no}"] = False
+            st.session_state[f"_mcp_done_{round_no}"] = False
+            st.session_state.phase = f"analyzing_round{round_no}"
+            st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 4. MCP 분석 모션
-elif st.session_state.phase == "analyzing":
+# 3. 추론 과제 (1차/2차)
+elif st.session_state.phase == "writing_round1":
+    # 시작 시간 세팅은 writing_intro에서
+    render_inference_round(1)
+
+elif st.session_state.phase == "writing_round2":
+    if not st.session_state.round2_started_ts:
+        st.session_state.round2_started_ts = time.time()
+    render_inference_round(2)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4. MCP 분석 모션 (1차/2차)
+elif st.session_state.phase in ["analyzing_round1", "analyzing_round2"]:
     scroll_top_js()
+    round_no = 1 if st.session_state.phase.endswith("round1") else 2
+
     page = st.empty()
     with page.container():
         st.markdown("""
@@ -899,14 +917,14 @@ elif st.session_state.phase == "analyzing":
             </style>
         """, unsafe_allow_html=True)
 
-        if not st.session_state.get("_mcp_started", False):
-            st.session_state["_mcp_started"] = True
-            run_mcp_motion()
-            st.session_state["_mcp_done"] = True
+        if not st.session_state.get(f"_mcp_started_{round_no}", False):
+            st.session_state[f"_mcp_started_{round_no}"] = True
+            run_mcp_motion(8.0)
+            st.session_state[f"_mcp_done_{round_no}"] = True
             st.rerun()
 
-        if st.session_state.get("_mcp_done", False):
-            st.markdown("""
+        if st.session_state.get(f"_mcp_done_{round_no}", False):
+            st.markdown(f"""
                 <div class='mcp-done-card'>
                   <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
                   <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
@@ -916,94 +934,148 @@ elif st.session_state.phase == "analyzing":
             """, unsafe_allow_html=True)
             _, mid, _ = st.columns([1,2,1])
             with mid:
-                if st.button("결과 보기", use_container_width=True):
+                if st.button("결과 보기", use_container_width=True, key=f"see_feedback_{round_no}"):
                     page.empty()
-                    st.session_state["_mcp_started"] = False
-                    st.session_state["_mcp_done"] = False
-                    st.session_state.phase = "ai_feedback"
+                    st.session_state[f"_mcp_started_{round_no}"] = False
+                    st.session_state[f"_mcp_done_{round_no}"] = False
+                    st.session_state.phase = f"ai_feedback_round{round_no}"
                     st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. AI 피드백
-elif st.session_state.phase == "ai_feedback":
+# 5. AI 피드백 (세트 고정, 문구 중복 방지)
+elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
     scroll_top_js()
 
-    # ── 0) 세트 결정(무작위 유지)
+    # ── 0) 집단(무작위 유지)
     if "feedback_set_key" not in st.session_state:
         st.session_state.feedback_set_key = random.choice(["set1", "set2"])
     set_key = st.session_state.get("feedback_set_key", "set1")
+    round_no = 1 if st.session_state.phase.endswith("round1") else 2
 
-    # ── 1) 세트별 비주얼 테마(라벨 없이 시각적 암시)
+    # ── 1) 칭찬 연출 테마 (라벨 노출 없이 색/아이콘/무드로만 구분)
     THEME = {
-        "set1": {  # 노력 칭찬 → 분석적·구체적 느낌(녹색 계열 + 🔬)
-            "banner_bg": "#0b3a1a",
-            "banner_fg": "#e6ffef",
-            "accent": "#2E7D32",
-            "icon": "🔬",
-            "hl_color": "#1E7A35",  # 프로세스용 하이라이트
+        "set1": {  # 노력 칭찬 → 따뜻한 축하 + 분석적 신뢰감
+            "bg_grad": "linear-gradient(135deg,#0b3a1a 0%, #1e7a35 60%, #4caf50 100%)",
+            "accent": "#1E7A35",
+            "icon": "🫶",
+            "confetti": True,
+            "hl": "#0E6F2E"
         },
-        "set2": {  # 능력 칭찬 → 넓고 포괄적 느낌(청색 계열 + 🌟)
-            "banner_bg": "#0b2a5a",
-            "banner_fg": "#e9f3ff",
+        "set2": {  # 능력 칭찬 → 반짝이는 축하 + 넓은 가능성
+            "bg_grad": "linear-gradient(135deg,#162c6a 0%, #1565C0 60%, #6FA8FF 100%)",
             "accent": "#1565C0",
             "icon": "🌟",
-            "hl_color": "#0D47A1",  # 특성용 하이라이트
-        },
+            "confetti": True,
+            "hl": "#0D47A1"
+        }
     }
     theme = THEME.get(set_key, THEME["set1"])
 
-    # ── 2) 스타일 (라벨·칩 제거, 세트별 컬러만 다르게)
+    # ── 2) 스타일
     st.markdown(f"""
     <style>
-      .banner-top {{
-        background:{theme["banner_bg"]}; color:{theme["banner_fg"]};
-        border-radius:14px; padding:16px 18px; font-weight:800; margin:10px 0 16px;
-        box-shadow:0 10px 24px rgba(0,0,0,.18);
-        border:2px solid rgba(255,255,255,.08);
-        letter-spacing:.2px
+      .praise-banner {{
+        background:{theme["bg_grad"]};
+        color:#fff; border-radius:16px; padding:18px 20px; margin:8px 0 14px;
+        box-shadow:0 14px 28px rgba(0,0,0,.24), 0 10px 10px rgba(0,0,0,.22);
+        font-weight:900; letter-spacing:.2px; display:flex; gap:10px; align-items:center;
+        border:1px solid rgba(255,255,255,.16);
       }}
-      .labelbox {{
-        border: 2px solid {theme["accent"]}; border-radius: 12px;
-        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 14px;
-        box-shadow: 0 6px 16px rgba(0,0,0,.08);
+      .praise-banner .emoji {{ font-size:22px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }}
+
+      .praise-card {{
+        position: relative;
+        background: #FCFFFC;
+        border-radius:18px; padding:18px 18px 16px; margin: 10px 0 16px;
+        box-shadow: 0 10px 26px rgba(0,0,0,.12);
+        border: 2px solid {theme["accent"]};
+        overflow:hidden;
       }}
-      .labelbox .label-hd {{
-        font-weight:900; color:#143; font-size:15.5px; margin:0 0 6px 0;
-        display:flex; gap:8px; align-items:center;
+      .praise-ribbon {{
+        position:absolute; top:14px; right:-10px;
+        background:{theme["accent"]}; color:#fff; font-weight:800; font-size:12px;
+        padding:6px 14px; transform: rotate(8deg); border-radius:8px;
+        box-shadow:0 6px 14px rgba(0,0,0,.18);
       }}
-      .labelbox .label-bd {{
-        color:#0f3a17; font-size:15px; line-height:1.7;
+      .praise-title {{
+        margin:0 0 10px 0; font-size:22px; font-weight:900; color:#123;
+        display:flex; align-items:center; gap:8px;
       }}
+      .praise-quote {{
+        position:relative; margin:4px 0 0; padding:10px 12px 8px 14px;
+        background:#ffffff; border-left:6px solid {theme["accent"]};
+        border-radius:10px;
+      }}
+      .praise-quote p {{
+        font-size:16.5px; line-height:1.78; margin:0;
+        color:#222 !important; white-space:pre-line;
+      }}
+      .hl {{ font-weight:800; color:{theme["hl"]}; }}
+      .praise-sign {{ margin-top:10px; font-size:13.2px; color:#3a3a3a; opacity:.9; }}
       .result-card {{
-        border:2px solid {theme["accent"]}; border-radius:14px; padding:16px; background:#F9FFF9;
-        box-shadow:0 8px 18px rgba(0,0,0,.08);
-        animation: fadeUp .45s ease-out both;
+        border:2px solid {theme["accent"]}; border-radius:14px; padding:16px; background:#F7FFF7;
+        box-shadow:0 8px 18px rgba(0,0,0,.08); margin-top:12px;
       }}
-      .result-card h2{{ text-align:left; margin:0 0 10px; color:#123; font-size:24px; }}
-      @keyframes fadeUp{{ from{{opacity:0; transform:translateY(8px);}} to{{opacity:1; transform:none;}} }}
-      .hl {{ font-weight:800; color:{theme["hl_color"]}; }}
+      .result-card h2{{ text-align:left; margin:0 0 10px; color:#123; font-size:22px; }}
     </style>
-    <div class="banner-top">{theme["icon"]} AI 분석 완료 — 추론 성과를 바탕으로 칭찬을 전달합니다</div>
     """, unsafe_allow_html=True)
 
-    # ── 3) 요약(라벨 문구 없이 중립적 톤 유지)
-    st.markdown("""
-    <div class="labelbox">
-      <div class="label-hd">요약</div>
-      <div class="label-bd">이번 과제에서 드러난 추론 습관과 선택의 근거를 바탕으로 칭찬을 정리했습니다.</div>
+    # ── 3) 축하 애니메이션 (과한 반복 방지)
+    if theme["confetti"] and not st.session_state.get("praise_once"):
+        st.balloons()
+        st.session_state["praise_once"] = True
+
+    # ── 4) 칭찬 배너 (최상단)
+    st.markdown(f"""
+    <div class="praise-banner">
+      <span class="emoji">{theme["icon"]}</span>
+      <div>AI가 당신의 풀이를 보며 <b>진심으로 칭찬</b>을 전합니다</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 4) 시각화(라벨 텍스트 없이도 프로세스 vs 패턴 대비가 보이도록 축 구성)
+    # ── 5) 피드백 텍스트 (세트 고정 + 중복 방지)
+    feedback = pick_feedback_text(set_key)
+
+    # ── 6) 세트별 하이라이트(라벨 노출 없이 색감으로만)
+    HL = {
+        "set1": ["충분한 시간", "시도→점검→수정", "꾸준한 노력", "집중", "검증", "예외 정리"],
+        "set2": ["언어적 감각", "빠른 이해", "자연스럽게", "넓은 적용", "전반 역량", "매끄러운 흐름"]
+    }
+    for kw in HL.get(set_key, []):
+        feedback = feedback.replace(kw, f"<span class='hl'>{kw}</span>")
+
+    # ── 7) 칭찬 카드
+    st.markdown(f"""
+    <div class="praise-card">
+      <div class="praise-ribbon">칭찬 드려요</div>
+      <div class="praise-title">{theme["icon"]} 정말 잘하셨어요!</div>
+      <div class="praise-quote">
+        <p>{feedback}</p>
+      </div>
+      <div class="praise-sign">— 당신의 풀이를 옆에서 지켜본 AI가</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── 8) 간단 요약 후 분석 시각화 (도넛)
+    st.markdown(f"""
+    <div class="result-card" id="analysis-start">
+      <h2>📊 분석 한눈에 보기</h2>
+      <div style="font-size:14.5px; color:#203; margin:2px 0 8px;">
+        칭찬의 근거를 간단히 시각화했습니다. (세부 점수는 연구 목적상 무작위 프리셋 기반)
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     labels = ["규칙 가설화", "패턴 파악", "예외 정리", "집중 지속", "검증 반복"]
     CHART_PRESETS = {
         "set1": {"base":[22,21,38,36,38], "colors":["#CDECCB","#7AC779","#5BAF5A","#92D091","#B1E3AE"]},
         "set2": {"base":[34,38,22,20,28], "colors":["#B3D4FF","#80B6FF","#66A7FF","#3E8BFF","#1565C0"]},
     }
     preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
+
     if "chart_seed" not in st.session_state:
         st.session_state.chart_seed = random.randint(1000,9999)
-    rng = random.Random(st.session_state.chart_seed)
+    rng = random.Random(st.session_state.chart_seed + (0 if round_no==1 else 1))
     jitter = [rng.randint(-2,2) for _ in labels]
     values = [max(10,b+j) for b,j in zip(preset["base"], jitter)]
 
@@ -1011,49 +1083,45 @@ elif st.session_state.phase == "ai_feedback":
         import plotly.express as px
         fig = px.pie(values=values, names=labels, hole=0.55, color=labels,
                      color_discrete_sequence=preset["colors"])
-        fig.update_traces(textinfo="percent+label", marker=dict(line=dict(width=1, color="white")),
+        fig.update_traces(textinfo="percent+label",
+                          marker=dict(line=dict(width=1, color="white")),
                           hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>")
-        fig.update_layout(height=330, margin=dict(l=10,r=10,t=6,b=6),
+        fig.update_layout(height=320, margin=dict(l=10,r=10,t=6,b=6),
                           showlegend=True, legend=dict(orientation="h", y=-0.1),
                           uniformtext_minsize=12, uniformtext_mode="hide")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False, "displaylogo": False})
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
-    # ── 5) 피드백 불러오기
-    feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
-    try:
-        with open(feedback_path, "r", encoding="utf-8") as f:
-            fs = json.load(f)
-        if not isinstance(fs, dict) or not fs:
-            raise ValueError
-    except Exception:
-        fs = {"set1": ["과정이 뚜렷…\n프로세스…\n안정적…"], "set2": ["감각이 좋…\n넓은…\n전반…"]}
-
-    feedback = random.choice(fs.get(set_key, fs["set1"]))
-
-    # ── 6) 세트별 하이라이트 단어(라벨 없이 느낌만 다르게)
-    HL = {
-        "set1": ["충분한 시간", "시도→점검→수정", "예외 정리", "검증 반복", "꾸준한 노력", "분석적 접근"],
-        "set2": ["언어적 감각", "전반 역량", "빠른 이해", "넓은 적용", "자연스러운 학습", "매끄러운 결과"]
-    }
-    for kw in HL.get(set_key, []):
-        feedback = feedback.replace(kw, f"<span class='hl'>{kw}</span>")
-
-    # ── 7) 카드 출력(3줄 고정 문단)
-    st.markdown(f"""
-    <div class='result-card' id='analysis-start'>
-      <h2>📢 칭찬</h2>
-      <p style='font-size:16px; line-height:1.75; margin:0; white-space:pre-line;'>{feedback}</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    # ── 9) 다음 단계 버튼
     st.markdown("&nbsp;", unsafe_allow_html=True)
-    if st.button("학습동기 설문으로 이동"):
-        st.session_state.data["feedback_set"] = set_key
-        st.session_state.phase = "motivation"
-        st.rerun()
 
+    if round_no == 1:
+        if st.button("다음 과제 난이도 선택 (1~10)"):
+            st.session_state.data["feedback_set"] = set_key
+            st.session_state.phase = "difficulty_after_fb1"
+            st.rerun()
+    else:
+        if st.button("학습동기 설문으로 이동"):
+            st.session_state.data["feedback_set"] = set_key
+            st.session_state.phase = "motivation"
+            st.rerun()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5-1. 난이도 질문(1차 피드백 직후) — 기본값 없이 강제 선택
+elif st.session_state.phase == "difficulty_after_fb1":
+    scroll_top_js()
+    st.subheader("다음 과제 난이도를 선택해 주세요 (1~10)")
+    diff_choice = st.radio("다음(2차) 과제 난이도", list(range(1,11)), index=None, horizontal=True)
+    if st.button("확인 후 2차 과제로 이동"):
+        if diff_choice is None:
+            st.warning("난이도를 선택해 주세요.")
+        else:
+            st.session_state.data["difficulty_after_fb1"] = int(diff_choice)
+            st.session_state.phase = "writing_round2"
+            st.session_state.round2_started_ts = time.time()
+            st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
@@ -1083,7 +1151,9 @@ elif st.session_state.phase == "motivation":
         "7. 이런 과제를 수행하는 것은 나의 추론 능력을 발전시키는 데 가치가 있다."
     ]
 
-    motivation_responses = []
+    if "motivation_responses" not in st.session_state:
+        st.session_state.motivation_responses = [None]*len(motivation_q)
+
     for i, q in enumerate(motivation_q, start=1):
         choice = st.radio(
             label=f"{i}. {q}",
@@ -1093,58 +1163,73 @@ elif st.session_state.phase == "motivation":
             key=f"motivation_{i}",
             label_visibility="visible"
         )
-        motivation_responses.append(choice)
-        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+        st.session_state.motivation_responses[i-1] = choice
+        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    if st.button("설문 완료"):
-        if None in motivation_responses:
+    if st.button("다음 (휴대폰 입력)"):
+        if None in st.session_state.motivation_responses:
             st.warning("모든 문항에 응답해 주세요.")
         else:
-            st.session_state.data["motivation_responses"] = motivation_responses
+            st.session_state.data["motivation_responses"] = st.session_state.motivation_responses
             st.session_state.phase = "phone_input"
             st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 6-1. 휴대폰 번호 입력
+# 6-1. 휴대폰 번호 입력 (선택)
 elif st.session_state.phase == "phone_input":
     scroll_top_js()
 
-    st.title("휴대폰 번호 입력")
+    st.title("휴대폰 번호 입력 (선택)")
     st.markdown("""
-    연구 참여가 완료되었습니다. 감사합니다.  
+    연구 참여가 거의 완료되었습니다. 감사합니다.  
     연구 답례품을 받을 휴대폰 번호를 입력해 주세요. (선택 사항)  
-    입력하지 않아도 제출이 가능합니다. 다만, 미입력 시 답례품 전달이 어려울 수 있습니다.
+    입력하지 않아도 다음 단계로 진행할 수 있으나, 미입력 시 답례품 전달이 어려울 수 있습니다.
     """)
-    phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678")
+    phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678", key="phone_input_value")
 
-    if st.button("완료"):
+    if st.button("다음 (추가 난이도 선택)"):
         if phone.strip() and not validate_phone(phone):
             st.warning("올바른 형식이 아닙니다. (예: 010-1234-5678)")
         else:
             st.session_state.data["phone"] = phone.strip()
-            st.session_state.data["endTime"] = datetime.now().isoformat()
-            save_to_csv(st.session_state.data)
+            st.session_state.phase = "difficulty_final"
+            st.rerun()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 6-2. 추가 난이도 문항 (최종 전 1~10) — 기본값 없이 강제 선택
+elif st.session_state.phase == "difficulty_final":
+    scroll_top_js()
+    st.subheader("추가 과제가 있습니다. 사용자의 선택에 따라 난이도가 변경됩니다.난이도를 어느 정도로 하시겠습니까? (1~10)")
+    diff2 = st.radio("추가 난이도 선택", list(range(1,11)), index=None, horizontal=True, key="final_diff_radio")
+    if st.button("다음 과제 이동"):
+        if diff2 is None:
+            st.warning("난이도를 선택해 주세요.")
+        else:
+            st.session_state.data["difficulty_future_adaptive"] = int(diff2)
             st.session_state.phase = "result"
             st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 7. 완료 화면
+# 7. 완료/디브리핑 (자동 저장)
 elif st.session_state.phase == "result":
     scroll_top_js()
 
+    # 아직 저장이 안 된 경우 자동 저장
     if "result_submitted" not in st.session_state:
-        st.success("모든 과제가 완료되었습니다. 감사합니다!")
-        st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
-        if st.button("제출"):
+        st.session_state.data["endTime"] = datetime.now().isoformat()
+        try:
+            save_to_csv(st.session_state.data)
             st.session_state.result_submitted = True
-            st.rerun()
-    else:
-        st.success("응답이 저장되었습니다.")
-        st.markdown("""
-        <div style='font-size:16px; padding-top:10px;'>
-            설문 응답이 성공적으로 저장되었습니다.<br>
-            <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 수동으로 닫아 주세요.</b><br><br>
-            ※ 본 연구에서 제공된 AI의 평가는 사전에 생성된 예시 대화문으로, 
-            귀하의 실제 추론 능력을 직접 평가한 것이 아님을 알려드립니다.
-        </div>
-        """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"저장 중 오류가 발생했습니다: {e}")
+
+    # 디브리핑 문구 (저장 후 안내만 표시)
+    st.success("모든 과제가 완료되었습니다. 감사합니다!")
+    st.markdown("""
+    <div style='font-size:16px; padding-top:10px;'>
+        ※ 본 연구에서 제공된 AI의 평가는 <b>사전에 생성된 예시 문구</b>를 기반으로 제공되었으며, 
+        귀하의 실제 추론 능력을 직접 평가한 것이 아님을 알려드립니다.<br><br>
+        설문 응답은 이미 저장되었습니다.<br>
+        <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 직접 닫아 주세요.</b>
+    </div>
+    """, unsafe_allow_html=True)
