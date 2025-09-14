@@ -928,102 +928,99 @@ elif st.session_state.phase == "analyzing":
 elif st.session_state.phase == "ai_feedback":
     scroll_top_js()
 
-    st.markdown("""
-    <style>
-      .banner-ok{
-        background:#0f3a17; color:#e6ffe6; border-radius:10px; padding:12px 14px;
-        font-weight:700; margin:6px 0 12px; text-align:left;
-      }
-      .labelbox{
-        border: 2px solid #2E7D32; border-radius: 12px;
-        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 12px;
-        box-shadow: 0 3px 10px rgba(46,125,50,.08);
-      }
-      .labelbox .label-hd{
-        font-weight:800; color:#1B5E20; font-size:15px; margin:0 0 6px 0;
-        display:flex; gap:8px; align-items:center;
-      }
-      .labelbox .label-bd{ color:#0f3a17; font-size:14.5px; line-height:1.65; }
-      .result-card{
-        border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
-        box-shadow:0 6px 14px rgba(46,125,50,.08);
-        animation: fadeUp .6s ease-out both;
-      }
-      .result-card h2{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }
-      @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
-    </style>
-    <div class="banner-ok">AI 분석 완료!</div>
-    """, unsafe_allow_html=True)
-
-    # ✅ 집단 배정: 초기 무작위 고정값 사용(성과와 무관)
+    # ── 0) 세트 결정(무작위 유지)
+    if "feedback_set_key" not in st.session_state:
+        st.session_state.feedback_set_key = random.choice(["set1", "set2"])
     set_key = st.session_state.get("feedback_set_key", "set1")
 
-    LABEL_MAP = {
-        "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
-        "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}
+    # ── 1) 세트별 비주얼 테마(라벨 없이 시각적 암시)
+    THEME = {
+        "set1": {  # 노력 칭찬 → 분석적·구체적 느낌(녹색 계열 + 🔬)
+            "banner_bg": "#0b3a1a",
+            "banner_fg": "#e6ffef",
+            "accent": "#2E7D32",
+            "icon": "🔬",
+            "hl_color": "#1E7A35",  # 프로세스용 하이라이트
+        },
+        "set2": {  # 능력 칭찬 → 넓고 포괄적 느낌(청색 계열 + 🌟)
+            "banner_bg": "#0b2a5a",
+            "banner_fg": "#e9f3ff",
+            "accent": "#1565C0",
+            "icon": "🌟",
+            "hl_color": "#0D47A1",  # 특성용 하이라이트
+        },
     }
-    label = LABEL_MAP.get(set_key, LABEL_MAP["set1"])
+    theme = THEME.get(set_key, THEME["set1"])
 
+    # ── 2) 스타일 (라벨·칩 제거, 세트별 컬러만 다르게)
     st.markdown(f"""
+    <style>
+      .banner-top {{
+        background:{theme["banner_bg"]}; color:{theme["banner_fg"]};
+        border-radius:14px; padding:16px 18px; font-weight:800; margin:10px 0 16px;
+        box-shadow:0 10px 24px rgba(0,0,0,.18);
+        border:2px solid rgba(255,255,255,.08);
+        letter-spacing:.2px
+      }}
+      .labelbox {{
+        border: 2px solid {theme["accent"]}; border-radius: 12px;
+        background: #F9FFF9; padding: 12px 14px; margin: 8px 0 14px;
+        box-shadow: 0 6px 16px rgba(0,0,0,.08);
+      }}
+      .labelbox .label-hd {{
+        font-weight:900; color:#143; font-size:15.5px; margin:0 0 6px 0;
+        display:flex; gap:8px; align-items:center;
+      }}
+      .labelbox .label-bd {{
+        color:#0f3a17; font-size:15px; line-height:1.7;
+      }}
+      .result-card {{
+        border:2px solid {theme["accent"]}; border-radius:14px; padding:16px; background:#F9FFF9;
+        box-shadow:0 8px 18px rgba(0,0,0,.08);
+        animation: fadeUp .45s ease-out both;
+      }}
+      .result-card h2{{ text-align:left; margin:0 0 10px; color:#123; font-size:24px; }}
+      @keyframes fadeUp{{ from{{opacity:0; transform:translateY(8px);}} to{{opacity:1; transform:none;}} }}
+      .hl {{ font-weight:800; color:{theme["hl_color"]}; }}
+    </style>
+    <div class="banner-top">{theme["icon"]} AI 분석 완료 — 추론 성과를 바탕으로 칭찬을 전달합니다</div>
+    """, unsafe_allow_html=True)
+
+    # ── 3) 요약(라벨 문구 없이 중립적 톤 유지)
+    st.markdown("""
     <div class="labelbox">
-      <div class="label-hd">요약 결과</div>
-      <div class="label-bd"><b>{label['title']}</b> — {label['desc']}</div>
-    </div>
-    <div class="result-card" id="analysis-start">
-      <h2>📊 추론 결과 분석</h2>
+      <div class="label-hd">요약</div>
+      <div class="label-bd">이번 과제에서 드러난 추론 습관과 선택의 근거를 바탕으로 칭찬을 정리했습니다.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    labels = ["논리적 사고", "패턴 발견", "창의성", "주의 집중", "끈기"]
-
+    # ── 4) 시각화(라벨 텍스트 없이도 프로세스 vs 패턴 대비가 보이도록 축 구성)
+    labels = ["규칙 가설화", "패턴 파악", "예외 정리", "집중 지속", "검증 반복"]
     CHART_PRESETS = {
-        "set1": {
-            "base": [18, 24, 20, 40, 36],
-            "colors": ["#CDECCB", "#7AC779", "#B1E3AE", "#5BAF5A", "#92D091"],
-        },
-        "set2": {
-            "base": [32, 36, 38, 18, 24],
-            "colors": ["#A5D6A7", "#66BB6A", "#81C784", "#43A047", "#2E7D32"],
-        },
+        "set1": {"base":[22,21,38,36,38], "colors":["#CDECCB","#7AC779","#5BAF5A","#92D091","#B1E3AE"]},
+        "set2": {"base":[34,38,22,20,28], "colors":["#B3D4FF","#80B6FF","#66A7FF","#3E8BFF","#1565C0"]},
     }
-
     preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
-    base = preset["base"]
-    palette = preset["colors"]
-
     if "chart_seed" not in st.session_state:
-        st.session_state.chart_seed = random.randint(1_000, 9_999)
+        st.session_state.chart_seed = random.randint(1000,9999)
     rng = random.Random(st.session_state.chart_seed)
-
-    jitter = [rng.randint(-2, 2) for _ in labels]
-    values = [max(10, b + j) for b, j in zip(base, jitter)]
+    jitter = [rng.randint(-2,2) for _ in labels]
+    values = [max(10,b+j) for b,j in zip(preset["base"], jitter)]
 
     try:
         import plotly.express as px
-        fig = px.pie(
-            values=values,
-            names=labels,
-            hole=0.55,
-            color=labels,
-            color_discrete_sequence=palette
-        )
-        fig.update_traces(
-            textinfo="percent+label",
-            hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>",
-            marker=dict(line=dict(width=1, color="white"))
-        )
-        fig.update_layout(
-            height=340,
-            margin=dict(l=10, r=10, t=10, b=10),
-            showlegend=True,
-            legend=dict(orientation="h", y=-0.1),
-            uniformtext_minsize=12,
-            uniformtext_mode="hide"
-        )
+        fig = px.pie(values=values, names=labels, hole=0.55, color=labels,
+                     color_discrete_sequence=preset["colors"])
+        fig.update_traces(textinfo="percent+label", marker=dict(line=dict(width=1, color="white")),
+                          hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>")
+        fig.update_layout(height=330, margin=dict(l=10,r=10,t=6,b=6),
+                          showlegend=True, legend=dict(orientation="h", y=-0.1),
+                          uniformtext_minsize=12, uniformtext_mode="hide")
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
+    # ── 5) 피드백 불러오기
     feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
     try:
         with open(feedback_path, "r", encoding="utf-8") as f:
@@ -1031,42 +1028,32 @@ elif st.session_state.phase == "ai_feedback":
         if not isinstance(fs, dict) or not fs:
             raise ValueError
     except Exception:
-        fs = {
-            "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
-            "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
-        }
+        fs = {"set1": ["과정이 뚜렷…\n프로세스…\n안정적…"], "set2": ["감각이 좋…\n넓은…\n전반…"]}
 
     feedback = random.choice(fs.get(set_key, fs["set1"]))
-    for phrase in [
-        "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
-        "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
-        "지속적인 탐색과 시도",
-        "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
-        "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
-        "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
-        "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
-        "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
-        "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
-        "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
-        "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력",
-    ]:
-        feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
-    st.markdown(
-        f"""
-        <div class='result-card' style='margin-top:16px;'>
-            <h2>📢 AI 평가 결과</h2>
-            <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{feedback.replace("\n","<br>")}</p>
-        </div>
-        """, unsafe_allow_html=True
-    )
+    # ── 6) 세트별 하이라이트 단어(라벨 없이 느낌만 다르게)
+    HL = {
+        "set1": ["충분한 시간", "시도→점검→수정", "예외 정리", "검증 반복", "꾸준한 노력", "분석적 접근"],
+        "set2": ["언어적 감각", "전반 역량", "빠른 이해", "넓은 적용", "자연스러운 학습", "매끄러운 결과"]
+    }
+    for kw in HL.get(set_key, []):
+        feedback = feedback.replace(kw, f"<span class='hl'>{kw}</span>")
+
+    # ── 7) 카드 출력(3줄 고정 문단)
+    st.markdown(f"""
+    <div class='result-card' id='analysis-start'>
+      <h2>📢 칭찬</h2>
+      <p style='font-size:16px; line-height:1.75; margin:0; white-space:pre-line;'>{feedback}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("&nbsp;", unsafe_allow_html=True)
     if st.button("학습동기 설문으로 이동"):
-        # 결과 저장 시, 집단 키도 함께 저장
         st.session_state.data["feedback_set"] = set_key
         st.session_state.phase = "motivation"
         st.rerun()
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
