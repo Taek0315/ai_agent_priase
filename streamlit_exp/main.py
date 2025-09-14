@@ -890,12 +890,12 @@ def render_inference_round(round_no: int):
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 3. 추론 과제 (1차/2차)
-elif st.session_state.phase == "writing_round1":
-    # 시작 시간 세팅은 writing_intro에서
+if st.session_state.phase == "writing_round1":
+    # 시작 시간 세팅은 writing_intro에서 처리되었다고 가정
     render_inference_round(1)
 
 elif st.session_state.phase == "writing_round2":
-    if not st.session_state.round2_started_ts:
+    if not st.session_state.get("round2_started_ts"):
         st.session_state.round2_started_ts = time.time()
     render_inference_round(2)
 
@@ -919,12 +919,13 @@ elif st.session_state.phase in ["analyzing_round1", "analyzing_round2"]:
 
         if not st.session_state.get(f"_mcp_started_{round_no}", False):
             st.session_state[f"_mcp_started_{round_no}"] = True
-            run_mcp_motion(8.0)
+            # run_mcp_motion은 인자 없는 버전으로 호출 (정의와 일치)
+            run_mcp_motion()
             st.session_state[f"_mcp_done_{round_no}"] = True
             st.rerun()
 
         if st.session_state.get(f"_mcp_done_{round_no}", False):
-            st.markdown(f"""
+            st.markdown("""
                 <div class='mcp-done-card'>
                   <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
                   <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
@@ -932,7 +933,7 @@ elif st.session_state.phase in ["analyzing_round1", "analyzing_round2"]:
                   </p>
                 </div>
             """, unsafe_allow_html=True)
-            _, mid, _ = st.columns([1,2,1])
+            _, mid, _ = st.columns([1, 2, 1])
             with mid:
                 if st.button("결과 보기", use_container_width=True, key=f"see_feedback_{round_no}"):
                     page.empty()
@@ -946,32 +947,26 @@ elif st.session_state.phase in ["analyzing_round1", "analyzing_round2"]:
 elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
     scroll_top_js()
 
-    # ── 0) 집단(무작위 유지)
+    # 0) 집단(무작위 유지)
     if "feedback_set_key" not in st.session_state:
         st.session_state.feedback_set_key = random.choice(["set1", "set2"])
     set_key = st.session_state.get("feedback_set_key", "set1")
     round_no = 1 if st.session_state.phase.endswith("round1") else 2
 
-    # ── 1) 칭찬 연출 테마 (라벨 노출 없이 색/아이콘/무드로만 구분)
+    # 1) 칭찬 연출 테마
     THEME = {
-        "set1": {  # 노력 칭찬 → 따뜻한 축하 + 분석적 신뢰감
+        "set1": {
             "bg_grad": "linear-gradient(135deg,#0b3a1a 0%, #1e7a35 60%, #4caf50 100%)",
-            "accent": "#1E7A35",
-            "icon": "🫶",
-            "confetti": True,
-            "hl": "#0E6F2E"
+            "accent": "#1E7A35", "icon": "🫶", "confetti": True, "hl": "#0E6F2E"
         },
-        "set2": {  # 능력 칭찬 → 반짝이는 축하 + 넓은 가능성
+        "set2": {
             "bg_grad": "linear-gradient(135deg,#162c6a 0%, #1565C0 60%, #6FA8FF 100%)",
-            "accent": "#1565C0",
-            "icon": "🌟",
-            "confetti": True,
-            "hl": "#0D47A1"
+            "accent": "#1565C0", "icon": "🌟", "confetti": True, "hl": "#0D47A1"
         }
     }
     theme = THEME.get(set_key, THEME["set1"])
 
-    # ── 2) 스타일
+    # 2) 스타일
     st.markdown(f"""
     <style>
       .praise-banner {{
@@ -982,50 +977,30 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
         border:1px solid rgba(255,255,255,.16);
       }}
       .praise-banner .emoji {{ font-size:22px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }}
-
       .praise-card {{
-        position: relative;
-        background: #FCFFFC;
-        border-radius:18px; padding:18px 18px 16px; margin: 10px 0 16px;
-        box-shadow: 0 10px 26px rgba(0,0,0,.12);
-        border: 2px solid {theme["accent"]};
-        overflow:hidden;
+        position: relative; background: #FCFFFC; border-radius:18px; padding:18px 18px 16px; margin: 10px 0 16px;
+        box-shadow: 0 10px 26px rgba(0,0,0,.12); border: 2px solid {theme["accent"]}; overflow:hidden;
       }}
       .praise-ribbon {{
-        position:absolute; top:14px; right:-10px;
-        background:{theme["accent"]}; color:#fff; font-weight:800; font-size:12px;
-        padding:6px 14px; transform: rotate(8deg); border-radius:8px;
-        box-shadow:0 6px 14px rgba(0,0,0,.18);
+        position:absolute; top:14px; right:-10px; background:{theme["accent"]}; color:#fff; font-weight:800; font-size:12px;
+        padding:6px 14px; transform: rotate(8deg); border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,.18);
       }}
-      .praise-title {{
-        margin:0 0 10px 0; font-size:22px; font-weight:900; color:#123;
-        display:flex; align-items:center; gap:8px;
-      }}
-      .praise-quote {{
-        position:relative; margin:4px 0 0; padding:10px 12px 8px 14px;
-        background:#ffffff; border-left:6px solid {theme["accent"]};
-        border-radius:10px;
-      }}
-      .praise-quote p {{
-        font-size:16.5px; line-height:1.78; margin:0;
-        color:#222 !important; white-space:pre-line;
-      }}
+      .praise-title {{ margin:0 0 10px 0; font-size:22px; font-weight:900; color:#123; display:flex; align-items:center; gap:8px; }}
+      .praise-quote {{ position:relative; margin:4px 0 0; padding:10px 12px 8px 14px; background:#ffffff; border-left:6px solid {theme["accent"]}; border-radius:10px; }}
+      .praise-quote p {{ font-size:16.5px; line-height:1.78; margin:0; color:#222 !important; white-space:pre-line; }}
       .hl {{ font-weight:800; color:{theme["hl"]}; }}
       .praise-sign {{ margin-top:10px; font-size:13.2px; color:#3a3a3a; opacity:.9; }}
-      .result-card {{
-        border:2px solid {theme["accent"]}; border-radius:14px; padding:16px; background:#F7FFF7;
-        box-shadow:0 8px 18px rgba(0,0,0,.08); margin-top:12px;
-      }}
+      .result-card {{ border:2px solid {theme["accent"]}; border-radius:14px; padding:16px; background:#F7FFF7; box-shadow:0 8px 18px rgba(0,0,0,.08); margin-top:12px; }}
       .result-card h2{{ text-align:left; margin:0 0 10px; color:#123; font-size:22px; }}
     </style>
     """, unsafe_allow_html=True)
 
-    # ── 3) 축하 애니메이션 (과한 반복 방지)
+    # 3) 축하 애니메이션 (과다 반복 방지)
     if theme["confetti"] and not st.session_state.get("praise_once"):
         st.balloons()
         st.session_state["praise_once"] = True
 
-    # ── 4) 칭찬 배너 (최상단)
+    # 4) 칭찬 배너
     st.markdown(f"""
     <div class="praise-banner">
       <span class="emoji">{theme["icon"]}</span>
@@ -1033,10 +1008,26 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 5) 피드백 텍스트 (세트 고정 + 중복 방지)
-    feedback = pick_feedback_text(set_key)
+    # 5) 피드백 텍스트 (헬퍼가 없으면 폴백)
+    try:
+        feedback = pick_feedback_text(set_key)  # 헬퍼가 이미 정의되어 있다면 사용
+    except NameError:
+        # 폴백: 파일/사전에서 불러오고 세션 내 중복 방지
+        feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
+        try:
+            with open(feedback_path, "r", encoding="utf-8") as f:
+                fs = json.load(f)
+        except Exception:
+            fs = feedback_sets  # 상단에서 로드한 폴백 사전
+        pool = fs.get(set_key) or fs.get("set1") or ["수고하셨습니다."]
+        used_key = f"_used_feedback_{set_key}"
+        used = set(st.session_state.get(used_key, []))
+        candidates = [t for t in pool if t not in used] or pool
+        feedback = random.choice(candidates)
+        used.add(feedback)
+        st.session_state[used_key] = list(used)
 
-    # ── 6) 세트별 하이라이트(라벨 노출 없이 색감으로만)
+    # 6) 세트별 하이라이트
     HL = {
         "set1": ["충분한 시간", "시도→점검→수정", "꾸준한 노력", "집중", "검증", "예외 정리"],
         "set2": ["언어적 감각", "빠른 이해", "자연스럽게", "넓은 적용", "전반 역량", "매끄러운 흐름"]
@@ -1044,19 +1035,17 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
     for kw in HL.get(set_key, []):
         feedback = feedback.replace(kw, f"<span class='hl'>{kw}</span>")
 
-    # ── 7) 칭찬 카드
+    # 7) 칭찬 카드
     st.markdown(f"""
     <div class="praise-card">
       <div class="praise-ribbon">칭찬 드려요</div>
       <div class="praise-title">{theme["icon"]} 정말 잘하셨어요!</div>
-      <div class="praise-quote">
-        <p>{feedback}</p>
-      </div>
+      <div class="praise-quote"><p>{feedback}</p></div>
       <div class="praise-sign">— 당신의 풀이를 옆에서 지켜본 AI가</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── 8) 간단 요약 후 분석 시각화 (도넛)
+    # 8) 분석 도넛 차트
     st.markdown(f"""
     <div class="result-card" id="analysis-start">
       <h2>📊 분석 한눈에 보기</h2>
@@ -1068,16 +1057,16 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
 
     labels = ["규칙 가설화", "패턴 파악", "예외 정리", "집중 지속", "검증 반복"]
     CHART_PRESETS = {
-        "set1": {"base":[22,21,38,36,38], "colors":["#CDECCB","#7AC779","#5BAF5A","#92D091","#B1E3AE"]},
-        "set2": {"base":[34,38,22,20,28], "colors":["#B3D4FF","#80B6FF","#66A7FF","#3E8BFF","#1565C0"]},
+        "set1": {"base": [22, 21, 38, 36, 38], "colors": ["#CDECCB", "#7AC779", "#5BAF5A", "#92D091", "#B1E3AE"]},
+        "set2": {"base": [34, 38, 22, 20, 28], "colors": ["#B3D4FF", "#80B6FF", "#66A7FF", "#3E8BFF", "#1565C0"]},
     }
     preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
 
     if "chart_seed" not in st.session_state:
-        st.session_state.chart_seed = random.randint(1000,9999)
-    rng = random.Random(st.session_state.chart_seed + (0 if round_no==1 else 1))
-    jitter = [rng.randint(-2,2) for _ in labels]
-    values = [max(10,b+j) for b,j in zip(preset["base"], jitter)]
+        st.session_state.chart_seed = random.randint(1000, 9999)
+    rng = random.Random(st.session_state.chart_seed + (0 if round_no == 1 else 1))
+    jitter = [rng.randint(-2, 2) for _ in labels]
+    values = [max(10, b + j) for b, j in zip(preset["base"], jitter)]
 
     try:
         import plotly.express as px
@@ -1086,7 +1075,7 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
         fig.update_traces(textinfo="percent+label",
                           marker=dict(line=dict(width=1, color="white")),
                           hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>")
-        fig.update_layout(height=320, margin=dict(l=10,r=10,t=6,b=6),
+        fig.update_layout(height=320, margin=dict(l=10, r=10, t=6, b=6),
                           showlegend=True, legend=dict(orientation="h", y=-0.1),
                           uniformtext_minsize=12, uniformtext_mode="hide")
         st.plotly_chart(fig, use_container_width=True,
@@ -1094,9 +1083,8 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
     except Exception:
         st.info("시각화를 준비 중입니다.")
 
-    # ── 9) 다음 단계 버튼
+    # 9) 다음 단계 버튼
     st.markdown("&nbsp;", unsafe_allow_html=True)
-
     if round_no == 1:
         if st.button("다음 과제 난이도 선택 (1~10)"):
             st.session_state.data["feedback_set"] = set_key
@@ -1113,7 +1101,7 @@ elif st.session_state.phase in ["ai_feedback_round1", "ai_feedback_round2"]:
 elif st.session_state.phase == "difficulty_after_fb1":
     scroll_top_js()
     st.subheader("다음 과제 난이도를 선택해 주세요 (1~10)")
-    diff_choice = st.radio("다음(2차) 과제 난이도", list(range(1,11)), index=None, horizontal=True)
+    diff_choice = st.radio("다음(2차) 과제 난이도", list(range(1, 11)), index=None, horizontal=True)
     if st.button("확인 후 2차 과제로 이동"):
         if diff_choice is None:
             st.warning("난이도를 선택해 주세요.")
@@ -1129,7 +1117,6 @@ elif st.session_state.phase == "motivation":
     scroll_top_js()
 
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
-
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:30px;'>
@@ -1152,7 +1139,7 @@ elif st.session_state.phase == "motivation":
     ]
 
     if "motivation_responses" not in st.session_state:
-        st.session_state.motivation_responses = [None]*len(motivation_q)
+        st.session_state.motivation_responses = [None] * len(motivation_q)
 
     for i, q in enumerate(motivation_q, start=1):
         choice = st.radio(
@@ -1163,7 +1150,7 @@ elif st.session_state.phase == "motivation":
             key=f"motivation_{i}",
             label_visibility="visible"
         )
-        st.session_state.motivation_responses[i-1] = choice
+        st.session_state.motivation_responses[i - 1] = choice
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
     if st.button("다음 (휴대폰 입력)"):
@@ -1199,8 +1186,8 @@ elif st.session_state.phase == "phone_input":
 # 6-2. 추가 난이도 문항 (최종 전 1~10) — 기본값 없이 강제 선택
 elif st.session_state.phase == "difficulty_final":
     scroll_top_js()
-    st.subheader("추가 과제가 있습니다. 사용자의 선택에 따라 난이도가 변경됩니다.난이도를 어느 정도로 하시겠습니까? (1~10)")
-    diff2 = st.radio("추가 난이도 선택", list(range(1,11)), index=None, horizontal=True, key="final_diff_radio")
+    st.subheader("추가 과제가 있습니다. 사용자의 선택에 따라 난이도가 변경됩니다. 난이도를 어느 정도로 하시겠습니까? (1~10)")
+    diff2 = st.radio("추가 난이도 선택", list(range(1, 11)), index=None, horizontal=True, key="final_diff_radio")
     if st.button("다음 과제 이동"):
         if diff2 is None:
             st.warning("난이도를 선택해 주세요.")
@@ -1214,7 +1201,7 @@ elif st.session_state.phase == "difficulty_final":
 elif st.session_state.phase == "result":
     scroll_top_js()
 
-    # 아직 저장이 안 된 경우 자동 저장
+    # 아직 저장이 안 된 경우 자동 저장 (단 한 번)
     if "result_submitted" not in st.session_state:
         st.session_state.data["endTime"] = datetime.now().isoformat()
         try:
