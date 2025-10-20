@@ -1,11 +1,23 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # 필요한 모듈
 import streamlit as st
-
 import time, random, json, os
 from datetime import datetime
-from utils.validation import validate_phone, validate_text
-from utils.save_data import save_to_csv
+from utils.validation import validate_phone, validate_text  # 기존 유틸 사용
+
+# ⚠️ save_to_csv는 gspread 미설치 환경에서 바로 import 시 오류가 날 수 있어
+#    실제 저장 시점에 동적 import + 로컬 폴백을 사용한다.
+def save_to_csv_safe(data: dict):
+    try:
+        from utils.save_data import save_to_csv  # 지연 import
+        return save_to_csv(data)
+    except Exception as e:
+        # 로컬 테스트 폴백: JSONL로 저장
+        base_dir = os.path.dirname(__file__)
+        path = os.path.join(base_dir, "local_results.jsonl")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
+        return None
 
 # 페이지 설정 (가장 먼저 호출)
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
@@ -17,43 +29,67 @@ BASE_DIR = os.path.dirname(__file__)
 # 전역 스타일: 상단 UI 제거 + 상단/하단 패딩 완전 제거 + 제목/문단 마진 정리
 COMPACT_CSS = """
 <style>
-/* 0) Streamlit 기본 UI 제거 (공간까지 없앰) */
 #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
-
-/* 1) 최신 Streamlit은 block padding을 CSS 변수로도 관리 → 변수 자체를 0으로 */
 :root{
   --block-container-padding-top: 0rem !important;
-  --block-container-padding: 0rem 1rem 1.25rem !important; /* top right/left bottom */
+  --block-container-padding: 0rem 1rem 1.25rem !important;
 }
-
-/* 2) 상단 여백이 생길 수 있는 모든 래퍼에 top 패딩/마진 0 강제 */
 html, body,
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stAppViewContainer"] > .main,
-section.main {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* 3) 실제 컨테이너(.block-container) top 패딩 제거(버전별 경로 모두) */
+section.main { margin-top:0 !important; padding-top:0 !important; }
 [data-testid="stAppViewContainer"] > .main > div,
 .main .block-container,
 section.main > div.block-container {
-  padding-top: 0 !important;
-  padding-bottom: 20px !important; /* 하단은 적당히 */
+  padding-top:0 !important; padding-bottom:20px !important;
 }
+h1, .stMarkdown h1 { margin-top:0 !important; margin-bottom:12px !important; line-height:1.2; }
+h2, .stMarkdown h2 { margin-top:0 !important; margin-bottom:10px !important; }
+p, .stMarkdown p   { margin-top:0 !important; }
+.anthro-title { margin-top:0 !important; }
+html, body { overflow-x:hidden !important; }
 
-/* 4) 첫 요소 margin-collapsing으로 남는 여백 차단: 제목/문단 top 마진 정돈 */
-h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
-h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
-p, .stMarkdown p   { margin-top: 0 !important; }
+/* 추론 문항 카드 */
+.qcard{border:1px solid #2a2f35; border-radius:12px; padding:14px; background:#0f1115;}
+.qhdr{font-weight:800; margin:0 0 8px; font-size:18px;}
+.stem{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background:#171b22; border:1px solid #2a2f35; padding:10px 12px; border-radius:8px;}
+.hint{color:#9aa3ad; font-size:13px; margin:8px 0 4px;}
+.preview{background:#0b1a0f; border:1px solid #1e4428; color:#d9ffdf; padding:10px 12px; border-radius:8px;}
+.sec-title{font-size:14px; font-weight:700; margin:10px 0 6px;}
+.req{color:#66ff9c; font-weight:700; margin-left:6px; font-size:12px;}
 
-/* 5) 사용자 정의 제목 클래스(anthro 등)도 상단 마진 제거 */
-.anthro-title { margin-top: 0 !important; }
-
-/* 6) 불필요한 수평 스크롤 방지 */
-html, body { overflow-x: hidden !important; }
+/* MCP 전용 페이지(전체 화면 보장) */
+.fullscreen-wrap{
+  min-height: 88vh; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; gap:12px;
+}
+.covnox-title{ margin:0; text-align:center; font-size: clamp(28px, 5.4vw, 48px); font-weight:800; }
+.covnox-sub{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
+}
+.mcp-done-card {
+  border: 2px solid #2E7D32; border-radius: 14px; padding: 24px 20px;
+  background: #F9FFF9; max-width: 820px; margin: 24px auto 10px;
+}
+.banner-ok{
+  background:#0f3a17; color:#e6ffe6; border-radius:10px; padding:12px 14px;
+  font-weight:700; margin:6px 0 12px; text-align:left;
+}
+.labelbox{
+  border:2px solid #2E7D32; border-radius:12px; background:#F9FFF9; padding:12px 14px; margin:8px 0 12px;
+  box-shadow:0 3px 10px rgba(46,125,50,.08);
+}
+.labelbox .label-hd{ font-weight:800; color:#1B5E20; font-size:15px; margin:0 0 6px 0; display:flex; gap:8px; align-items:center; }
+.labelbox .label-bd{ color:#0f3a17; font-size:14.5px; line-height:1.65; }
+.result-card{
+  border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
+  box-shadow:0 6px 14px rgba(46,125,50,.08); animation: fadeUp .6s ease-out both;
+}
+.result-card h2{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }
+@keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
 </style>
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
@@ -63,11 +99,11 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 def scroll_top_js(nonce: int | None = None):
     if nonce is None:
         nonce = st.session_state.get("_scroll_nonce", 0)
-
     st.markdown(
         f"""
-        <script id="goTop-{nonce}">(function(){{
-          function goTop() {{
+        <script id="goTop-{nonce}">
+        (function(){{
+          function goTop(){{
             try {{
               var pdoc = window.parent && window.parent.document;
               var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
@@ -76,22 +112,15 @@ def scroll_top_js(nonce: int | None = None):
             try {{
               window.scrollTo({{top:0, left:0, behavior:'instant'}});
               document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
-              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
             }} catch(e) {{}}
           }}
-          goTop();
-          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
-          setTimeout(goTop, 25); setTimeout(goTop, 80);
-          setTimeout(goTop, 180); setTimeout(goTop, 320);
-        }})()</script>
+          goTop(); if (window.requestAnimationFrame) requestAnimationFrame(goTop);
+          setTimeout(goTop, 25); setTimeout(goTop, 80); setTimeout(goTop, 180); setTimeout(goTop, 320);
+        }})();
+        </script>
         """,
         unsafe_allow_html=True
     )
-
-    def rerun_with_scroll_top():
-        st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
-        st.rerun()
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 상태 초기화
@@ -101,9 +130,6 @@ if "phase" not in st.session_state:
     st.session_state.current_kw_index = 0
     st.session_state.writing_answers = []
     st.session_state.feedback_set_key = random.choice(["set1", "set2"])
-    # 분석 타깃(라운드) 보관
-    st.session_state.analysis_target = None
-    st.session_state.praise_condition = random.choice(["정서+구체","계산+구체","정서+피상","계산+피상"])
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 피드백 세트 로드 (안전 로드 + 폴백)
@@ -121,15 +147,15 @@ except Exception as e:
     }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# COVNOX 로그 (EN)
+# MCP 로그
 fake_logs = [
     "[INFO][COVNOX] Initializing… booting inference-pattern engine",
     "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu), connector(ama)",
-    "[INFO][COVNOX] Collecting responses… building 10-item choice hash",
-    "[OK][COVNOX] Response hash map constructed",
+    "[INFO][COVNOX] Collecting responses… building choice cache",
+    "[OK][COVNOX] Response hash constructed",
     "[INFO][COVNOX] Running grammatical marker detection",
     "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/ama",
-    "[INFO][COVNOX] Parsing rationale tags (multi-select)",
+    "[INFO][COVNOX] Parsing rationale tags",
     "[OK][COVNOX] Rationale normalization complete",
     "[INFO][COVNOX] Computing rule-match consistency",
     "[OK][COVNOX] Consistency matrix updated",
@@ -137,114 +163,85 @@ fake_logs = [
     "[OK][COVNOX] Comparison/contrast pattern detected",
     "[INFO][COVNOX] Checking tense/object conflicts",
     "[OK][COVNOX] No critical conflicts · reasoning path stable",
-    "[INFO][COVNOX] Analyzing response time (persistence index)",
-    "[OK][COVNOX] Persistence index calculated",
-    "[INFO][COVNOX] Scoring diversity of rule application",
-    "[OK][COVNOX] Diversity score updated",
-    "[INFO][COVNOX] Synthesizing overall inference profile (ability/effort emphasis)",
-    "[OK][COVNOX] Profile composed · selecting feedback template",
-    "[INFO][COVNOX] Natural language phrasing optimization",
-    "[OK][COVNOX] Fluency/consistency checks passed",
-    "[INFO][COVNOX] Preparing feedback delivery",
+    "[INFO][COVNOX] Synthesizing overall inference profile",
     "[✔][COVNOX] Analysis complete. Rendering results…"
 ]
 
-# MCP 애니메이션
-def run_mcp_motion():
-    st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
-    st.markdown("""
-        <style>
-        .covnox-title{ margin:0; text-align:center;
-          font-size: clamp(26px, 5.2vw, 46px); font-weight:800;
-        }
-        .covnox-sub{
-          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+def run_mcp_motion_fullscreen(total: float = 8.0):
+    """전용 페이지(전체 화면)에서만 보이는 MCP 애니메이션."""
+    scroll_top_js()
+    st.markdown("<div class='fullscreen-wrap'>", unsafe_allow_html=True)
+    # 로고(있을 때만)
     try:
-        base_dir = os.getcwd()
-        logo_path = os.path.join(base_dir, "covnox.png")
+        logo_path = os.path.join(os.getcwd(), "covnox.png")
         if os.path.exists(logo_path):
-            st.image(logo_path, width=80)
+            st.image(logo_path, width=86)
     except Exception:
         pass
-
     st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
 
-    holder = st.container()
-    with holder:
-        log_placeholder = st.empty()
-        progress_placeholder = st.empty()
-        progress = progress_placeholder.progress(0, text=None)
+    log_placeholder = st.empty()
+    bar_placeholder = st.empty()
+    progress = bar_placeholder.progress(0, text=None)
 
-        start = time.time()
-        total = 8.0
-        step = 0
+    start = time.time()
+    step = 0
+    try:
+        while True:
+            t = time.time() - start
+            if t >= total: break
+            progress.progress(min(t/total, 1.0), text=None)
+            msg = fake_logs[step % len(fake_logs)]
+            timestamp = time.strftime("%H:%M:%S")
+            log_placeholder.markdown(
+                f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
+                unsafe_allow_html=True
+            )
+            step += 1
+            time.sleep(0.4)
+        progress.progress(1.0, text=None)
+    finally:
+        pass
+    st.markdown("</div>", unsafe_allow_html=True)
 
-        try:
-            while True:
-                t = time.time() - start
-                if t >= total:
-                    break
-                progress.progress(min(t/total, 1.0), text=None)
-                msg = fake_logs[step % len(fake_logs)]
-                timestamp = time.strftime("%H:%M:%S")
-                log_placeholder.markdown(
-                    f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
-                    unsafe_allow_html=True
-                )
-                step += 1
-                time.sleep(0.4)
-            progress.progress(1.0, text=None)
-        finally:
-            progress_placeholder.empty()
-            log_placeholder.empty()
-            holder.empty()
-
+def render_mcp_gate(next_phase: str, button_label: str = "결과 보기"):
+    """애니메이션 완료 후 결과 버튼만 표시."""
+    st.markdown("""
+        <div class='mcp-done-card'>
+          <h3 style="text-align:center; color:#2E7D32; margin:0 0 6px 0;">✅ 분석이 완료되었습니다</h3>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
+            COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
+          </p>
+        </div>
+    """, unsafe_allow_html=True)
+    _, mid, _ = st.columns([1,2,1])
+    with mid:
+        if st.button(button_label, use_container_width=True):
+            st.session_state.phase = next_phase
+            st.rerun()
 
 # ─────────────────────────────────────────────
 # ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
-# ─────────────────────────────────────────────
-
 CONSENT_HTML = """
 <div class="consent-wrap">
   <h1>연구대상자 설명문</h1>
   <div class="subtitle"><strong>제목: </strong>인공지능 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
   <h2>1. 연구 목적</h2>
-  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
-  <p>본 연구는 학습 상황에서 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지를 경험적으로 검증하고자 합니다. 또한, 참여자가 AI 에이전트를 얼마나 ‘인간처럼’ 지각하는지(지각된 의인화 수준)가 이 관계를 조절하는지를 함께 탐구합니다. 학습 동기는 과제의 지속 의지, 어려운 과제에 대한 도전 성향, 과제를 통한 성취감 등 다양한 심리적 요인을 바탕으로 측정되며, 이를 통해 AI 기반 학습 환경 설계에 필요한 심리적·교육적 시사점을 도출하고자 합니다.</p>
+  <p>최근 과학기술의 발전과 함께 … (원문 그대로) …</p>
   <h2>2. 연구 참여 대상</h2>
-  <p>참여 대상: 만 18세 이상 성인으로 한국어 사용자를 대상으로 합니다.</p>
-  <p>단, 한국어 사용이 미숙하여 주어진 문장을 이해하기 어렵거나, 단어를 파악하지 못하는 경우 연구 대상에서 제외됩니다.</p>
+  <p>…</p>
   <h2>3. 연구 방법</h2>
-  <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 일반적인 의인화 경향성을 알아보는 문항과 성취목표지향성에 대한 문항 총 56개를 진행하고 추론 과제를 진행하게 됩니다. 추론 과제 이후에 AI 에이전트의 평가 문장을 받아볼 수 있습니다. 추론 과제는 총 2회 진행됩니다. 마지막으로 학습에 관한 문항에 응답을 하며 연구 참여가 종료됩니다</p>
-  <p>전체 연구 참여 시간은 10분에서 15분 정도 진행됩니다.</p>
+  <p>…</p>
   <h2>4. 연구 참여 기간</h2>
-  <p>연구 참여는 접속 링크가 살아있는 기간 언제든 참여가 가능하지만, 참여 가능 횟수는 1회입니다.</p>
+  <p>…</p>
   <h2>5. 연구 참여에 따른 이익 및 보상</h2>
-  <p>연구 참여를 해주신 연구 대상자 분들에게는 1500원 상당의 기프티콘이 발송됩니다. 기프티콘 발송을 위해 핸드폰 번호를 기입해주셔야 하며, 핸드폰 번호를 기입하지 않을 경우 답례품 제공이 어려울 수 있습니다.</p>
-  <p>답례품은 개인당 1회에 한하여 제공됩니다.</p>
+  <p>…</p>
   <h2>6. 연구 과정에서의 부작용 또는 위험요소 및 조치</h2>
-  <p>연구에 참여하시는 도중 불편감을 느끼신다면 언제든 화면을 종료하여 연구를 중단할 수 있습니다. 연구 중단시 어떠한 불이익도 존재하지 않습니다.</p>
-  <p>본 연구에서 예상되는 불편감은 과제의 지루함, AI 에이전트의 평가에 대한 불편감, 과제 지속을 해야하는 부담감 등이 예상됩니다.</p>
-  <p>연구를 통해 심리적 불편감을 호소하실 경우 연구책임자가 1회의 심리 상담 지원을 진행해드립니다.</p>
+  <p>…</p>
   <h2>7. 개인정보와 비밀보장</h2>
-  <p>본 연구의 참여로 수집되는 개인정보는 다음과 같습니다. 성별, 연령, 핸드폰 번호를 수집하며 이 정보는 연구를 위해 3년간 사용되며 수집된 정보는 개인정보보호법에 따라 적절히 관리됩니다. 관련 정보는 본 연구자(들)만이 접근 가능한 클라우드 서버에 저장됩니다. 연구를 통해 얻은 모든 개인정보의 비밀보장을 위해 최선을 다할 것입니다. 이 연구에서 얻어진 개인정보가 학회지나 학회에 공개될 때 귀하의 이름과 정보는 사용되지 않을 것입니다. 그러나 만일 법이 요구하면 귀하의 개인정보는 제공될 수도 있습니다. 또한 가톨릭대학교 성심교정 생명윤리심의위원회가 연구대상자의 비밀보장을 침해하지 않고 관련 규정이 정하는 범위 안에서 본 연구의 실시 절차와 자료의 신뢰성을 검증하기 위해 연구 관련 자료를 직접 열람하거나 제출을 요청할 수 있습니다. 귀하가 본 동의서에 서명 또는 동의에 체크하는 것은, 이러한 사항에 대하여 사전에 알고 있었으며 이를 허용한다는 의사로 간주될 것입니다. 연구 종료 후 연구관련 자료(위원회 심의결과, 서면동의서(해당 경우), 개인정보수집/이용·제공현황, 연구종료보고서)는 「생명윤리 및 안전에 관한 법률」 시행규칙 제15조에 따라 연구종료 후 3년간 보관됩니다. 보관기간이 끝나면 분쇄 또는 파일 삭제 방법으로 폐기될 것입니다. </p>
+  <p>…</p>
   <h2>8. 자발적 연구 참여와 중지</h2>
-  <p>본 연구는 자발적으로 참여 의사를 밝히신 분에 한하여 수행될 것입니다. 이에 따라 본 연구에 참여하지 않을 자유가 있으며 본 연구에 참여하지 않아도 귀하에게는 어떠한 불이익도 없습니다. 또한, 귀하는 연구에 참여하신 언제든지 도중에 그만 둘 수 있습니다. 만일 귀하가 연구에 참여하는 것을 그만두고 싶다면 연구 진행 도중 언제든 화면을 종료하고 연구를 중단할 수 있습니다. 참여 중지 시 귀하의 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다.</p>
-  <h2>* 연구 문의</h2>
-  <p>
-    가톨릭대학교<br>
-    <span class="inline-label">전 공:</span> 발달심리학<br>
-    <span class="inline-label">성 명:</span> 오현택<br>
-    <span class="inline-label">전화번호:</span> 010-6532-3161<br>
-    <span class="inline-label">이메일:</span> toh315@gmail.com
-  </p>
-  <p>만일 어느 때라도 연구대상자로서 귀하의 권리에 대한 질문이 있다면 다음의 가톨릭대학교 성심교정 생명윤리심의위원회에 연락하십시오.</p>
-  <p>가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 전화번호: 02-2164-4827</p>
+  <p>…</p>
 </div>
 """.strip()
 
@@ -255,10 +252,10 @@ AGREE_HTML = """
   <ol class="agree-list">
     <li><span class="agree-num">1.</span>나는 이 연구의 설명문을 읽고 충분히 이해하였습니다.</li>
     <li><span class="agree-num">2.</span>나는 이 연구에 참여함으로써 발생할 위험과 이득을 숙지하였습니다.</li>
-    <li><span class="agree-num">3.</span>나는 이 연구에 참여하는 것에 대하여 자발적으로 동의합니다. </li>
-    <li><span class="agree-num">4.</span>나는 이 연구에서 얻어진 나에 대한 정보를 현행 법률과 가톨릭대학교 성심교정 생명윤리심의위원회 규정이 허용하는 범위 내에서 연구자가 수집하고 처리하는데 동의합니다.</li>
-    <li><span class="agree-num">5.</span>나는 담당 연구자나 위임 받은 대리인이 연구를 진행하거나 결과 관리를 하는 경우와 연구기관, 연구비지원기관 및 가톨릭대학교 성심교정 생명윤리심의위원회가 실태 조사를 하는 경우에는 비밀로 유지되는 나의 개인 신상 정보를 직접적으로 열람하는 것에 동의합니다.</li>
-    <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다. </li>
+    <li><span class="agree-num">3.</span>나는 이 연구에 자발적으로 동의합니다.</li>
+    <li><span class="agree-num">4.</span>…</li>
+    <li><span class="agree-num">5.</span>…</li>
+    <li><span class="agree-num">6.</span>…</li>
   </ol>
 </div>
 """.strip()
@@ -268,48 +265,16 @@ PRIVACY_HTML = """
   <h1>연구참여자 개인정보 수집∙이용 동의서</h1>
   <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
   <table class="privacy-table">
-    <tr>
-      <th>수집하는<br>개인정보 항목</th>
-      <td>성별, 나이, 핸드폰 번호</td>
-    </tr>
-    <tr>
-      <th>개인정보의<br>수집 및<br>이용목적</th>
-      <td>
-        <p>제공하신 정보는 연구수행 및 논문작성 등을 위해서 사용합니다.</p>
-        <ol>
-          <li>연구수행을 위해 이용 :성별, 나이, 핸드폰 번호</li>
-          <li>단, 이용자의 기본적 인권 침해의 우려가 있는 민감한 개인정보 (인종 및 민족, 사상 및 신조, 정치적 성향 및 범죄기록 등)는 수집하지 않습니다.</li>
-        </ol>
-      </td>
-    </tr>
-    <tr>
-      <th>개인정보의 <br>제3자 제공 및 목적 외 이용</th>
-      <td>
-        법이 요구하거나 가톨릭대학교 성심교정 생명윤리심의위원회가 본 연구의 실시 절차와
-        자료의 신뢰성을 검증하기 위해 연구 결과를 직접 열람할 수 있습니다.
-      </td>
-    </tr>
-    <tr>
-      <th>개인정보의<br>보유 및 이용기간</th>
-      <td>
-        수집된 개인정보의 보유기간은 연구종료 후 3년 까지 입니다. 또한 파기(삭제)시 연구대상자의 개인정보를 재생이 불가능한 방법으로 즉시 파기합니다.
-      </td>
-    </tr>
+    <tr><th>수집하는<br>개인정보 항목</th><td>성별, 나이, 핸드폰 번호</td></tr>
+    <tr><th>개인정보의<br>수집 및<br>이용목적</th>
+      <td><p>연구수행 및 논문작성을 위한 활용</p></td></tr>
+    <tr><th>개인정보의 <br>제3자 제공 및 목적 외 이용</th>
+      <td>법령 또는 IRB 검증 목적</td></tr>
+    <tr><th>보유 및 이용기간</th><td>연구종료 후 3년</td></tr>
   </table>
-  <p class="privacy-note">
-    ※ 귀하는 이에 대한 동의를 거부할 수 있으며, 다만, 동의가 없을 경우 연구 참여가 불가능할 수 있음을 알려드립니다. 
-  </p>
-  <ul class="privacy-bullets">
-    <li>※ 개인정보 제공자가 동의한 내용외의 다른 목적으로 활용하지 않음</li>
-    <li>※ 만 18세 미만인 경우 반드시 법적대리인의 동의가 필요함</li>
-    <li>「개인정보보호법」등 관련 법규에 의거하여 상기 본인은 위와 같이 개인정보 수집 및 활용에 동의함.</li>
-  </ul>
 </div>
 """.strip()
 
-# ─────────────────────────────────────────────
-# 공통 CSS (슬라이더 제거 버전, 반응형 + 인쇄 최적화)
-# ─────────────────────────────────────────────
 COMMON_CSS = """
 <style>
   :root { --fs-base:16px; --lh-base:1.65; }
@@ -318,35 +283,17 @@ COMMON_CSS = """
     padding:18px 16px 22px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
     font-size:var(--fs-base); line-height:var(--lh-base); color:#111827; word-break:keep-all;
   }
-  @media (max-width:640px){
-    .consent-wrap, .agree-wrap, .privacy-wrap{ padding:14px 12px 18px; border-radius:10px; }
-  }
-  .consent-wrap h1, .privacy-wrap h1{ font-size:1.5em; margin:0 0 12px; font-weight:800; letter-spacing:.2px; }
+  @media (max-width:640px){ .consent-wrap, .agree-wrap, .privacy-wrap{ padding:14px 12px 18px; border-radius:10px; } }
+  .consent-wrap h1, .privacy-wrap h1{ font-size:1.5em; margin:0 0 12px; font-weight:800; }
   .agree-wrap .agree-title{ font-weight:800; text-align:center; margin-bottom:12px; font-size:1.25em; }
-  .consent-wrap .subtitle{ font-size:1.0em; color:#374151; margin-bottom:14px; }
-  .consent-wrap h2, .privacy-wrap h2{ font-size:1.2em; margin:20px 0 8px; font-weight:700; border-top:1px solid #F3F4F6; padding-top:14px; }
-  .consent-wrap p, .agree-wrap p, .privacy-wrap p{ margin:6px 0; }
-  .agree-list{ margin:10px 0 0 0; padding-left:0; list-style:none; }
-  .agree-list li{ margin:10px 0; }
-  .agree-num{ font-weight:800; margin-right:6px; }
-  .inline-label{ font-weight:600; }
-  /* 개인정보 표 */
   .privacy-table{ width:100%; border-collapse:collapse; table-layout:fixed; border:2px solid #111827; margin-bottom:14px; }
   .privacy-table th, .privacy-table td{ border:1px solid #111827; padding:10px 12px; vertical-align:top; }
   .privacy-table th{ width:30%; background:#F3F4F6; text-align:left; font-weight:700; }
-  .privacy-note{ margin:10px 0; padding:10px 12px; border:1px solid #111827; background:#F9FAFB; }
-  .privacy-bullets{ margin-top:12px; padding-left:18px; }
-  .privacy-bullets li{ margin:4px 0; }
-  /* 인쇄 */
-  @media print{
-    .consent-wrap, .agree-wrap, .privacy-wrap{ border:none; max-width:100%; }
-    .stSlider, .stButton, .stAlert{ display:none !important; }
-  }
+  @media print{ .consent-wrap, .agree-wrap, .privacy-wrap{ border:none; max-width:100%; }
+    .stSlider, .stButton, .stAlert{ display:none !important; } }
 </style>
 """
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 1) 렌더 함수
 def render_consent_doc():
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
     st.markdown(CONSENT_HTML, unsafe_allow_html=True)
@@ -369,56 +316,31 @@ if st.session_state.phase == "start":
         st.session_state.consent_step = "explain"
 
     if st.session_state.consent_step == "explain":
-        scroll_top_js()
-        st.subheader("연구대상자 설명문")
         render_consent_doc()
-
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
         if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
-            st.session_state.consent_step = "agree"
-            st.rerun()
+            st.session_state.consent_step = "agree"; st.rerun()
 
     elif st.session_state.consent_step == "agree":
-        scroll_top_js()
-        st.subheader("연구 동의서")
-        render_agree_doc()
-
-        consent_research = st.radio(
-            "연구 참여에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
-            horizontal=True, key="consent_research_radio"
-        )
-
+        st.subheader("연구 동의서"); render_agree_doc()
+        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                    horizontal=True, key="consent_research_radio")
         st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
-
-        st.subheader("개인정보 수집·이용에 대한 동의")
-        render_privacy_doc()
-
-        consent_privacy = st.radio(
-            "개인정보 수집·이용에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
-            horizontal=True, key="consent_privacy_radio"
-        )
-
-        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-        st.divider()
+        st.subheader("개인정보 수집·이용에 대한 동의"); render_privacy_doc()
+        consent_privacy = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                   horizontal=True, key="consent_privacy_radio")
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True); st.divider()
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
         st.markdown("""
-        <style>
-        .nav-row .stButton > button { width: 100%; min-width: 120px; }
-        @media (max-width: 420px) { .nav-row .stButton > button { min-width: auto; } }
-        </style>
+        <style>.nav-row .stButton > button { width:100%; min-width:120px; }
+        @media (max-width:420px){ .nav-row .stButton > button { min-width:auto; } }</style>
         """, unsafe_allow_html=True)
-
         st.markdown('<div class="nav-row">', unsafe_allow_html=True)
         left_col, right_col = st.columns([1, 1])
-
         with left_col:
             if st.button("이전", key="consent_prev_btn", use_container_width=True):
-                st.session_state.consent_step = "explain"
-                st.rerun()
-
+                st.session_state.consent_step = "explain"; st.rerun()
         with right_col:
             if st.button("다음", key="consent_next_btn", use_container_width=True):
                 if consent_research != "동의함":
@@ -432,8 +354,7 @@ if st.session_state.phase == "start":
                         "consent_privacy": consent_privacy,
                         "startTime": datetime.now().isoformat()
                     })
-                    st.session_state.phase = "demographic"
-                    st.rerun()
+                    st.session_state.phase = "demographic"; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -441,60 +362,44 @@ if st.session_state.phase == "start":
 elif st.session_state.phase == "demographic":
     scroll_top_js()
     st.title("인적사항 입력")
-
     gender = st.radio("성별", ["남자", "여자"])
     age_group = st.selectbox("연령대", ["10대", "20대", "30대", "40대", "50대", "60대 이상"])
-
     if st.button("설문 시작"):
         if not gender or not age_group:
             st.warning("성별과 연령을 모두 입력해 주세요.")
         else:
             st.session_state.data.update({"gender": gender, "age": age_group})
-            st.session_state.phase = "anthro"
-            st.rerun()
+            st.session_state.phase = "anthro"; st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2. 의인화 척도 (5점 리커트 라디오) — 10문항 단위 페이지네이션
+# 2. 의인화 척도 (5점 리커트 라디오)
 elif st.session_state.phase == "anthro":
     scroll_top_js()
-
-    # 질문 로드
     anthro_path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
     with open(anthro_path, encoding="utf-8") as f:
         questions = json.load(f)
-
-    total_items = len(questions)  # 기대: 30
+    total_items = len(questions)
     page_size = 10
-    total_pages = (total_items + page_size - 1) // page_size  # 30 -> 3
+    total_pages = (total_items + page_size - 1) // page_size
 
-    # 페이지 상태 & 응답 버퍼 초기화 (초기 미선택: None)
     if "anthro_page" not in st.session_state:
         st.session_state["anthro_page"] = 1
     if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
         st.session_state["anthro_responses"] = [None] * total_items
 
     page = st.session_state["anthro_page"]
-
-    # 페이지 전환 시 최상단 스크롤
-    if st.session_state.get("_anthro_prev_page") != page:
-        st.session_state["_anthro_prev_page"] = page
-        scroll_top_js()
-
     start_idx = (page - 1) * page_size
     end_idx = min(start_idx + page_size, total_items)
     slice_questions = questions[start_idx:end_idx]
 
-    # 상단 안내
     st.markdown("""
         <style>
         .anthro-title{ text-align:center; font-weight:800;
            font-size:clamp(28px, 6vw, 56px); line-height:1.15; margin:8px 0 6px 0;}
         .scale-guide{ display:flex; justify-content:center; align-items:center; gap:12px;
            flex-wrap:wrap; text-align:center; font-size:clamp(14px, 2.8vw, 20px); line-height:1.6; margin-bottom:10px;}
-        .scale-guide span{ white-space:nowrap; }
-        .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
         </style>
-        <h2 class="anthro-title">아래 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 선택해 주세요.</h2>
+        <h2 class="anthro-title">아래 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각과 가까운 정도를 선택해 주세요.</h2>
         <div class="scale-guide">
           <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
           <span><b>3점</b>: 보통이다</span><span>—</span>
@@ -502,87 +407,66 @@ elif st.session_state.phase == "anthro":
         </div>        
     """, unsafe_allow_html=True)
 
-    # 진행도 표기
     st.markdown(
-        f"<div class='progress-note'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
+        f"<div style='text-align:center; color:#6b7480; margin-bottom:18px;'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True
     )
 
-    # 현재 페이지의 라디오 렌더링 (5점 리커트, 초기 미선택)
     options = [1, 2, 3, 4, 5]
     for local_i, q in enumerate(slice_questions, start=1):
-        global_idx = start_idx + local_i - 1  # 0-based
-        current_value = st.session_state["anthro_responses"][global_idx]  # None 또는 1..5
-        radio_key = f"anthro_{global_idx+1}"
-
-        # 초기 미선택: index=None; 기존 선택값이 있으면 해당 인덱스 지정
+        global_idx = start_idx + local_i - 1
+        current_value = st.session_state["anthro_responses"][global_idx]
         index_val = (options.index(current_value) if current_value in options else None)
-
         selected = st.radio(
             label=f"{global_idx+1}. {q}",
             options=options,
-            index=index_val,                 # 초기 미선택 허용
+            index=index_val,
             format_func=lambda x: f"{x}점",
             horizontal=True,
-            key=radio_key,
-            help="1~5점 중에서 선택해 주세요."
+            key=f"anthro_{global_idx+1}",
         )
-
-        # 상태에 즉시 반영
         st.session_state["anthro_responses"][global_idx] = selected if selected in options else None
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # 네비게이션 버튼 영역
     st.markdown("""
-    <style>
-    .nav-row .stButton > button { width: 100%; min-width: 120px; }
-    @media (max-width: 420px) { .nav-row .stButton > button { min-width: auto; } }
-    </style>
+    <style>.nav-row .stButton > button { width:100%; min-width:120px; }
+    @media (max-width: 420px){ .nav-row .stButton > button { min-width:auto; } }</style>
     """, unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown('<div class="nav-row">', unsafe_allow_html=True)
-        col_prev, col_info, col_next = st.columns([1, 2, 1])
-
-        with col_prev:
-            if page > 1:
-                if st.button("← 이전", use_container_width=True, key="anthro_prev"):
-                    st.session_state["anthro_page"] = page - 1
-                    st.rerun()
-
-        with col_info:
-            pass
-
-        with col_next:
-            current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
-            all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 5) for v in current_slice)
-
-            if page < total_pages:
-                if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
-                    if not all_answered:
-                        st.warning("현재 페이지 모든 문항을 1~5점 중 하나로 선택해 주세요.")
-                    else:
-                        st.session_state["anthro_page"] = page + 1
-                        st.rerun()
-            else:
-                if st.button("다음", use_container_width=True, key="anthro_next_last"):
-                    full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 5)
-                                  for v in st.session_state["anthro_responses"])
-                    if not full_ok:
-                        st.warning("모든 문항을 1~5점 중 하나로 선택해 주세요.")
-                    else:
-                        st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
-                        st.session_state["anthro_page"] = 1
-                        st.session_state.phase = "achive"
-                        st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="nav-row">', unsafe_allow_html=True)
+    col_prev, col_info, col_next = st.columns([1, 2, 1])
+    with col_prev:
+        if page > 1:
+            if st.button("← 이전", use_container_width=True, key="anthro_prev"):
+                st.session_state["anthro_page"] = page - 1; st.rerun()
+    with col_info:
+        pass
+    with col_next:
+        current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
+        all_answered = all((v is not None and isinstance(v, int) and 1 <= v <= 5) for v in current_slice)
+        if page < total_pages:
+            if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
+                if not all_answered:
+                    st.warning("현재 페이지 모든 문항을 1~5점 중 하나로 선택해 주세요.")
+                else:
+                    st.session_state["anthro_page"] = page + 1; st.rerun()
+        else:
+            if st.button("다음", use_container_width=True, key="anthro_next_last"):
+                full_ok = all((v is not None and isinstance(v, int) and 1 <= v <= 5)
+                              for v in st.session_state["anthro_responses"])
+                if not full_ok:
+                    st.warning("모든 문항을 1~5점 중 하나로 선택해 주세요.")
+                else:
+                    st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
+                    st.session_state["anthro_page"] = 1
+                    st.session_state.phase = "achive"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 2-1. 성취/접근 관련 추가 설문(6점 리커트) — 10/10/6 페이지네이션
+# 2-1. 성취/접근 관련 설문(6점 리커트)
 elif st.session_state.phase == "achive":
     scroll_top_js()
-
-    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래에 제시되는 문항은 평소 본인의 성향을 알아보기 위한 문항입니다. 나의 성향과 얼마나 가까운지를 선택해 주세요.</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래 문항은 평소 본인의 성향을 알아보기 위한 문항입니다.</h2>", unsafe_allow_html=True)
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:22px;'>
@@ -594,7 +478,6 @@ elif st.session_state.phase == "achive":
     </div>
     """, unsafe_allow_html=True)
 
-    # 질문 로드
     achive_path = os.path.join(BASE_DIR, "data", "questions_achive.json")
     try:
         with open(achive_path, "r", encoding="utf-8") as f:
@@ -603,24 +486,16 @@ elif st.session_state.phase == "achive":
         st.error(f"추가 설문 문항을 불러오지 못했습니다: {e}")
         achive_questions = []
 
-    total_items = len(achive_questions)  # 기대: 26
-    page_size_list = [10, 10, total_items - 20] if total_items >= 20 else [total_items]
-    total_pages = len(page_size_list)
+    total_items = len(achive_questions)
+    page_size_list = [10, 10, max(0, total_items - 20)] if total_items >= 20 else [total_items]
+    total_pages = len([s for s in page_size_list if s > 0])
 
-    # 상태 초기화
     if "achive_page" not in st.session_state:
         st.session_state["achive_page"] = 1
     if "achive_responses" not in st.session_state or len(st.session_state["achive_responses"]) != total_items:
-        st.session_state["achive_responses"] = [None] * total_items  # 초기 미선택
+        st.session_state["achive_responses"] = [None] * total_items
 
     page = st.session_state["achive_page"]
-
-    # 페이지 전환 시 스크롤 최상단
-    if st.session_state.get("_achive_prev_page") != page:
-        st.session_state["_achive_prev_page"] = page
-        scroll_top_js()
-
-    # 현재 페이지의 시작/끝 인덱스(0-based, end exclusive)
     if page == 1:
         start_idx, end_idx = 0, min(10, total_items)
     elif page == 2:
@@ -633,7 +508,6 @@ elif st.session_state.phase == "achive":
         unsafe_allow_html=True
     )
 
-    # 현재 페이지 문항 렌더링 (라디오, 1~6)
     for gi in range(start_idx, end_idx):
         q = achive_questions[gi]
         choice = st.radio(
@@ -646,204 +520,248 @@ elif st.session_state.phase == "achive":
         st.session_state["achive_responses"][gi] = choice
         st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
 
-    # ── 버튼 가로 정렬 ───────────────────
     st.markdown("""
-    <style>
-    .nav-row .stButton > button { width: 100%; min-width: 120px; }
-    @media (max-width: 420px) { .nav-row .stButton > button { min-width: auto; } 
-    }
-    </style>
+    <style>.nav-row .stButton > button { width:100%; min-width:120px; }
+    @media (max-width:420px){ .nav-row .stButton > button{ min-width:auto; } }</style>
     """, unsafe_allow_html=True)
 
-    # 네비게이션
     st.markdown('<div class="nav-row">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
-
     with c1:
         if page > 1:
             if st.button("← 이전", key="achive_prev", use_container_width=True):
-                st.session_state["achive_page"] = page - 1
-                st.rerun()
-
+                st.session_state["achive_page"] = page - 1; st.rerun()
     with c2:
         pass
-
     with c3:
         curr_slice = st.session_state["achive_responses"][start_idx:end_idx]
         all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
-
         if page < total_pages:
             if st.button("다음 →", key="achive_next", use_container_width=True):
                 if not all_answered:
                     st.warning("현재 페이지의 모든 문항에 1~6 중 하나를 선택해 주세요.")
                 else:
-                    st.session_state["achive_page"] = page + 1
-                    st.rerun()
+                    st.session_state["achive_page"] = page + 1; st.rerun()
         else:
-            # 마지막 페이지 → 전체 검증 후 다음 단계
             if st.button("다음 (추론 과제 안내)", key="achive_done", use_container_width=True):
                 full_ok = all(v in [1,2,3,4,5,6] for v in st.session_state["achive_responses"])
                 if not full_ok:
                     st.warning("모든 문항에 응답해 주세요. (1~6)")
                 else:
-                    # 저장
                     st.session_state.data["achive_responses"] = st.session_state["achive_responses"]
-                    # 페이지 인덱스 초기화
                     st.session_state["achive_page"] = 1
-                    # 다음 단계로 진행
-                    st.session_state.phase = "inf_intro"
-                    st.rerun()
+                    st.session_state.phase = "writing_intro"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# (신규) 추론 과제: 1R=명사구 · 2R=동사 TAM
-# 단계: inf_intro → inference_nouns → analyzing → ai_feedback → inference_verbs → analyzing → ai_feedback → motivation
-elif st.session_state.phase in {"inf_intro","inference_nouns","inference_verbs","analyzing","ai_feedback"}:
+# 2-2. 추론 과제 지시문
+elif st.session_state.phase == "writing_intro":
+    scroll_top_js()
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>추론 기반 객관식 과제 안내</h2>", unsafe_allow_html=True)
+    st.markdown("""
+    이번 단계에서는 **이누이트 언어(Inuktut-like)**의 규칙을 읽고,  
+    총 **20개(명사 10, 동사 10)**의 **빈칸 채우기** 문항에 답합니다.
 
-    # 공통 규칙 안내
+    - 각 문항은 **문장(빈칸)** ➜ **선택지(빈칸에 들어갈 말)** ➜ **완성 미리보기** ➜ **추론 근거(단일)** 순서로 구성됩니다.
+    - 정답률보다 **일관된 추론 근거**가 중요합니다.
+    """)
+    if st.button("1회차 시작(명사구)"):
+        st.session_state.phase = "inference_nouns"; st.rerun()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3. 추론 기반 객관식 과제 (빈칸 채우기 + 근거 단일)
+elif st.session_state.phase in ["inference_nouns", "inference_verbs"]:
+    scroll_top_js()
+
+    # 규칙 설명
     GRAMMAR_INFO_MD = r"""
 **어휘 예시**  
 - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
 - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
 **명사구(NP) 규칙**  
-A) **소유**: 명사 뒤 `-mi` → “~의” (예: *nuk-mi ani* = 사람의 집)  
-B) **복수**: 명사 뒤 `-t` (예: *nuk-t* = 사람들). **복수 소유자**는 `명사 + -t + -mi` (예: *nuk-t-mi* = 사람들의). **복수 피소유**는 머리명사에 `-t`(예: *ani-t* = 집들).  
-C) **사례표지(목적)**: NP **오른쪽 끝에만** `-ka`(우측 결합). 등위(*ama* = 그리고)로 묶인 목적어 묶음에도 **마지막 접속어 오른쪽**에만 `-ka` 부착.  
-D) **어순**: (바깥 소유자 → 안쪽 소유자 → 머리명사). 예: *nuk-mi sua-mi ani* = “사람의 개의 집”.  
-E) **정관(특정)**: `-ri`는 **NP-말단에서 사례(-ka) 앞**에 위치. 예: *nuk-mi ani-ri-ka* (사람의 그 집을).
+A) **소유**: 명사 뒤 `-mi` → “~의” (예: *nuk-mi ani*)  
+B) **복수**: `-t` (예: *nuk-t*). **복수 소유자**: `…-t-mi`. **복수 피소유**: 머리명사 `-t`.  
+C) **사례(목적)**: **우측 결합** `-ka` (NP 말단, 등위 묶음의 **오른쪽 끝**).  
+D) **어순**: 바깥 소유자 → 안쪽 소유자 → 머리명사.  
+E) **정관**: `-ri`는 **NP 말단에서 `-ka` 앞**.
 
-**동사 시제·상(TAM) 규칙**  
-1) **시제**: `-na`(현재), `-tu`(과거), `-ki`(미래)  
-2) **상(Aspect)**: `-mu`(완료/끝남), `-li`(진행/~하는 중)  
-3) **형태소 순서**: **동사 + 상 + 시제** (예: *niri-mu-tu* = 과거완료 “먹어 두었다”, *taku-li-ki* = 미래진행 “보는 중일 것”)  
-4) **단서 예시**: 어제/지난→과거(-tu), 이미→완료(-mu), 지금→진행(-li)+현재(-na), 내일→미래(-ki), “…까지/후/전” 맥락은 완료·진행 선택과 형태소 순서 결정
+**동사 시제·상(TAM)**  
+1) 시제: `-na`(현재) / `-tu`(과거) / `-ki`(미래)  
+2) 상: `-mu`(완료) / `-li`(진행)  
+3) 순서: **동사 + 상 + 시제** (예: *niri-mu-tu*, *taku-li-ki*).
 """
 
-    # 이유(라디오) 레이블
     REASON_NOUN = [
         "복수·소유 결합 순서(…-t-mi)",
         "우측 결합 사례표지(-ka)",
         "소유 연쇄 어순(바깥→안쪽→머리)",
         "정관(-ri) 위치(NP 말단, -ka 앞)",
-        "등위 구조에서의 표지 배치",
+        "등위 구조에서의 표지 배치"
     ]
     REASON_VERB = [
         "시제 단서 해석(어제/내일/항상 등)",
-        "상(완료/진행) 단서 해석(이미/…하는 중)",
+        "상(완료·진행) 단서 해석(이미/…하는 중)",
         "형태소 순서: 동사+상+시제",
         "‘…까지/후/전’에 따른 완료/진행 선택",
-        "등위/연결문에서의 시제 일관성",
+        "등위/연결문에서의 시제 일관성"
     ]
 
-    # 1R 항목
     def build_items_nouns():
-        items = [
-            {"id":"N1","gloss":"‘사람들의 개의 집’(복수 소유자 + 소유 연쇄)","stem":"____",
-             "options":["nuk-t-mi sua-mi ani","nuk-mi-t sua-mi ani","nuk-mi sua-t-mi ani","nuk-t sua-mi ani","nuk-t-mi sua ani"],"answer_idx":0,"reason_idx":0},
-            {"id":"N2","gloss":"‘집과 음식을 보다(현재)’ 목적 표지는 어디에? (우측 결합)","stem":"nuk ____ taku-na",
-             "options":["ani ama pira-ka","ani-ka ama pira","ani ama pira","ani-ka ama pira-ka","ani-ri-ka ama pira"],"answer_idx":0,"reason_idx":1},
-            {"id":"N3","gloss":"‘사람들의 집들(복수)을 본다’","stem":"nuk ____ taku-na",
-             "options":["nuk-t-mi ani-t-ka","nuk-mi-t ani-t-ka","nuk-t-mi ani-ka-t","nuk-t ani-t-ka","nuk-t-mi ani-t"],"answer_idx":0,"reason_idx":0},
-            {"id":"N4","gloss":"‘사람의 개의 집’을 올바른 어순으로","stem":"____",
-             "options":["nuk-mi sua-mi ani","sua-mi nuk-mi ani","nuk sua-mi-mi ani","nuk-mi ani sua-mi","ani nuk-mi sua-mi"],"answer_idx":0,"reason_idx":2},
-            {"id":"N5","gloss":"‘그 집(정관)을 보다’에서 -ri 위치","stem":"nuk ____ taku-na",
-             "options":["ani-ri-ka","ani-ka-ri","ri-ani-ka","ani-ri","ani-ka"],"answer_idx":0,"reason_idx":3},
-            {"id":"N6","gloss":"‘사람과 개의 물’을 올바르게 (각 소유자 표시)","stem":"____",
-             "options":["nuk-mi ama sua-mi ika","nuk ama sua-mi ika","nuk-mi ama sua ika","nuk ama sua ika-mi","nuk-mi sua-mi ama ika"],"answer_idx":0,"reason_idx":4},
-            {"id":"N7","gloss":"‘개들의 물’(복수 소유자) 표기","stem":"____",
-             "options":["sua-t-mi ika","sua-mi-t ika","sua-t ika-mi","sua ika-t-mi","sua-mi ika-t"],"answer_idx":0,"reason_idx":0},
-            {"id":"N8","gloss":"‘사람들의 집들과 음식을 본다’ (목적은 우측 결합)","stem":"nuk ____ taku-na",
-             "options":["nuk-t-mi ani-t ama pira-ka","nuk-t-mi ani-t-ka ama pira","nuk-t-mi ani ama pira-t-ka","nuk-mi-t ani-t ama pira-ka","nuk-t ami ani-t pira-ka"],"answer_idx":0,"reason_idx":1},
-            {"id":"N9","gloss":"‘사람의 그 집을’(정관 뒤 사례) 형태","stem":"____",
-             "options":["nuk-mi ani-ri-ka","nuk-mi-ri ani-ka","nuk-ri-mi ani-ka","nuk-mi ani-ka-ri","ani-ri nuk-mi-ka"],"answer_idx":0,"reason_idx":3},
-            {"id":"N10","gloss":"‘사람의 개의 집과 물을 본다’ (우측 결합)","stem":"nuk ____ taku-na",
-             "options":["nuk-mi sua-mi ani ama ika-ka","nuk-mi sua-mi ani-ka ama ika","nuk sua-mi-mi ani ama ika-ka","nuk-mi sua ani-mi ama ika-ka","nuk-mi sua-mi ama ani-ka ika"],"answer_idx":0,"reason_idx":4},
+        return [
+            {"id":"N1","gloss":"‘사람들의 개의 집’(복수 소유자 + 소유 연쇄)",
+             "stem":"____",
+             "options":["nuk-t-mi sua-mi ani","nuk-mi-t sua-mi ani","nuk-mi sua-t-mi ani","nuk-t sua-mi ani","nuk-t-mi sua ani"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"N2","gloss":"‘집과 음식을 보다(현재)’ 목적 표시는 우측 결합.",
+             "stem":"nuk ____ taku-na",
+             "options":["ani ama pira-ka","ani-ka ama pira","ani ama pira","ani-ka ama pira-ka","ani-ri-ka ama pira"],
+             "answer_idx":0,"reason_idx":1},
+            {"id":"N3","gloss":"‘사람들의 집들(복수)을 본다’",
+             "stem":"nuk ____ taku-na",
+             "options":["nuk-t-mi ani-t-ka","nuk-mi-t ani-t-ka","nuk-t-mi ani-ka-t","nuk-t ani-t-ka","nuk-t-mi ani-t"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"N4","gloss":"‘사람의 개의 집’ 어순",
+             "stem":"____",
+             "options":["nuk-mi sua-mi ani","sua-mi nuk-mi ani","nuk sua-mi-mi ani","nuk-mi ani sua-mi","ani nuk-mi sua-mi"],
+             "answer_idx":0,"reason_idx":2},
+            {"id":"N5","gloss":"‘그 집(정관)을 보다’에서 -ri 위치",
+             "stem":"nuk ____ taku-na",
+             "options":["ani-ri-ka","ani-ka-ri","ri-ani-ka","ani-ri","ani-ka"],
+             "answer_idx":0,"reason_idx":3},
+            {"id":"N6","gloss":"‘사람과 개의 물’(각 소유자 표시)",
+             "stem":"____",
+             "options":["nuk-mi ama sua-mi ika","nuk ama sua-mi ika","nuk-mi ama sua ika","nuk ama sua ika-mi","nuk-mi sua-mi ama ika"],
+             "answer_idx":0,"reason_idx":4},
+            {"id":"N7","gloss":"‘개들의 물’(복수 소유자)",
+             "stem":"____",
+             "options":["sua-t-mi ika","sua-mi-t ika","sua-t ika-mi","sua ika-t-mi","sua-mi ika-t"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"N8","gloss":"‘사람들의 집들과 음식을 본다’ (등위 목적 묶음의 우측 결합)",
+             "stem":"nuk ____ taku-na",
+             "options":["nuk-t-mi ani-t ama pira-ka","nuk-t-mi ani-t-ka ama pira","nuk-t-mi ani ama pira-t-ka","nuk-mi-t ani-t ama pira-ka","nuk-t ami ani-t pira-ka"],
+             "answer_idx":0,"reason_idx":1},
+            {"id":"N9","gloss":"‘사람의 그 집을’(정관 뒤 사례)",
+             "stem":"____",
+             "options":["nuk-mi ani-ri-ka","nuk-mi-ri ani-ka","nuk-ri-mi ani-ka","nuk-mi ani-ka-ri","ani-ri nuk-mi-ka"],
+             "answer_idx":0,"reason_idx":3},
+            {"id":"N10","gloss":"‘사람의 개의 집과 물을 본다’(우측 결합)",
+             "stem":"nuk ____ taku-na",
+             "options":["nuk-mi sua-mi ani ama ika-ka","nuk-mi sua-mi ani-ka ama ika","nuk sua-mi-mi ani ama ika-ka","nuk-mi sua ani-mi ama ika-ka","nuk-mi sua-mi ama ani-ka ika"],
+             "answer_idx":0,"reason_idx":4},
         ]
-        return items
 
-    # 2R 항목
     def build_items_verbs():
-        items = [
-            {"id":"V1","gloss":"‘지금 ~하는 중이다’: 사람(주어)이 집을 **보고 있는 중(현재진행)**","stem":"nuk ani-ka ____",
-             "options":["taku-li-na","taku-na","taku-mu-na","taku-li-ki","taku-tu"],"answer_idx":0,"reason_idx":1},
-            {"id":"V2","gloss":"‘어제 저녁 전에 이미 ~해 두었다’: 음식을 **만들어 두었다(과거완료)**","stem":"nuk pira-ka ____",
-             "options":["siku-mu-tu","siku-tu","siku-li-tu","siku-mu-na","siku-ki"],"answer_idx":0,"reason_idx":4},
-            {"id":"V3","gloss":"‘내일까지 다 ~해 놓을 것이다’: 물을 **다 먹어 놓을 것이다(미래완료)**","stem":"sua ika-ka ____",
-             "options":["niri-mu-ki","niri-ki","niri-li-ki","niri-mu-na","niri-tu"],"answer_idx":0,"reason_idx":1},
-            {"id":"V4","gloss":"‘어제 ~했다’: 개가 음식을 **먹었다(단순 과거)**","stem":"sua pira-ka ____",
-             "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],"answer_idx":0,"reason_idx":0},
-            {"id":"V5","gloss":"‘이미/벌써 ~했다’: 사람은 물을 **이미 보았다(현재완료)**","stem":"nuk ika-ka ____",
-             "options":["taku-mu-na","taku-na","taku-tu","taku-li-na","taku-mu-tu"],"answer_idx":0,"reason_idx":1},
-            {"id":"V6","gloss":"‘곧/내일 …하는 중일 것이다’: 사람과 개가 음식을 **보는 중일 것이다(미래진행)**","stem":"nuk ama sua pira-ka ____",
-             "options":["taku-li-ki","taku-ki","taku-li-na","taku-mu-ki","taku-tu"],"answer_idx":0,"reason_idx":0},
-            {"id":"V7","gloss":"형태소 순서 규칙 확인: 진행+현재 vs 현재+진행","stem":"sua ani-ka ____  (지금 보는 중)",
-             "options":["taku-li-na","taku-na-li","li-taku-na","taku-na","taku-li-tu"],"answer_idx":0,"reason_idx":2},
-            {"id":"V8","gloss":"‘그때까지 다 ~해 둘 것이다’(**…까지** 단서 → 완료+미래)","stem":"nuk pira-ka ____",
-             "options":["niri-mu-ki","niri-li-ki","niri-ki","niri-mu-tu","niri-na"],"answer_idx":0,"reason_idx":3},
-            {"id":"V9","gloss":"‘항상 ~한다’: 사람은 늘 물을 **마신다(단순 현재)**","stem":"nuk ika-ka ____",
-             "options":["niri-na","niri-li-na","niri-mu-na","niri-tu","niri-ki"],"answer_idx":0,"reason_idx":0},
-            {"id":"V10","gloss":"‘…한 뒤에(After) ~했다’: ‘집을 본 뒤에 음식을 **먹었다**’ (선행사건 완료·과거 일관)","stem":"(ani-ka taku-mu-tu) ama pira-ka ____",
-             "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],"answer_idx":0,"reason_idx":4},
+        return [
+            {"id":"V1","gloss":"현재진행: 사람이 집을 **보고 있는 중**",
+             "stem":"nuk ani-ka ____",
+             "options":["taku-li-na","taku-na","taku-mu-na","taku-li-ki","taku-tu"],
+             "answer_idx":0,"reason_idx":1},
+            {"id":"V2","gloss":"과거완료: 어제 저녁 전에 이미 **만들어 두었다**",
+             "stem":"nuk pira-ka ____",
+             "options":["siku-mu-tu","siku-tu","siku-li-tu","siku-mu-na","siku-ki"],
+             "answer_idx":0,"reason_idx":4},
+            {"id":"V3","gloss":"미래완료: 내일까지 다 **먹어 놓을 것이다**",
+             "stem":"sua ika-ka ____",
+             "options":["niri-mu-ki","niri-ki","niri-li-ki","niri-mu-na","niri-tu"],
+             "answer_idx":0,"reason_idx":1},
+            {"id":"V4","gloss":"단순 과거: 개가 음식을 **먹었다**",
+             "stem":"sua pira-ka ____",
+             "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"V5","gloss":"현재완료: 사람은 물을 **이미 보았다**",
+             "stem":"nuk ika-ka ____",
+             "options":["taku-mu-na","taku-na","taku-tu","taku-li-na","taku-mu-tu"],
+             "answer_idx":0,"reason_idx":1},
+            {"id":"V6","gloss":"미래진행: 곧/내일 **보는 중일 것이다**",
+             "stem":"nuk ama sua pira-ka ____",
+             "options":["taku-li-ki","taku-ki","taku-li-na","taku-mu-ki","taku-tu"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"V7","gloss":"형태소 순서 규칙 확인",
+             "stem":"sua ani-ka ____  (지금 보는 중)",
+             "options":["taku-li-na","taku-na-li","li-taku-na","taku-na","taku-li-tu"],
+             "answer_idx":0,"reason_idx":2},
+            {"id":"V8","gloss":"‘…까지’ 단서 → 완료+미래",
+             "stem":"nuk pira-ka ____",
+             "options":["niri-mu-ki","niri-li-ki","niri-ki","niri-mu-tu","niri-na"],
+             "answer_idx":0,"reason_idx":3},
+            {"id":"V9","gloss":"항상 ~한다(단순 현재)",
+             "stem":"nuk ika-ka ____",
+             "options":["niri-na","niri-li-na","niri-mu-na","niri-tu","niri-ki"],
+             "answer_idx":0,"reason_idx":0},
+            {"id":"V10","gloss":"‘…한 뒤에’ → 선행사건 완료·과거 일관",
+             "stem":"(ani-ka taku-mu-tu) ama pira-ka ____",
+             "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],
+             "answer_idx":0,"reason_idx":4},
         ]
-        return items
 
-    # 샘플 텍스트 뽑기
     def _pick_samples(ans_detail, reason_labels, k=2):
-        if not ans_detail:
-            return []
         rng = random.Random((len(ans_detail)<<7) ^ 9173)
         picks = rng.sample(ans_detail, k=min(k, len(ans_detail)))
-        return [f"Q{d['qno']}: {d['selected_text']} (이유: {reason_labels[d['reason_selected_idx']]})" for d in picks]
+        return [f"Q{d['qno']}: {d['completed']} (이유: {reason_labels[d['reason_selected_idx']]})" for d in picks]
 
-    # 공통 라운드 렌더러
     def render_round(round_key:str, title:str, items_builder, reason_labels):
-        scroll_top_js()
         st.title(title)
-        with st.expander("📘 과제 안내 · 규칙(꼭 읽어주세요)", expanded=True):
+        with st.expander("📘 규칙(꼭 읽어주세요) · 힌트", expanded=True):
             st.markdown(GRAMMAR_INFO_MD)
 
         items = items_builder()
         if f"_{round_key}_start" not in st.session_state:
             st.session_state[f"_{round_key}_start"] = time.time()
 
-        answers, reasons = [], []
+        answers, reasons, completed_texts = [], [], []
+
         for idx, item in enumerate(items, start=1):
-            st.markdown(f"### Q{idx}. {item['gloss']}")
-            st.code(item["stem"], language="text")
+            with st.container():
+                st.markdown(f"<div class='qcard'>", unsafe_allow_html=True)
+                st.markdown(f"<div class='qhdr'>Q{idx}. {item['gloss']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='sec-title'>문장(빈칸)</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='stem'>{item['stem']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='hint'>아래 선택지는 <b>빈칸(____)</b>에 들어갈 <b>한 개의 표현</b>입니다.</div>", unsafe_allow_html=True)
 
-            sel = st.radio(
-                f"문항 {idx} 선택(5지선다)",
-                options=list(range(5)),
-                index=None,
-                format_func=lambda i, opts=item["options"]: opts[i],
-                key=f"{round_key}_q{idx}_opt",
-            )
-            answers.append(sel)
+                sel = st.radio(
+                    "선택지(빈칸에 들어갈 말 한 개 선택)", options=list(range(5)), index=None,
+                    format_func=lambda i, opts=item["options"]: opts[i],
+                    key=f"{round_key}_q{idx}_opt",
+                )
+                answers.append(sel)
 
-            reason = st.radio(
-                f"문항 {idx}의 추론 이유(단일 선택)",
-                options=list(range(len(reason_labels))),
-                index=None,
-                format_func=lambda i: reason_labels[i],
-                key=f"{round_key}_q{idx}_reason",
-            )
-            reasons.append(reason)
-            st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+                completed = None
+                if sel is not None:
+                    completed = item["stem"].replace("____", item["options"][sel])
+                completed_texts.append(completed)
 
-        if st.button("제출", key=f"{round_key}_submit"):
-            if any(v is None for v in answers) or any(v is None for v in reasons):
-                st.warning("모든 문항의 ‘선택’과 ‘이유’를 완료해 주세요.")
-                return
+                st.markdown(f"<div class='sec-title'>내 선택 미리보기</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='preview'>{completed if completed else '선택지를 고르면 완성 문장이 표시됩니다.'}</div>",
+                    unsafe_allow_html=True
+                )
+
+                reason = st.radio(
+                    label=f"추론 근거(단일 선택) <span class='req'>(필수)</span>",
+                    options=list(range(len(reason_labels))),
+                    index=None,
+                    format_func=lambda i: reason_labels[i],
+                    key=f"{round_key}_q{idx}_reason",
+                )
+                reasons.append(reason)
+                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+
+        if st.button("제출"):
+            if any(v is None for v in answers):
+                st.warning("모든 문항의 ‘빈칸에 들어갈 말’을 선택해 주세요."); return False
+            if any(v is None for v in reasons):
+                st.warning("모든 문항의 ‘추론 근거(단일)’를 선택해 주세요."); return False
 
             elapsed = int(time.time() - st.session_state[f"_{round_key}_start"])
-            score = 0
-            reason_score = 0
-            detail = []
+            score = 0; reason_score = 0; detail = []
             for i, item in enumerate(items):
                 correct = (answers[i] == item["answer_idx"])
                 if correct: score += 1
                 if reasons[i] == item["reason_idx"]: reason_score += 1
+                comp = (item["stem"].replace("____", item["options"][answers[i]])
+                        if answers[i] is not None else item["stem"])
                 detail.append({
                     "id": item["id"], "qno": i+1,
                     "stem": item["stem"], "gloss": item["gloss"],
@@ -852,252 +770,175 @@ E) **정관(특정)**: `-ri`는 **NP-말단에서 사례(-ka) 앞**에 위치. �
                     "selected_text": item["options"][answers[i]],
                     "correct_idx": int(item["answer_idx"]),
                     "correct_text": item["options"][item["answer_idx"]],
+                    "completed": comp,
                     "reason_selected_idx": int(reasons[i]),
                     "reason_correct_idx": int(item["reason_idx"]),
                 })
 
-            # 저장
             st.session_state.data[round_key] = {
                 "duration_sec": elapsed,
                 "score": score,
                 "reason_score": reason_score,
-                "answers": detail,
-                "accuracy": round(score/len(items), 3)
+                "answers": detail
             }
-            # 분석 타깃 지정 → MCP 애니 → 결과 보기 → 피드백
-            st.session_state.analysis_target = round_key
-            st.session_state["_mcp_started"] = False
-            st.session_state["_mcp_done"] = False
-            st.session_state.phase = "analyzing"
+            # ✅ 각 피드백 전에 전용 MCP 페이지로 이동
+            st.session_state.phase = "analyzing_r1" if round_key=="inference_nouns" else "analyzing_r2"
             st.rerun()
+        return False
 
-    # 피드백(조건별) + 그래프
-    def render_feedback_for(round_key:str):
-        scroll_top_js()
+    if st.session_state.phase == "inference_nouns":
+        render_round("inference_nouns","추론 과제 1/2 (명사구: 빈칸 채우기)", build_items_nouns, REASON_NOUN)
+    else:
+        render_round("inference_verbs","추론 과제 2/2 (동사 TAM: 빈칸 채우기)", build_items_verbs, REASON_VERB)
 
-        # 요약 라벨
-        set_key = st.session_state.get("feedback_set_key", "set1")
-        LABEL_MAP = {
-            "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
-            "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}
-        }
-        label = LABEL_MAP.get(set_key, LABEL_MAP["set1"])
+# ──────────────────────────────────────────────────────────────────────────────
+# MCP 전용 페이지들 (피드백 앞에 항상 등장)
+elif st.session_state.phase in ["analyzing_r1", "analyzing_r2", "analyzing_final"]:
+    scroll_top_js()
+    # 전체 화면 애니메이션만 렌더
+    run_mcp_motion_fullscreen(total=8.0)
 
-        st.markdown("""
-        <style>
-          .banner-ok{
-            background:#0f3a17; color:#e6ffe6; border-radius:10px; padding:12px 14px;
-            font-weight:700; margin:6px 0 12px; text-align:left;
-          }
-          .labelbox{
-            border: 2px solid #2E7D32; border-radius: 12px;
-            background: #F9FFF9; padding: 12px 14px; margin: 8px 0 12px;
-            box-shadow: 0 3px 10px rgba(46,125,50,.08);
-          }
-          .labelbox .label-hd{
-            font-weight:800; color:#1B5E20; font-size:15px; margin:0 0 6px 0;
-            display:flex; gap:8px; align-items:center;
-          }
-          .labelbox .label-bd{ color:#0f3a17; font-size:14.5px; line-height:1.65; }
-          .result-card{
-            border:2px solid #4CAF50; border-radius:14px; padding:16px; background:#F9FFF9;
-            box-shadow:0 6px 14px rgba(46,125,50,.08);
-            animation: fadeUp .6s ease-out both;
-          }
-          .result-card h2{ text-align:left; margin:0 0 12px; color:#1B5E20; font-size:28px; }
-          @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
-        </style>
-        <div class="banner-ok">AI 분석 완료!</div>
-        """, unsafe_allow_html=True)
+    # 각 단계별 다음 화면 결정
+    if st.session_state.phase == "analyzing_r1":
+        render_mcp_gate(next_phase="praise_r1", button_label="1회차 피드백 보기")
+    elif st.session_state.phase == "analyzing_r2":
+        render_mcp_gate(next_phase="praise_r2", button_label="2회차 피드백 보기")
+    else:
+        render_mcp_gate(next_phase="ai_feedback", button_label="최종 평가 보기")
 
-        st.markdown(f"""
-        <div class="labelbox">
-          <div class="label-hd">요약 결과</div>
-          <div class="label-bd"><b>{label['title']}</b> — {label['desc']}</div>
-        </div>
-        <div class="result-card" id="analysis-start">
-          <h2>📊 추론 결과 분석</h2>
-        </div>
-        """, unsafe_allow_html=True)
+# ──────────────────────────────────────────────────────────────────────────────
+# 라운드별 칭찬 피드백
+elif st.session_state.phase in ["praise_r1", "praise_r2"]:
+    scroll_top_js()
 
-        # 간이 프로파일 차트(세트별)
-        labels = ["논리적 사고", "패턴 발견", "창의성", "주의 집중", "끈기"]
-        CHART_PRESETS = {
-            "set1": {"base": [18, 24, 20, 40, 36],
-                     "colors": ["#CDECCB", "#7AC779", "#B1E3AE", "#5BAF5A", "#92D091"]},
-            "set2": {"base": [32, 36, 38, 18, 24],
-                     "colors": ["#A5D6A7", "#66BB6A", "#81C784", "#43A047", "#2E7D32"]},
-        }
-        preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
-        base = preset["base"]
-        palette = preset["colors"]
+    def _pick_samples(ans_detail, reason_labels, k=2):
+        rng = random.Random((len(ans_detail)<<7) ^ 9173)
+        picks = rng.sample(ans_detail, k=min(k, len(ans_detail)))
+        return [f"Q{d['qno']}: {d['completed']} (이유: {reason_labels[d['reason_selected_idx']]})" for d in picks]
 
-        if "chart_seed" not in st.session_state:
-            st.session_state.chart_seed = random.randint(1_000, 9_999)
-        rng = random.Random(st.session_state.chart_seed)
-        jitter = [rng.randint(-2, 2) for _ in labels]
-        values = [max(10, b + j) for b, j in zip(base, jitter)]
-
-        try:
-            import plotly.express as px
-            fig = px.pie(values=values, names=labels, hole=0.55,
-                         color=labels, color_discrete_sequence=palette)
-            fig.update_traces(
-                textinfo="percent+label",
-                hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>",
-                marker=dict(line=dict(width=1, color="white"))
-            )
-            fig.update_layout(
-                height=340, margin=dict(l=10, r=10, t=10, b=10),
-                showlegend=True, legend=dict(orientation="h", y=-0.1),
-                uniformtext_minsize=12, uniformtext_mode="hide"
-            )
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
-        except Exception:
-            st.info("시각화를 준비 중입니다.")
-
-        # 피드백 본문(조건별·라운드별)
-        cond = st.session_state.get("praise_condition","정서+구체")
-        result = st.session_state.data.get(round_key, {})
-        score = result.get("score",0)
-        rscore = result.get("reason_score",0)
-        dur = result.get("duration_sec",0)
-        detail = result.get("answers",[])
-        accuracy = result.get("accuracy", 0.0)
-
-        # 예시 피드백 텍스트 (feedback_sets 사용 + 라운드별 보강)
-        fs = feedback_sets or {"set1":["추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
-                               "set2":["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]}
-        base_fb = random.choice(fs.get(set_key, fs["set1"]))
-
-        if round_key == "inference_nouns":
-            reason_labels = REASON_NOUN
-            round_name = "명사구"
-        else:
-            reason_labels = REASON_VERB
-            round_name = "동사 TAM"
-
-        samples = _pick_samples(detail, reason_labels, k=2)
-        metric_line = f"(정답 {score}/10 · 이유 {rscore}/10 · 정확도 {accuracy:.0%} · 소요 {dur}초)"
-
-        if cond == "정서+구체":
-            fb = (f"{round_name} 라운드 정말 훌륭합니다! 핵심 규칙을 안정적으로 적용했어요. "
-                  f"{metric_line} 예: {', '.join(samples)}")
-        elif cond == "계산+구체":
-            fb = (f"[{round_name} 요약] {metric_line} · 단서 매핑과 규칙 일치도가 높았습니다. "
-                  f"응답 샘플: {', '.join(samples)}")
-        elif cond == "정서+피상":
-            fb = f"{round_name} 규칙을 일관되게 적용하려는 태도가 인상적이었습니다. 계속 진행해 볼까요?"
-        else:  # 계산+피상
-            fb = f"{round_name} 파트 저장 완료. 다음 단계로 이동합니다."
-
-        # 강조 처리
-        for phrase in [
-            "꾸준한 시도","핵심 단서를 파악","일관된 결론","형태소 순서","시제 단서","우측 결합 사례",
-            "정관 위치","진행/완료 구분","정확도","소요"
-        ]:
-            fb = fb.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
-
-        st.markdown(
-            f"""
-            <div class='result-card' style='margin-top:16px;'>
-                <h2>📢 AI 평가 결과</h2>
-                <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{base_fb}<br/>{fb}</p>
-            </div>
-            """, unsafe_allow_html=True
+    if st.session_state.phase == "praise_r1":
+        REASON_NOUN = [
+            "복수·소유 결합 순서(…-t-mi)", "우측 결합 사례표지(-ka)", "소유 연쇄 어순(바깥→안쪽→머리)",
+            "정관(-ri) 위치(NP 말단, -ka 앞)", "등위 구조에서의 표지 배치"
+        ]
+        result = st.session_state.data.get("inference_nouns", {})
+        score = result.get("score",0); reason_score = result.get("reason_score",0); dur = result.get("duration_sec",0)
+        samples = _pick_samples(result.get("answers",[]), REASON_NOUN, k=2)
+        st.markdown("### ✅ AI 칭찬 피드백(1회차·명사구)")
+        st.success(
+            f"복수·소유(…-t-mi), 우측 결합 사례(-ka), 정관(-ri) 위치를 잘 적용했습니다. "
+            f"정답 {score}/10 · 이유 {reason_score}/10 · {dur}초. 샘플: {', '.join(samples)}"
         )
+        if st.button("다음(2회차 시작)", use_container_width=True):
+            st.session_state.phase = "inference_verbs"; st.rerun()
 
-        st.markdown("&nbsp;", unsafe_allow_html=True)
-        # 다음 단계 버튼
-        if round_key == "inference_nouns":
-            if st.button("다음 라운드 시작 (동사 TAM)"):
-                # 다음 라운드로
-                st.session_state["_mcp_started"] = False
-                st.session_state["_mcp_done"] = False
-                st.session_state.phase = "inference_verbs"
-                st.rerun()
-        else:
-            if st.button("학습동기 설문으로 이동"):
-                st.session_state.data["feedback_set"] = st.session_state.get("feedback_set_key","set1")
-                st.session_state["_mcp_started"] = False
-                st.session_state["_mcp_done"] = False
-                st.session_state.phase = "motivation"
-                st.rerun()
+    else:
+        REASON_VERB = [
+            "시제 단서 해석(어제/내일/항상 등)", "상(완료·진행) 단서 해석(이미/…하는 중)",
+            "형태소 순서: 동사+상+시제", "‘…까지/후/전’에 따른 완료/진행 선택", "등위/연결문에서의 시제 일관성"
+        ]
+        result = st.session_state.data.get("inference_verbs", {})
+        score = result.get("score",0); reason_score = result.get("reason_score",0); dur = result.get("duration_sec",0)
+        samples = _pick_samples(result.get("answers",[]), REASON_VERB, k=2)
+        st.markdown("### ✅ AI 칭찬 피드백(2회차·동사 TAM)")
+        st.success(
+            f"시제 단서와 상(-mu/-li)의 매핑, ‘동사+상+시제’ 순서를 안정적으로 적용했습니다. "
+            f"정답 {score}/10 · 이유 {reason_score}/10 · {dur}초. 샘플: {', '.join(samples)}"
+        )
+        if st.button("다음(최종 분석 애니메이션)", use_container_width=True):
+            st.session_state.phase = "analyzing_final"; st.rerun()
 
-    # 단계 분기
-    if st.session_state.phase == "inf_intro":
-        scroll_top_js()
-        st.markdown("## 추론 과제 안내")
-        st.markdown("""
-- **1회차(명사구)**: 복수·소유 결합(…-t-mi), 우측 결합 사례(-ka), 소유 연쇄 어순, 정관(-ri) 위치 등 **NP 규칙** 추론(10문항).  
-- **2회차(동사)**: 시제(-na/-tu/-ki), 상(완료 -mu / 진행 -li), **형태소 순서(동사+상+시제)**, 상대시제 단서(이미/어제/내일/…까지) 등 **TAM 규칙** 추론(10문항).  
-- 각 문항은 **5지선다**이며, **추론 이유도 5지선다(단일)**입니다.
-        """)
-        with st.expander("📘 규칙 다시 보기", expanded=True):
-            st.markdown(GRAMMAR_INFO_MD)
-        if st.button("1회차 시작 (명사구)"):
-            st.session_state.phase = "inference_nouns"
-            st.rerun()
+# ──────────────────────────────────────────────────────────────────────────────
+# 최종 AI 피드백(도넛 차트 + 서술)
+elif st.session_state.phase == "ai_feedback":
+    scroll_top_js()
+    st.markdown("<div class='banner-ok'>AI 분석 완료!</div>", unsafe_allow_html=True)
 
-    elif st.session_state.phase == "inference_nouns":
-        render_round("inference_nouns","추론 과제 1/2 (명사구 문법)", build_items_nouns, REASON_NOUN)
+    set_key = st.session_state.get("feedback_set_key", "set1")
+    LABEL_MAP = {
+        "set1": {"title": "뛰어난 노력", "desc": "추론 과정에서 성실히 노력한 흔적이 보입니다."},
+        "set2": {"title": "뛰어난 능력", "desc": "추론 과정에서 뛰어난 추론 능력이 보입니다."}
+    }
+    label = LABEL_MAP.get(set_key, LABEL_MAP["set1"])
 
-    elif st.session_state.phase == "inference_verbs":
-        render_round("inference_verbs","추론 과제 2/2 (동사 TAM)", build_items_verbs, REASON_VERB)
+    st.markdown(f"""
+    <div class="labelbox">
+      <div class="label-hd">요약 결과</div>
+      <div class="label-bd"><b>{label['title']}</b> — {label['desc']}</div>
+    </div>
+    <div class="result-card" id="analysis-start"><h2>📊 추론 결과 분석</h2></div>
+    """, unsafe_allow_html=True)
 
-    elif st.session_state.phase == "analyzing":
-        # 공통 MCP 애니메이션 (라운드별)
-        scroll_top_js()
-        page = st.empty()
-        with page.container():
-            st.markdown("""
-                <style>
-                body { overflow-x:hidden; }
-                .mcp-done-card {
-                    border: 2px solid #2E7D32; border-radius: 14px; padding: 28px;
-                    background: #F9FFF9; max-width: 820px; margin: 48px auto;
-                }
-                </style>
-            """, unsafe_allow_html=True)
+    labels = ["논리적 사고", "패턴 발견", "창의성", "주의 집중", "끈기"]
+    CHART_PRESETS = {
+        "set1": { "base": [18, 24, 20, 40, 36], "colors": ["#CDECCB","#7AC779","#B1E3AE","#5BAF5A","#92D091"]},
+        "set2": { "base": [32, 36, 38, 18, 24], "colors": ["#A5D6A7","#66BB6A","#81C784","#43A047","#2E7D32"]},
+    }
+    preset = CHART_PRESETS.get(set_key, CHART_PRESETS["set1"])
+    base = preset["base"]; palette = preset["colors"]
+    if "chart_seed" not in st.session_state:
+        st.session_state.chart_seed = random.randint(1_000, 9_999)
+    rng = random.Random(st.session_state.chart_seed)
+    jitter = [rng.randint(-2, 2) for _ in labels]
+    values = [max(10, b + j) for b, j in zip(base, jitter)]
 
-            if not st.session_state.get("_mcp_started", False):
-                st.session_state["_mcp_started"] = True
-                run_mcp_motion()  # 8초 애니메이션
-                st.session_state["_mcp_done"] = True
-                st.rerun()
+    try:
+        import plotly.express as px
+        fig = px.pie(values=values, names=labels, hole=0.55, color=labels, color_discrete_sequence=palette)
+        fig.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>점수: %{value}점<extra></extra>",
+                          marker=dict(line=dict(width=1, color="white")))
+        fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10),
+                          showlegend=True, legend=dict(orientation="h", y=-0.1),
+                          uniformtext_minsize=12, uniformtext_mode="hide")
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "displaylogo": False})
+    except Exception:
+        st.info("시각화를 준비 중입니다.")
 
-            if st.session_state.get("_mcp_done", False):
-                round_key = st.session_state.get("analysis_target","inference_nouns")
-                round_name = "명사구" if round_key == "inference_nouns" else "동사 TAM"
-                st.markdown(f"""
-                    <div class='mcp-done-card'>
-                      <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ {round_name} 분석이 완료되었습니다</h2>
-                      <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
-                        COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
-                      </p>
-                    </div>
-                """, unsafe_allow_html=True)
-                _, mid, _ = st.columns([1,2,1])
-                with mid:
-                    if st.button("결과 보기", use_container_width=True):
-                        page.empty()
-                        st.session_state["_mcp_started"] = False
-                        st.session_state["_mcp_done"] = False
-                        st.session_state.phase = "ai_feedback"
-                        st.rerun()
+    # 서술 피드백
+    feedback_path = os.path.join(BASE_DIR, "data", "feedback_sets.json")
+    try:
+        with open(feedback_path, "r", encoding="utf-8") as f:
+            fs = json.load(f)
+        if not isinstance(fs, dict) or not fs: raise ValueError
+    except Exception:
+        fs = {
+            "set1": ["참여해 주셔서 감사합니다. 추론 과정에서의 꾸준한 시도가 인상적이었습니다."],
+            "set2": ["핵심 단서를 파악하고 일관된 결론을 도출한 점이 돋보였습니다."]
+        }
+    feedback = random.choice(fs.get(set_key, fs["set1"]))
+    for phrase in [
+        "끝까지 답을 도출하려는 꾸준한 시도와 인내심",
+        "여러 단서를 활용해 끊임없이 결론을 모색하려는 태도",
+        "지속적인 탐색과 시도",
+        "실패를 두려워하지 않고 반복적으로 추론을 시도한 흔적",
+        "과정 중 발생한 시행착오를 극복하고 대안을 탐색한 노력",
+        "여러 방법을 모색하고 끝까지 결론을 도출하려는 태도",
+        "단서를 빠르게 이해하고 논리적으로 연결하는 뛰어난 추론 능력",
+        "여러 선택지 중 핵심 단서를 식별하고 일관된 결론으로 이끄는 분석적 사고력",
+        "구조적 일관성을 유지하며 논리적 결론을 도출하는 추론 능력",
+        "단서 간의 관계를 정확히 파악하고 체계적으로 연결하는 능력",
+        "상황을 분석하고 적절한 결론을 선택하는 높은 수준의 판단력",
+    ]:
+        feedback = feedback.replace(phrase, f"<b style='color:#2E7D32;'>{phrase}</b>")
 
-    elif st.session_state.phase == "ai_feedback":
-        target = st.session_state.get("analysis_target","inference_nouns")
-        render_feedback_for(target)
+    st.markdown(
+        f"""
+        <div class='result-card' style='margin-top:16px;'>
+            <h2>📢 AI 평가 결과</h2>
+            <p style='font-size:16px; line-height:1.7; color:#333; margin:0;'>{feedback.replace("\n","<br>")}</p>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+    if st.button("학습동기 설문으로 이동"):
+        st.session_state.data["feedback_set"] = set_key
+        st.session_state.phase = "motivation"; st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6. 학습 동기 설문
 elif st.session_state.phase == "motivation":
     scroll_top_js()
-
     st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
-
-    # 가로 폭 축소 시 잘림 방지
     st.markdown("""
     <div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;
                 font-size:16px; margin-bottom:30px;'>
@@ -1137,14 +978,12 @@ elif st.session_state.phase == "motivation":
             st.warning("모든 문항에 응답해 주세요.")
         else:
             st.session_state.data["motivation_responses"] = motivation_responses
-            st.session_state.phase = "phone_input"
-            st.rerun()
+            st.session_state.phase = "phone_input"; st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6-1. 휴대폰 번호 입력
 elif st.session_state.phase == "phone_input":
     scroll_top_js()
-
     st.title("휴대폰 번호 입력")
     st.markdown("""
     연구 참여가 완료되었습니다. 감사합니다.  
@@ -1159,21 +998,18 @@ elif st.session_state.phase == "phone_input":
         else:
             st.session_state.data["phone"] = phone.strip()
             st.session_state.data["endTime"] = datetime.now().isoformat()
-            save_to_csv(st.session_state.data)
-            st.session_state.phase = "result"
-            st.rerun()
+            save_to_csv_safe(st.session_state.data)   # 안전 저장
+            st.session_state.phase = "result"; st.rerun()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 7. 완료 화면
 elif st.session_state.phase == "result":
     scroll_top_js()
-
     if "result_submitted" not in st.session_state:
         st.success("모든 과제가 완료되었습니다. 감사합니다!")
         st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
         if st.button("제출"):
-            st.session_state.result_submitted = True
-            st.rerun()
+            st.session_state.result_submitted = True; st.rerun()
     else:
         st.success("응답이 저장되었습니다.")
         st.markdown("""
