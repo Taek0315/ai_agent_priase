@@ -61,30 +61,22 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
 
-def scroll_top_js(nonce: int | None = None):
-    """
-    페이지가 렌더될 때마다 최상단으로 스크롤.
-    - 부모 문서(section.main)와 iframe 내부(window) 둘 다 시도
-    - 여러 타이밍에 재시도 (즉시/RAF/지연)
-    - nonce를 넣어 매 호출마다 '새 스크립트'로 인식되도록 함
-    """
+def scroll_top_js(nonce:int | None = None):
+    # 페이지 로드시 항상 최상단으로 스크롤 (JS 중괄호로 인한 f-string 충돌 방지)
     if nonce is None:
         nonce = st.session_state.get("_scroll_nonce", 0)
 
-    st.markdown(
-        f"""
+    script = """
         <script id="goTop-{nonce}">
         (function(){
-          function: goTop() {
+          function goTop() {
             try {
-              // 부모 문서(스트림릿 실제 뷰) 스크롤
               var pdoc = window.parent && window.parent.document;
               var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
               if (sect && sect.scrollTo) sect.scrollTo({top:0, left:0, behavior:'instant'});
             } catch(e) {}
 
             try {
-              // iframe 내부(백업) 스크롤
               window.scrollTo({top:0, left:0, behavior:'instant'});
               document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
               document.body && document.body.scrollTo && document.body.scrollTo(0,0);
@@ -100,16 +92,9 @@ def scroll_top_js(nonce: int | None = None):
           setTimeout(goTop, 320);
         })();
         </script>
-        """,
-        unsafe_allow_html=True
-    )
+    """.replace("{nonce}", str(nonce))
 
-    def rerun_with_scroll_top():
-        """
-        스크립트가 매번 새로 실행되도록 nonce 올리고 바로 rerun.
-        """
-        st.session_state["_scroll_nonce"] = st.session_state.get("_scroll_nonce", 0) + 1
-        st.rerun()
+    st.markdown(script, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
