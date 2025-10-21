@@ -107,8 +107,8 @@ if "phase" not in st.session_state:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MCP용 가짜 로그 + 애니메이션 화면 (항상 단독 화면)
-def run_mcp_motion():
-    # 화면 전체 덮는 오버레이 (컴포넌트 iframe 내부에서 확실히 실행)
+def run_mcp_motion(round_no: int):
+    # 화면 전체 덮는 MCP 오버레이 (컴포넌트 iframe 내부에서 확실히 실행)
     logs = [
         "[INFO][COVNOX] Initializing… booting inference-pattern engine",
         "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
@@ -153,6 +153,7 @@ def run_mcp_motion():
     <script>
     (function(){
       var msgs = __LOGS__;
+      var round = __ROUND__;
       var logEl = document.getElementById('mcp-log');
       var fill  = document.getElementById('mcp-fill');
       var overlay = document.getElementById('mcp-overlay');
@@ -164,17 +165,21 @@ def run_mcp_motion():
         fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
         if (t >= total){
           clearInterval(timer);
-          setTimeout(function(){ if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300);
+          setTimeout(function(){
+            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
+            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          }, 200);
         }
       }
       tick();
       var timer = setInterval(tick, step);
     })();
     </script>
-    """.replace("__LOGS__", logs_json)
+    """
+    # 안전한 치환 방식
+    html = html.replace("__LOGS__", logs_json).replace("__ROUND__", str(int(round_no)))
+    components.html(html, height=900, scrolling=False)
 
-    # 컴포넌트로 렌더(스크립트 확실히 실행). height을 화면보다 넉넉히.
-    components.html(html, height=680, scrolling=False)
 
 # ─────────────────────────────────────────────
 # ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
@@ -947,8 +952,28 @@ elif st.session_state.phase == "inference_nouns":
 
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
-    run_mcp_motion()  # 8초 오버레이
-    # 오버레이가 사라지면 아래 카드/버튼이 보임
+
+    # ❶ 카드 숨김 + 메시지 리스너(라운드1만 표시)
+    st.markdown("""
+    <style>.mcp-done-card{ display:none; }</style>
+    <script>
+      window.addEventListener('message', function(e){
+        try{
+          if(!e || !e.data) return;
+          if(e.data.type === 'covnox_done' && e.data.round === 1){
+            var cards = document.getElementsByClassName('mcp-done-card');
+            for (var i=0;i<cards.length;i++){ cards[i].style.display = 'block'; }
+            var btn = document.getElementById('mcp1-next'); if(btn){ btn.scrollIntoView({behavior:'smooth'}); }
+          }
+        }catch(_){}
+      });
+    </script>
+    """, unsafe_allow_html=True)
+
+    # ❷ 오버레이 애니메이션 (8초 후 parent로 postMessage)
+    run_mcp_motion(round_no=1)
+
+    # ❸ 완료 카드(초기엔 숨겨짐, 메시지 받으면 표시됨)
     st.markdown("""
         <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
           <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
@@ -959,9 +984,10 @@ elif st.session_state.phase == "analyzing_r1":
     """, unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
-        if st.button("결과 보기", use_container_width=True):
+        if st.button("결과 보기", key="mcp1-next", use_container_width=True):
             st.session_state.phase = "praise_r1"
             st.rerun()
+
 
 elif st.session_state.phase == "praise_r1":
     render_praise("inference_nouns", 1, REASON_NOUN)
@@ -981,7 +1007,25 @@ elif st.session_state.phase == "inference_verbs":
 
 elif st.session_state.phase == "analyzing_r2":
     scroll_top_js()
-    run_mcp_motion()
+
+    st.markdown("""
+    <style>.mcp-done-card{ display:none; }</style>
+    <script>
+      window.addEventListener('message', function(e){
+        try{
+          if(!e || !e.data) return;
+          if(e.data.type === 'covnox_done' && e.data.round === 2){
+            var cards = document.getElementsByClassName('mcp-done-card');
+            for (var i=0;i<cards.length;i++){ cards[i].style.display = 'block'; }
+            var btn = document.getElementById('mcp2-next'); if(btn){ btn.scrollIntoView({behavior:'smooth'}); }
+          }
+        }catch(_){}
+      });
+    </script>
+    """, unsafe_allow_html=True)
+
+    run_mcp_motion(round_no=2)
+
     st.markdown("""
         <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
           <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
@@ -992,9 +1036,10 @@ elif st.session_state.phase == "analyzing_r2":
     """, unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
-        if st.button("결과 보기", use_container_width=True):
+        if st.button("결과 보기", key="mcp2-next", use_container_width=True):
             st.session_state.phase = "praise_r2"
             st.rerun()
+
 
 
 elif st.session_state.phase == "praise_r2":
