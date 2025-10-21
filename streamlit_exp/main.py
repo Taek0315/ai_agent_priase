@@ -58,16 +58,6 @@ html, body { overflow-x: hidden !important; }
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
-FULLSCREEN_CSS = """
-<style>
-  /* #mcp-root가 존재할 때만 전용 화면으로 전환 */
-  body:has(#mcp-root) [data-testid="stAppViewContainer"]{ background:#0b0f1a; }
-  body:has(#mcp-root) .block-container > *:not(#mcp-root):not(style):not(script){
-    display:none !important;
-  }
-  #mcp-root{ display:block !important; padding:12vh 0 8vh; }
-</style>
-"""
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
@@ -117,92 +107,77 @@ if "phase" not in st.session_state:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MCP용 가짜 로그 + 애니메이션 화면 (항상 단독 화면)
-fake_logs = [
-    "[INFO][COVNOX] Initializing… booting inference-pattern engine",
-    "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
-    "[INFO][COVNOX] Collecting responses… building 10-item choice hash",
-    "[OK][COVNOX] Response hash map constructed",
-    "[INFO][COVNOX] Running grammatical marker detection",
-    "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
-    "[INFO][COVNOX] Parsing rationale tags (single-select)",
-    "[OK][COVNOX] Rationale normalization complete",
-    "[INFO][COVNOX] Computing rule-match consistency",
-    "[OK][COVNOX] Consistency matrix updated",
-    "[INFO][COVNOX] Checking tense/object conflicts",
-    "[OK][COVNOX] No critical conflicts · reasoning path stable",
-    "[INFO][COVNOX] Analyzing response time (persistence index)",
-    "[OK][COVNOX] Persistence index calculated",
-    "[INFO][COVNOX] Synthesizing overall inference profile",
-    "[OK][COVNOX] Profile composed · selecting feedback template",
-    "[INFO][COVNOX] Natural language phrasing optimization",
-    "[OK][COVNOX] Fluency/consistency checks passed",
-    "[✔][COVNOX] Analysis complete. Rendering results…"
-]
-
 def run_mcp_motion():
-    # 중앙 배치 여백
-    st.markdown("<div style='height:18vh;'></div>", unsafe_allow_html=True)
+    logs = [
+        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
+        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
+        "[INFO][COVNOX] Collecting responses… building 10-item choice hash",
+        "[OK][COVNOX] Response hash map constructed",
+        "[INFO][COVNOX] Running grammatical marker detection",
+        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
+        "[INFO][COVNOX] Parsing rationale tags (single-select)",
+        "[OK][COVNOX] Rationale normalization complete",
+        "[INFO][COVNOX] Computing rule-match consistency",
+        "[OK][COVNOX] Consistency matrix updated",
+        "[INFO][COVNOX] Checking tense/object conflicts",
+        "[OK][COVNOX] No critical conflicts · reasoning path stable",
+        "[INFO][COVNOX] Analyzing response time (persistence index)",
+        "[OK][COVNOX] Persistence index calculated",
+        "[INFO][COVNOX] Synthesizing overall inference profile",
+        "[OK][COVNOX] Profile composed · selecting feedback template",
+        "[INFO][COVNOX] Natural language phrasing optimization",
+        "[OK][COVNOX] Fluency/consistency checks passed",
+        "[✔][COVNOX] Analysis complete. Rendering results…"
+    ]
+    import json
+    html = f"""
+    <style>
+      .mcp-overlay {{
+        position: fixed; inset: 0; z-index: 9999;
+        background: #0b0f1a; color: #e6edf3;
+        display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        padding-top: 12vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+      }}
+      .covnox-title {{ margin:0; text-align:center; font-weight:800; font-size: clamp(26px,5.2vw,46px); }}
+      .covnox-sub {{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:14px 0 20px 0; text-align:center;
+      }}
+      .mcp-bar {{ width: min(820px, 86vw); height: 8px; background:#1b2330; border-radius: 999px; overflow: hidden; }}
+      .mcp-fill {{ height: 100%; width:0%; background:#2f81f7; transition: width .38s linear; }}
+    </style>
+    <div class="mcp-overlay" id="mcp-overlay">
+      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
+      <div class="covnox-sub" id="mcp-log">Initializing…</div>
+      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
+    </div>
+    <script>
+      (function(){{
+        const msgs = {json.dumps(logs)};
+        const logEl = document.getElementById('mcp-log');
+        const fill  = document.getElementById('mcp-fill');
+        const overlay = document.getElementById('mcp-overlay');
+        let i = 0, t=0, total=8000, step=400;
 
-    st.markdown(
-        """
-        <style>
-        .covnox-title{ margin:0; text-align:center;
-          font-size: clamp(26px, 5.2vw, 46px); font-weight:800;
-        }
-        .covnox-sub{
-          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: clamp(12px, 2.4vw, 16px); opacity:.9; margin:6px 0 10px 0; text-align:center;
-        }
-        </style>
-    """,
-        unsafe_allow_html=True,
-    )
+        function tick(){{
+          const now = new Date();
+          const ts = now.toTimeString().split(' ')[0];
+          logEl.textContent = `[${{ts}}] ${{msgs[i % msgs.length]}}`;
+          i++;
+          t += step;
+          fill.style.width = Math.min(100, Math.round((t/total)*100)) + '%';
+          if (t >= total) {{
+            clearInterval(timer);
+            setTimeout(()=>{{ overlay.remove(); }}, 300); // 8초 후 오버레이 제거
+          }}
+        }}
+        tick();
+        const timer = setInterval(tick, step);
+      }})();
+    </script>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
-    # 로고(있을 때만)
-    try:
-        base_dir = os.getcwd()
-        logo_path = os.path.join(base_dir, "covnox.png")
-        if os.path.exists(logo_path):
-            st.image(logo_path, width=80)
-    except Exception:
-        pass
-
-    st.markdown("<h1 class='covnox-title'>🧩 COVNOX: Inference Pattern Analysis</h1>", unsafe_allow_html=True)
-
-    holder = st.container()
-    with holder:
-        log_placeholder = st.empty()
-        progress_placeholder = st.empty()
-        progress = progress_placeholder.progress(0, text=None)
-
-        start = time.time()
-        total = 8.0  # 총 8초 애니메이션
-        step = 0
-
-        try:
-            while True:
-                t = time.time() - start
-                if t >= total:
-                    break
-
-                progress.progress(min(t/total, 1.0), text=None)
-
-                msg = fake_logs[step % len(fake_logs)]
-                timestamp = time.strftime("%H:%M:%S")
-                log_placeholder.markdown(
-                    f"<div class='covnox-sub'>[{timestamp}] {msg}</div>",
-                    unsafe_allow_html=True,
-                )
-
-                step += 1
-                time.sleep(0.4)
-
-            progress.progress(1.0, text=None)
-
-        finally:
-            progress_placeholder.empty()
-            log_placeholder.empty()
-            holder.empty()
 
 
 # ─────────────────────────────────────────────
@@ -976,36 +951,21 @@ elif st.session_state.phase == "inference_nouns":
 
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
-    # ★ MCP 전용 풀스크린 모드 적용 + 래퍼 시작
-    st.markdown(FULLSCREEN_CSS, unsafe_allow_html=True)
-    st.markdown("<div id='mcp-root'>", unsafe_allow_html=True)
-
-    page = st.empty()
-    with page.container():
-        if not st.session_state.get("_mcp1_started", False):
-            st.session_state["_mcp1_started"] = True
-            run_mcp_motion()
-            st.session_state["_mcp1_done"] = True
+    run_mcp_motion()  # 8초 오버레이
+    # 오버레이가 사라지면 아래 카드/버튼이 보임
+    st.markdown("""
+        <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
+          <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
+            COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
+          </p>
+        </div>
+    """, unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 2, 1])
+    with mid:
+        if st.button("결과 보기", use_container_width=True):
+            st.session_state.phase = "praise_r1"
             st.rerun()
-        if st.session_state.get("_mcp1_done", False):
-            st.markdown("""
-                <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
-                  <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-                  <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
-                    COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
-                  </p>
-                </div>
-            """, unsafe_allow_html=True)
-            _, mid, _ = st.columns([1, 2, 1])
-            with mid:
-                if st.button("결과 보기", use_container_width=True):
-                    page.empty()
-                    st.session_state["_mcp1_started"], st.session_state["_mcp1_done"] = False, False
-                    st.session_state.phase = "praise_r1"
-                    st.rerun()
-
-    # ★ 래퍼 닫기
-    st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.phase == "praise_r1":
     render_praise("inference_nouns", 1, REASON_NOUN)
@@ -1025,34 +985,20 @@ elif st.session_state.phase == "inference_verbs":
 
 elif st.session_state.phase == "analyzing_r2":
     scroll_top_js()
-    st.markdown(FULLSCREEN_CSS, unsafe_allow_html=True)
-    st.markdown("<div id='mcp-root'>", unsafe_allow_html=True)
-
-    page = st.empty()
-    with page.container():
-        if not st.session_state.get("_mcp2_started", False):
-            st.session_state["_mcp2_started"] = True
-            run_mcp_motion()
-            st.session_state["_mcp2_done"] = True
+    run_mcp_motion()
+    st.markdown("""
+        <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
+          <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
+            COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
+          </p>
+        </div>
+    """, unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 2, 1])
+    with mid:
+        if st.button("결과 보기", use_container_width=True):
+            st.session_state.phase = "praise_r2"
             st.rerun()
-        if st.session_state.get("_mcp2_done", False):
-            st.markdown("""
-                <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
-                  <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-                  <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
-                    COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
-                  </p>
-                </div>
-            """, unsafe_allow_html=True)
-            _, mid, _ = st.columns([1, 2, 1])
-            with mid:
-                if st.button("결과 보기", use_container_width=True):
-                    page.empty()
-                    st.session_state["_mcp2_started"], st.session_state["_mcp2_done"] = False, False
-                    st.session_state.phase = "praise_r2"
-                    st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 elif st.session_state.phase == "praise_r2":
