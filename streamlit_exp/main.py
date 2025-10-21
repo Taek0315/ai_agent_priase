@@ -953,33 +953,36 @@ elif st.session_state.phase == "inference_nouns":
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
 
-    # ① 기본은 숨김 + 메시지 수신 시 표시
+    # ① 기본은 ‘숨김’: body에 .covnox-done-1 클래스가 붙기 전까지
     st.markdown("""
     <style>
-      #mcp1-result { display:none; }
+      /* 완료 안내 패널 자체 숨김 */
+      body:not(.covnox-done-1) #mcp1-panel { display:none !important; }
+      /* 그리고 바로 다음 블록(= Streamlit 버튼 래퍼)도 함께 숨김 */
+      body:not(.covnox-done-1) #mcp1-panel + div { display:none !important; }
     </style>
     <script>
       (function(){
-        function reveal(){
-          var box = document.getElementById('mcp1-result');
-          if(box){ box.style.display = 'block'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
-        }
+        // 애니메이션 iframe이 끝나면 postMessage로 {type:'covnox_done', round:1} 전달됨
         window.addEventListener('message', function(e){
           try{
-            if(!e || !e.data) return;
-            if(e.data.type === 'covnox_done' && e.data.round === 1){ reveal(); }
+            if (e && e.data && e.data.type === 'covnox_done' && e.data.round === 1){
+              document.body.classList.add('covnox-done-1'); // ✔ 보이기 전환
+              var el = document.getElementById('mcp1-panel');
+              if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+            }
           }catch(_){}
         });
       })();
     </script>
     """, unsafe_allow_html=True)
 
-    # ② 오버레이 애니메이션(iframe 내부에서 8초 후 parent로 postMessage 보냄)
+    # ② 애니메이션(오버레이, 8초 후 postMessage 송신)
     run_mcp_motion(round_no=1)
 
-    # ③ 완료 안내 + 버튼을 하나의 래퍼로 묶어서 '초기 숨김'
+    # ③ 완료 안내(패널) — 기본은 숨김, ①의 CSS로 토글
     st.markdown("""
-      <div id="mcp1-result" style="max-width:860px; margin:48px auto;">
+      <div id="mcp1-panel" style="max-width:860px; margin:48px auto;">
         <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
           <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
           <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
@@ -989,13 +992,12 @@ elif st.session_state.phase == "analyzing_r1":
       </div>
     """, unsafe_allow_html=True)
 
+    # ④ 버튼 — 위 패널(#mcp1-panel) ‘바로 다음 블록’이어야 함 (CSS에서 함께 숨김)
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         if st.button("결과 보기", key="mcp1-next", use_container_width=True):
             st.session_state.phase = "praise_r1"
             st.rerun()
-
-
 
 elif st.session_state.phase == "praise_r1":
     render_praise("inference_nouns", 1, REASON_NOUN)
@@ -1018,18 +1020,18 @@ elif st.session_state.phase == "analyzing_r2":
 
     st.markdown("""
     <style>
-      #mcp2-result { display:none; }
+      body:not(.covnox-done-2) #mcp2-panel { display:none !important; }
+      body:not(.covnox-done-2) #mcp2-panel + div { display:none !important; }
     </style>
     <script>
       (function(){
-        function reveal(){
-          var box = document.getElementById('mcp2-result');
-          if(box){ box.style.display = 'block'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
-        }
         window.addEventListener('message', function(e){
           try{
-            if(!e || !e.data) return;
-            if(e.data.type === 'covnox_done' && e.data.round === 2){ reveal(); }
+            if (e && e.data && e.data.type === 'covnox_done' && e.data.round === 2){
+              document.body.classList.add('covnox-done-2');
+              var el = document.getElementById('mcp2-panel');
+              if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+            }
           }catch(_){}
         });
       })();
@@ -1039,7 +1041,7 @@ elif st.session_state.phase == "analyzing_r2":
     run_mcp_motion(round_no=2)
 
     st.markdown("""
-      <div id="mcp2-result" style="max-width:860px; margin:48px auto;">
+      <div id="mcp2-panel" style="max-width:860px; margin:48px auto;">
         <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
           <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
           <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
