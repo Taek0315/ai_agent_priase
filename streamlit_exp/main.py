@@ -75,7 +75,7 @@ def scroll_top_js(nonce: int | None = None):
         f"""
         <script id="goTop-{nonce}">
         (function(){
-          function goTop() {
+          function: goTop() {
             try {
               // 부모 문서(스트림릿 실제 뷰) 스크롤
               var pdoc = window.parent && window.parent.document;
