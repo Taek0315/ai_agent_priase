@@ -953,40 +953,48 @@ elif st.session_state.phase == "inference_nouns":
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
 
-    # ❶ 카드 숨김 + 메시지 리스너(라운드1만 표시)
+    # ① 기본은 숨김 + 메시지 수신 시 표시
     st.markdown("""
-    <style>.mcp-done-card{ display:none; }</style>
+    <style>
+      #mcp1-result { display:none; }
+    </style>
     <script>
-      window.addEventListener('message', function(e){
-        try{
-          if(!e || !e.data) return;
-          if(e.data.type === 'covnox_done' && e.data.round === 1){
-            var cards = document.getElementsByClassName('mcp-done-card');
-            for (var i=0;i<cards.length;i++){ cards[i].style.display = 'block'; }
-            var btn = document.getElementById('mcp1-next'); if(btn){ btn.scrollIntoView({behavior:'smooth'}); }
-          }
-        }catch(_){}
-      });
+      (function(){
+        function reveal(){
+          var box = document.getElementById('mcp1-result');
+          if(box){ box.style.display = 'block'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
+        }
+        window.addEventListener('message', function(e){
+          try{
+            if(!e || !e.data) return;
+            if(e.data.type === 'covnox_done' && e.data.round === 1){ reveal(); }
+          }catch(_){}
+        });
+      })();
     </script>
     """, unsafe_allow_html=True)
 
-    # ❷ 오버레이 애니메이션 (8초 후 parent로 postMessage)
+    # ② 오버레이 애니메이션(iframe 내부에서 8초 후 parent로 postMessage 보냄)
     run_mcp_motion(round_no=1)
 
-    # ❸ 완료 카드(초기엔 숨겨짐, 메시지 받으면 표시됨)
+    # ③ 완료 안내 + 버튼을 하나의 래퍼로 묶어서 '초기 숨김'
     st.markdown("""
-        <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
-          <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
+      <div id="mcp1-result" style="max-width:860px; margin:48px auto;">
+        <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
+          <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
             COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
           </p>
         </div>
+      </div>
     """, unsafe_allow_html=True)
+
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         if st.button("결과 보기", key="mcp1-next", use_container_width=True):
             st.session_state.phase = "praise_r1"
             st.rerun()
+
 
 
 elif st.session_state.phase == "praise_r1":
@@ -1009,38 +1017,43 @@ elif st.session_state.phase == "analyzing_r2":
     scroll_top_js()
 
     st.markdown("""
-    <style>.mcp-done-card{ display:none; }</style>
+    <style>
+      #mcp2-result { display:none; }
+    </style>
     <script>
-      window.addEventListener('message', function(e){
-        try{
-          if(!e || !e.data) return;
-          if(e.data.type === 'covnox_done' && e.data.round === 2){
-            var cards = document.getElementsByClassName('mcp-done-card');
-            for (var i=0;i<cards.length;i++){ cards[i].style.display = 'block'; }
-            var btn = document.getElementById('mcp2-next'); if(btn){ btn.scrollIntoView({behavior:'smooth'}); }
-          }
-        }catch(_){}
-      });
+      (function(){
+        function reveal(){
+          var box = document.getElementById('mcp2-result');
+          if(box){ box.style.display = 'block'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
+        }
+        window.addEventListener('message', function(e){
+          try{
+            if(!e || !e.data) return;
+            if(e.data.type === 'covnox_done' && e.data.round === 2){ reveal(); }
+          }catch(_){}
+        });
+      })();
     </script>
     """, unsafe_allow_html=True)
 
     run_mcp_motion(round_no=2)
 
     st.markdown("""
-        <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
-          <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
-          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
+      <div id="mcp2-result" style="max-width:860px; margin:48px auto;">
+        <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
+          <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
             COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
           </p>
         </div>
+      </div>
     """, unsafe_allow_html=True)
+
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         if st.button("결과 보기", key="mcp2-next", use_container_width=True):
             st.session_state.phase = "praise_r2"
             st.rerun()
-
-
 
 elif st.session_state.phase == "praise_r2":
     render_praise("inference_verbs", 2, REASON_VERB)
