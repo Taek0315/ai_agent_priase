@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # 필요한 모듈
 import streamlit as st
-
+import streamlit.components.v1 as components
 import time, random, json, os
 from datetime import datetime
 from utils.validation import validate_phone, validate_text
@@ -108,7 +108,7 @@ if "phase" not in st.session_state:
 # ──────────────────────────────────────────────────────────────────────────────
 # MCP용 가짜 로그 + 애니메이션 화면 (항상 단독 화면)
 def run_mcp_motion():
-    # 화면 전체를 덮는 MCP 오버레이 + 진행 로그/프로그레스바 (약 8초 후 자동 제거)
+    # 화면 전체 덮는 오버레이 (컴포넌트 iframe 내부에서 확실히 실행)
     logs = [
         "[INFO][COVNOX] Initializing… booting inference-pattern engine",
         "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
@@ -135,14 +135,15 @@ def run_mcp_motion():
 
     html = """
     <style>
-      .mcp-overlay { position:fixed; inset:0; z-index:9999; background:#0b0f1a; color:#e6edf3;
-        display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-        padding-top:12vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; }
-      .covnox-title { margin:0; text-align:center; font-weight:800; font-size:clamp(26px,5.2vw,46px); }
-      .covnox-sub { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size:clamp(12px,2.4vw,16px); opacity:.9; margin:14px 0 20px 0; text-align:center; }
-      .mcp-bar { width:min(820px,86vw); height:8px; background:#1b2330; border-radius:999px; overflow:hidden; }
-      .mcp-fill { height:100%; width:0%; background:#2f81f7; transition:width .38s linear; }
+      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
+      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
+        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
+      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
+      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
+      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
+      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
     </style>
     <div class="mcp-overlay" id="mcp-overlay">
       <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
@@ -151,35 +152,29 @@ def run_mcp_motion():
     </div>
     <script>
     (function(){
-        var msgs = __LOGS__;
-        var logEl = document.getElementById('mcp-log');
-        var fill  = document.getElementById('mcp-fill');
-        var overlay = document.getElementById('mcp-overlay');
-        var i = 0, t = 0, total = 8000, step = 400;
-
-        function tick(){
-          var now = new Date();
-          var ts = now.toTimeString().split(' ')[0];
-          logEl.textContent = "[" + ts + "] " + msgs[i % msgs.length];
-          i++;
-          t += step;
-          fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
-          if (t >= total) {
-            clearInterval(timer);
-            setTimeout(function(){ if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300);
-          }
+      var msgs = __LOGS__;
+      var logEl = document.getElementById('mcp-log');
+      var fill  = document.getElementById('mcp-fill');
+      var overlay = document.getElementById('mcp-overlay');
+      var i=0, t=0, total=8000, step=400;
+      function tick(){
+        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
+        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
+        i++; t += step;
+        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
+        if (t >= total){
+          clearInterval(timer);
+          setTimeout(function(){ if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300);
         }
-        tick();
-        var timer = setInterval(tick, step);
+      }
+      tick();
+      var timer = setInterval(tick, step);
     })();
     </script>
-    """
-    # f-string 대신 플레이스홀더 치환으로 로그 배열만 안전하게 주입
-    html = html.replace("__LOGS__", logs_json)
-    st.markdown(html, unsafe_allow_html=True)
+    """.replace("__LOGS__", logs_json)
 
-
-
+    # 컴포넌트로 렌더(스크립트 확실히 실행). height을 화면보다 넉넉히.
+    components.html(html, height=680, scrolling=False)
 
 # ─────────────────────────────────────────────
 # ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
