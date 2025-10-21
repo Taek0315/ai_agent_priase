@@ -58,6 +58,17 @@ html, body { overflow-x: hidden !important; }
 """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+FULLSCREEN_CSS = """
+<style>
+  /* #mcp-root가 존재할 때만 전용 화면으로 전환 */
+  body:has(#mcp-root) [data-testid="stAppViewContainer"]{ background:#0b0f1a; }
+  body:has(#mcp-root) .block-container > *:not(#mcp-root):not(style):not(script){
+    display:none !important;
+  }
+  #mcp-root{ display:block !important; padding:12vh 0 8vh; }
+</style>
+"""
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 공통: 스크롤 항상 최상단
 
@@ -965,6 +976,10 @@ elif st.session_state.phase == "inference_nouns":
 
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
+    # ★ MCP 전용 풀스크린 모드 적용 + 래퍼 시작
+    st.markdown(FULLSCREEN_CSS, unsafe_allow_html=True)
+    st.markdown("<div id='mcp-root'>", unsafe_allow_html=True)
+
     page = st.empty()
     with page.container():
         if not st.session_state.get("_mcp1_started", False):
@@ -973,17 +988,14 @@ elif st.session_state.phase == "analyzing_r1":
             st.session_state["_mcp1_done"] = True
             st.rerun()
         if st.session_state.get("_mcp1_done", False):
-            st.markdown(
-                """
+            st.markdown("""
                 <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
                   <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
                   <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
                     COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
                   </p>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            """, unsafe_allow_html=True)
             _, mid, _ = st.columns([1, 2, 1])
             with mid:
                 if st.button("결과 보기", use_container_width=True):
@@ -991,6 +1003,9 @@ elif st.session_state.phase == "analyzing_r1":
                     st.session_state["_mcp1_started"], st.session_state["_mcp1_done"] = False, False
                     st.session_state.phase = "praise_r1"
                     st.rerun()
+
+    # ★ 래퍼 닫기
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif st.session_state.phase == "praise_r1":
     render_praise("inference_nouns", 1, REASON_NOUN)
@@ -1010,6 +1025,9 @@ elif st.session_state.phase == "inference_verbs":
 
 elif st.session_state.phase == "analyzing_r2":
     scroll_top_js()
+    st.markdown(FULLSCREEN_CSS, unsafe_allow_html=True)
+    st.markdown("<div id='mcp-root'>", unsafe_allow_html=True)
+
     page = st.empty()
     with page.container():
         if not st.session_state.get("_mcp2_started", False):
@@ -1018,17 +1036,14 @@ elif st.session_state.phase == "analyzing_r2":
             st.session_state["_mcp2_done"] = True
             st.rerun()
         if st.session_state.get("_mcp2_done", False):
-            st.markdown(
-                """
+            st.markdown("""
                 <div class='mcp-done-card' style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F9FFF9; max-width:820px; margin:48px auto;">
                   <h2 style="text-align:center; color:#2E7D32; margin-top:0;">✅ 분석이 완료되었습니다</h2>
                   <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:6px 0 0;">
                     COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.
                   </p>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            """, unsafe_allow_html=True)
             _, mid, _ = st.columns([1, 2, 1])
             with mid:
                 if st.button("결과 보기", use_container_width=True):
@@ -1036,6 +1051,9 @@ elif st.session_state.phase == "analyzing_r2":
                     st.session_state["_mcp2_started"], st.session_state["_mcp2_done"] = False, False
                     st.session_state.phase = "praise_r2"
                     st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 elif st.session_state.phase == "praise_r2":
     render_praise("inference_verbs", 2, REASON_VERB)
