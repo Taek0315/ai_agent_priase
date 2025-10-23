@@ -181,6 +181,34 @@ def run_mcp_motion(round_no: int):
     components.html(html, height=900, scrolling=False)
 
 
+# ✅ (신규) MCP 완료 신호 토글 유틸 — 라운드별로 완료 전/후 표시 요소를 제어
+def inject_covx_toggle(round_no: int):
+    st.markdown(f"""
+<style>
+  /* 완료 전: 안내 배너·버튼 숨김 */
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-done-banner {{ display:none !important; }}
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-actions     {{ display:none !important; }}
+</style>
+<script>
+  (function(){{
+    var key="__covxBridgeR{round_no}";
+    if (window[key]) return;  // 중복 부착 방지
+    window[key] = true;
+    window.addEventListener('message', function(e){{
+      try{{
+        if (e && e.data && e.data.type === 'covnox_done' && e.data.round === {round_no}) {{
+          document.body.classList.add('covx-r{round_no}-done');
+          var el = document.getElementById('mcp{round_no}-done-banner');
+          if (el) el.scrollIntoView({{behavior:'smooth', block:'center'}});
+        }}
+      }}catch(_){{
+      }}
+    }});
+  }})();
+</script>
+""", unsafe_allow_html=True)
+
+
 # ─────────────────────────────────────────────
 # ① 연구대상자 설명문 / ② 연구 동의서 / ③ 개인정보 수집·이용 동의서
 # (기존 본문은 그대로 유지)
@@ -738,7 +766,6 @@ REASON_VERB = [
 ]
 
 # 1R 항목: 명사구
-
 def build_items_nouns():
     items = [
         {"id":"N1","gloss":"‘사람들의 개의 집’(복수 소유자 + 소유 연쇄)","stem":"____",
@@ -765,7 +792,6 @@ def build_items_nouns():
     return items
 
 # 2R 항목: 동사 TAM
-
 def build_items_verbs():
     items = [
         {"id":"V1","gloss":"‘지금 ~하는 중이다’: 사람(주어)이 집을 **보고 있는 중(현재진행)**","stem":"nuk ani-ka ____",
@@ -792,7 +818,6 @@ def build_items_verbs():
     return items
 
 # 샘플 텍스트 뽑기
-
 def _pick_samples(ans_detail, reason_labels, k=2):
     rng = random.Random((len(ans_detail) << 7) ^ 9173)
     picks = rng.sample(ans_detail, k=min(k, len(ans_detail)))
@@ -802,7 +827,6 @@ def _pick_samples(ans_detail, reason_labels, k=2):
     ]
 
 # 공통 라운드 렌더러
-
 def render_round(round_key: str, title: str, items_builder, reason_labels):
     scroll_top_js()
     st.title(title)
@@ -880,7 +904,6 @@ def render_round(round_key: str, title: str, items_builder, reason_labels):
     return False
 
 # 피드백(조건별·라운드별)
-
 def render_praise(round_key: str, round_no: int, reason_labels):
     scroll_top_js()
     cond = st.session_state.get("praise_condition", "정서+구체")
@@ -953,36 +976,15 @@ elif st.session_state.phase == "inference_nouns":
 elif st.session_state.phase == "analyzing_r1":
     scroll_top_js()
 
-    # ① 기본은 ‘숨김’: body에 .covnox-done-1 클래스가 붙기 전까지
-    st.markdown("""
-    <style>
-      /* 완료 안내 패널 자체 숨김 */
-      body:not(.covnox-done-1) #mcp1-panel { display:none !important; }
-      /* 그리고 바로 다음 블록(= Streamlit 버튼 래퍼)도 함께 숨김 */
-      body:not(.covnox-done-1) #mcp1-panel + div { display:none !important; }
-    </style>
-    <script>
-      (function(){
-        // 애니메이션 iframe이 끝나면 postMessage로 {type:'covnox_done', round:1} 전달됨
-        window.addEventListener('message', function(e){
-          try{
-            if (e && e.data && e.data.type === 'covnox_done' && e.data.round === 1){
-              document.body.classList.add('covnox-done-1'); // ✔ 보이기 전환
-              var el = document.getElementById('mcp1-panel');
-              if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
-            }
-          }catch(_){}
-        });
-      })();
-    </script>
-    """, unsafe_allow_html=True)
+    # ✅ (신규) 완료 신호 토글 유틸 삽입: 완료 전에는 안내·버튼 숨김
+    inject_covx_toggle(round_no=1)
 
-    # ② 애니메이션(오버레이, 8초 후 postMessage 송신)
+    # MCP 애니메이션 (8초 진행 후 postMessage 송신)
     run_mcp_motion(round_no=1)
 
-    # ③ 완료 안내(패널) — 기본은 숨김, ①의 CSS로 토글
+    # 완료 안내 배너 (완료 후 노출)
     st.markdown("""
-      <div id="mcp1-panel" style="max-width:860px; margin:48px auto;">
+      <div id="mcp1-done-banner" style="max-width:860px; margin:48px auto;">
         <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
           <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
           <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
@@ -992,12 +994,14 @@ elif st.session_state.phase == "analyzing_r1":
       </div>
     """, unsafe_allow_html=True)
 
-    # ④ 버튼 — 위 패널(#mcp1-panel) ‘바로 다음 블록’이어야 함 (CSS에서 함께 숨김)
+    # 결과 보기 버튼 (완료 후 노출)
+    st.markdown('<div id="mcp1-actions">', unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         if st.button("결과 보기", key="mcp1-next", use_container_width=True):
             st.session_state.phase = "praise_r1"
             st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 elif st.session_state.phase == "praise_r1":
     render_praise("inference_nouns", 1, REASON_NOUN)
@@ -1018,30 +1022,15 @@ elif st.session_state.phase == "inference_verbs":
 elif st.session_state.phase == "analyzing_r2":
     scroll_top_js()
 
-    st.markdown("""
-    <style>
-      body:not(.covnox-done-2) #mcp2-panel { display:none !important; }
-      body:not(.covnox-done-2) #mcp2-panel + div { display:none !important; }
-    </style>
-    <script>
-      (function(){
-        window.addEventListener('message', function(e){
-          try{
-            if (e && e.data && e.data.type === 'covnox_done' && e.data.round === 2){
-              document.body.classList.add('covnox-done-2');
-              var el = document.getElementById('mcp2-panel');
-              if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
-            }
-          }catch(_){}
-        });
-      })();
-    </script>
-    """, unsafe_allow_html=True)
+    # ✅ (신규) 완료 신호 토글 유틸 삽입: 완료 전에는 안내·버튼 숨김
+    inject_covx_toggle(round_no=2)
 
+    # MCP 애니메이션
     run_mcp_motion(round_no=2)
 
+    # 완료 안내 배너
     st.markdown("""
-      <div id="mcp2-panel" style="max-width:860px; margin:48px auto;">
+      <div id="mcp2-done-banner" style="max-width:860px; margin:48px auto;">
         <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
           <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
           <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">
@@ -1051,11 +1040,14 @@ elif st.session_state.phase == "analyzing_r2":
       </div>
     """, unsafe_allow_html=True)
 
+    # 결과 보기 버튼
+    st.markdown('<div id="mcp2-actions">', unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         if st.button("결과 보기", key="mcp2-next", use_container_width=True):
             st.session_state.phase = "praise_r2"
             st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 elif st.session_state.phase == "praise_r2":
     render_praise("inference_verbs", 2, REASON_VERB)
