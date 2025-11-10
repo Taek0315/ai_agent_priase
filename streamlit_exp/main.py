@@ -868,7 +868,3 @@ st.markdown(f"<div class='badge'>현재 단계: {PHASE_LABEL.get(st.session_stat
 PHASE_TO_PAGE[st.session_state.phase]()
 
 '''
-with open("/mnt/data/skywork_streamlit_app.py", "w", encoding="utf-8") as f:
-    f.write(code)
-
-print("Saved to /mnt/data/skywork_streamlit_app.py")
