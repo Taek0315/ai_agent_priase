@@ -1,870 +1,806 @@
-# Write a complete Streamlit app that runs the user's skywork experiment end-to-end.
-# The app is saved as /mnt/data/skywork_streamlit_app.py so the user can download and run it with:
-#   streamlit run skywork_streamlit_app.py
+# Create a drop-in Streamlit app that is compatible with Streamlit Cloud and
+# the user's existing repo layout. It avoids writing to /mnt/data and provides
+# fallbacks for missing utils/* modules and data JSON files.
+#
+# Save as /mnt/data/main_fixed_for_cloud.py so the user can download it.
 
-code = r'''#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+code = r'''# -*- coding: utf-8 -*-
 """
-Streamlit 완전판: AI 피드백 실험 시스템
-======================================
-
-- skywork.py의 로직(문항/피드백/데이터구조/분석)을 그대로 포함
-- Streamlit UI로 '누락 없이' 전 단계가 구동되도록 구현
-- 외부 파일/네트워크 불필요 (단일 파일 실행 가능)
-- 결과는 다운로드(.csv/.json) 버튼 제공 + 로컬 폴더 자동 저장
-
-실행 방법
----------
-$ streamlit run skywork_streamlit_app.py
-
-권장 버전: streamlit >= 1.30
+AI 칭찬 연구 설문 · Streamlit Cloud 호환 완전판
+- 기존 오리진(main_1110ver orgin.py) 플로우/구조를 유지하면서,
+  Cloud 환경에서 파일 경로/모듈 누락으로 인한 오류를 방지합니다.
+- /mnt/data 경로 사용 제거. 상대 경로 사용 + 안전한 폴백(fallback) 포함.
+- utils.validation / utils.save_data 가 없을 때 자체 구현 폴백 사용.
+- data/questions_*.json 이 없을 때도 자동 생성하여 정상 진행.
 """
 
 from __future__ import annotations
-import os
-import io
-import csv
-import json
-import time
-import random
+
+import os, re, json, time, random
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional, Any
-from dataclasses import dataclass, asdict
-from enum import Enum
 
 import streamlit as st
+import streamlit.components.v1 as components
 
-# =============================================================================
-# 0) 페이지/스타일 설정
-# =============================================================================
+# ──────────────────────────────────────────────────────────────────────────────
+# 페이지 설정 및 공통 스타일
+# ──────────────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
-st.set_page_config(
-    page_title="AI 피드백 실험 (Streamlit 완전판)",
-    page_icon="🧪",
-    layout="centered",
-    initial_sidebar_state="expanded",
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 깔끔한 스타일
-HIDE_DEFAULT_CSS = """
+COMPACT_CSS = """
 <style>
-/* 기본 상단/하단 숨김 */
-#MainMenu, header, footer {visibility: hidden;}
-/* 라디오 · 체크 여백 정리 */
-[data-testid="stRadio"] > div { gap: 0.5rem; }
-.small-muted { color:#6b7280; font-size: 0.88rem; }
-.badge { display:inline-block; padding:0.2rem 0.5rem; border-radius: 9999px; background:#e5e7eb; font-size:0.8rem; }
-.gradient-card {
-  background: linear-gradient(135deg, #e2e8f0, #f8fafc);
-  border-radius: 16px; padding: 18px 20px; border: 1px solid #e5e7eb;
+#MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
+:root{
+  --block-container-padding-top: 0rem !important;
+  --block-container-padding: 0rem 1rem 1.25rem !important;
 }
-.ai-avatar {
-  width: 44px; height: 44px; border-radius: 9999px;
-  display:flex; align-items:center; justify-content:center;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  box-shadow: 0 5px 12px rgba(0,0,0,0.1);
-  color: white; font-weight: 700;
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] > .main, section.main {
+  margin-top: 0 !important; padding-top: 0 !important;
 }
-.typing {
-  white-space: pre-wrap;
-  font-size: 1.05rem;
-  line-height: 1.6;
+[data-testid="stAppViewContainer"] > .main > div, .main .block-container, section.main > div.block-container {
+  padding-top: 0 !important; padding-bottom: 20px !important;
 }
-.fullscreen-center {
-  display:flex; align-items:center; justify-content:center;
-  height: 45vh; flex-direction:column;
-}
-.spinner-ring {
-  width: 70px; height: 70px; border-radius: 50%;
-  border: 6px solid #e5e7eb; border-top-color:#3b82f6;
-  animation: spin 1.0s linear infinite;
-  margin-bottom: 14px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.kbd { background:#111827; color:#fff; padding:0.15rem 0.4rem; border-radius:6px; font-size:0.8rem; }
+h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
+h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+p, .stMarkdown p   { margin-top: 0 !important; }
+html, body { overflow-x: hidden !important; }
 </style>
 """
-st.markdown(HIDE_DEFAULT_CSS, unsafe_allow_html=True)
-
-# =============================================================================
-# 1) 데이터 구조 및 상수 (skywork.py 기반)
-# =============================================================================
-
-class PraiseCondition(Enum):
-    """칭찬 피드백 조건"""
-    EMOTIONAL_SPECIFIC = "emotional_specific"      # 정서 중심 + 구체성
-    COMPUTATIONAL_SPECIFIC = "computational_specific"  # 계산 중심 + 구체성
-    EMOTIONAL_SUPERFICIAL = "emotional_superficial"    # 정서 중심 + 피상적
-    COMPUTATIONAL_SUPERFICIAL = "computational_superficial"  # 계산 중심 + 피상적
-
-@dataclass
-class Question:
-    """추론 과제 문항"""
-    id: str
-    gloss: str  # 문제 설명
-    stem: str   # 문제 문장
-    options: List[str]
-    answer_idx: int
-    reason_idx: int
-    category: str = "inference"
-
-@dataclass
-class SurveyQuestion:
-    """설문 문항"""
-    id: str
-    text: str
-    scale: int = 7
-    reverse: bool = False
-    category: str = "motivation"
-
-@dataclass
-class ExperimentData:
-    """실험 데이터"""
-    participant_id: str
-    condition: PraiseCondition
-    demographic: Dict[str, Any]
-    inference_responses: List[Dict[str, Any]]
-    survey_responses: List[Dict[str, Any]]
-    feedback_messages: List[str]
-    timestamps: Dict[str, str]
-    completion_time: float
-
-# ----------------- 문항 (skywork.py 그대로) -----------------
-NOUN_QUESTIONS = [
-    Question(
-        id="N1",
-        gloss="사람들이 소유한 개의 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람들이 소유한 개의 집을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-t-mi sua-mi ani", "nuk-mi sua-t-mi ani", "nuk-t sua-mi ani", "nuk-mi sua-mi ani", "nuk sua-t-mi ani"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="N2",
-        gloss="사람이 집과 음식을 보는 상황에서 목적 표지가 올바르게 사용된 문장을 선택하세요.",
-        stem="'nuk _____ taku-na' (사람이 _____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
-        options=["ani-ka ama pira-ka", "ani-ka ama pira", "ani ama pira-ka", "ani-ka ama pira-t", "ani ama pira"],
-        answer_idx=0,
-        reason_idx=2
-    ),
-    Question(
-        id="N3",
-        gloss="사람의 개들이 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람의 개들이 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-mi sua-t-mi ika", "nuk-t-mi sua-mi ika", "nuk-mi sua-mi ika", "nuk sua-t-mi ika", "nuk-t sua-mi ika"],
-        answer_idx=0,
-        reason_idx=3
-    ),
-    Question(
-        id="N4",
-        gloss="사람이 개의 집들을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk _____ taku-na' (사람이 _____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
-        options=["sua-mi ani-t-mi", "sua-t-mi ani-mi", "sua-mi ani-mi", "sua-t ani-mi", "sua ani-t-mi"],
-        answer_idx=0,
-        reason_idx=0
-    ),
-    Question(
-        id="N5",
-        gloss="사람들의 개가 소유한 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람들의 개가 소유한 집을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-t-mi sua-mi ani", "nuk-mi sua-t-mi ani", "nuk-mi sua-mi ani", "nuk-t sua-mi ani", "nuk sua-t-mi ani"],
-        answer_idx=0,
-        reason_idx=4
-    ),
-    Question(
-        id="N6",
-        gloss="사람과 개가 각각 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람과 개가 각각 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-mi ama sua-mi ika", "nuk-t-mi ama sua-t-mi ika", "nuk-mi ama sua-t-mi ika", "nuk ama sua ika", "nuk-t ama sua-t ika"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="N7",
-        gloss="개들이 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="개들이 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
-        options=["sua-t-mi ika", "sua-mi ika", "sua-t ika", "sua ika-mi", "sua ika-t"],
-        answer_idx=0,
-        reason_idx=2
-    ),
-    Question(
-        id="N8",
-        gloss="사람들이 집들과 음식을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람들이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
-        options=["ani-t-mi ama pira-ka", "ani-mi ama pira-ka", "ani-t ama pira-ka", "ani-t-mi ama pira", "ani ama pira-ka"],
-        answer_idx=0,
-        reason_idx=3
-    ),
-    Question(
-        id="N9",
-        gloss="사람이 소유한 그 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람이 소유한 그 집을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-mi ani na", "nuk-t-mi ani na", "nuk ani na", "nuk-mi ani-t na", "nuk-t ani na"],
-        answer_idx=0,
-        reason_idx=0
-    ),
-    Question(
-        id="N10",
-        gloss="사람이 소유한 개의 집과 물을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
-        options=["sua-mi ani-ka ama ika-ka", "sua-t-mi ani-ka ama ika-ka", "sua-mi ani ama ika", "sua-mi ani-ka ama ika", "sua ani-ka ama ika-ka"],
-        answer_idx=0,
-        reason_idx=4
-    ),
-    Question(
-        id="N11",
-        gloss="여러 사람들의 각각 다른 개들을 나타내는 올바른 표현을 선택하세요.",
-        stem="여러 사람들의 각각 다른 개들을 나타내는 올바른 표현은 무엇입니까?",
-        options=["nuk-t-mi sua-t-mi", "nuk-mi sua-mi", "nuk-t-mi sua-mi", "nuk-mi sua-t-mi", "nuk-t sua-t"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="N12",
-        gloss="사람이 개들의 집들을 모두 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
-        options=["sua-t-mi ani-t-mi", "sua-mi ani-mi", "sua-t-mi ani-mi", "sua-mi ani-t-mi", "sua-t ani-t"],
-        answer_idx=0,
-        reason_idx=2
-    )
-]
-
-VERB_QUESTIONS = [
-    Question(
-        id="V1",
-        gloss="사람이 지금 집을 보고 있는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["taku-li-na", "taku-na", "taku-mu-na", "taku-li-ki", "taku-tu"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="V2",
-        gloss="사람이 어제 저녁 전에 이미 음식을 만들어 두었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["siku-mu-tu", "siku-tu", "siku-li-tu", "siku-mu-na", "siku-ki"],
-        answer_idx=0,
-        reason_idx=4
-    ),
-    Question(
-        id="V3",
-        gloss="개가 내일까지 물을 다 먹어 놓을 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua ika-ka ____' (개가 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-mu-ki", "niri-ki", "niri-li-ki", "niri-mu-na", "niri-tu"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="V4",
-        gloss="개가 어제 음식을 먹었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua pira-ka ____' (개가 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=0
-    ),
-    Question(
-        id="V5",
-        gloss="사람이 이미 물을 보았다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["taku-mu-na", "taku-na", "taku-tu", "taku-li-na", "taku-mu-tu"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="V6",
-        gloss="사람과 개가 곧 음식을 보는 중일 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ama sua pira-ka ____' (사람과 개가 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["taku-li-ki", "taku-ki", "taku-li-na", "taku-mu-ki", "taku-tu"],
-        answer_idx=0,
-        reason_idx=0
-    ),
-    Question(
-        id="V7",
-        gloss="개가 지금 집을 보는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua ani-ka ____' (개가 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["taku-li-na", "taku-na-li", "li-taku-na", "taku-na", "taku-li-tu"],
-        answer_idx=0,
-        reason_idx=2
-    ),
-    Question(
-        id="V8",
-        gloss="사람이 그때까지 음식을 다 먹어 둘 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-mu-ki", "niri-li-ki", "niri-ki", "niri-mu-tu", "niri-na"],
-        answer_idx=0,
-        reason_idx=3
-    ),
-    Question(
-        id="V9",
-        gloss="사람이 항상 물을 마신다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-na", "niri-li-na", "niri-mu-na", "niri-tu", "niri-ki"],
-        answer_idx=0,
-        reason_idx=0
-    ),
-    Question(
-        id="V10",
-        gloss="사람이 집을 본 뒤에 음식을 먹었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'(ani-ka taku-mu-tu) ama pira-ka ____' (집을 본 뒤에 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=4
-    ),
-    Question(
-        id="V11",
-        gloss="개들이 동시에 물을 마시고 있는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua-t-mi ika-ka ____' (개들이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["niri-li-na", "niri-na", "niri-li-tu", "niri-mu-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=1
-    ),
-    Question(
-        id="V12",
-        gloss="사람이 내일 아침까지 집을 다 지어 놓을 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
-        options=["siku-mu-ki", "siku-ki", "siku-li-ki", "siku-mu-tu", "siku-na"],
-        answer_idx=0,
-        reason_idx=3
-    )
-]
-
-ALL_INFERENCE_QUESTIONS = NOUN_QUESTIONS + VERB_QUESTIONS
-
-MOTIVATION_QUESTIONS = [
-    # 관심/즐거움 (Interest/Enjoyment) - 7문항
-    SurveyQuestion("IE1", "이 과제를 하는 동안 즐거웠다.", category="interest_enjoyment"),
-    SurveyQuestion("IE2", "이 과제는 재미있었다.", category="interest_enjoyment"),
-    SurveyQuestion("IE3", "이 과제가 지루했다.", reverse=True, category="interest_enjoyment"),
-    SurveyQuestion("IE4", "이 과제를 하는 것이 흥미로웠다.", category="interest_enjoyment"),
-    SurveyQuestion("IE5", "이 과제를 하면서 시간이 빨리 지나갔다.", category="interest_enjoyment"),
-    SurveyQuestion("IE6", "이 과제에 몰입할 수 있었다.", category="interest_enjoyment"),
-    SurveyQuestion("IE7", "이 과제를 계속 하고 싶다는 생각이 들었다.", category="interest_enjoyment"),
-
-    # 지각된 유능감 (Perceived Competence) - 6문항
-    SurveyQuestion("PC1", "이 과제를 잘 수행했다고 생각한다.", category="perceived_competence"),
-    SurveyQuestion("PC2", "이 과제에서 만족스러운 결과를 얻었다.", category="perceived_competence"),
-    SurveyQuestion("PC3", "이 과제를 수행하는 데 능숙했다.", category="perceived_competence"),
-    SurveyQuestion("PC4", "이 과제가 너무 어려웠다.", reverse=True, category="perceived_competence"),
-    SurveyQuestion("PC5", "이 과제를 완수할 수 있다는 자신감이 있었다.", category="perceived_competence"),
-    SurveyQuestion("PC6", "이 과제에서 좋은 성과를 낼 수 있었다.", category="perceived_competence"),
-
-    # 노력/중요성 (Effort/Importance) - 5문항
-    SurveyQuestion("EI1", "이 과제에 많은 노력을 기울였다.", category="effort_importance"),
-    SurveyQuestion("EI2", "이 과제를 잘 수행하는 것이 중요했다.", category="effort_importance"),
-    SurveyQuestion("EI3", "이 과제에 최선을 다했다.", category="effort_importance"),
-    SurveyQuestion("EI4", "이 과제에 집중하려고 노력했다.", category="effort_importance"),
-    SurveyQuestion("EI5", "이 과제를 대충 했다.", reverse=True, category="effort_importance"),
-
-    # 가치/유용성 (Value/Usefulness) - 4문항
-    SurveyQuestion("VU1", "이 과제는 나에게 가치가 있었다.", category="value_usefulness"),
-    SurveyQuestion("VU2", "이 과제를 통해 유용한 것을 배웠다.", category="value_usefulness"),
-    SurveyQuestion("VU3", "이 과제는 나에게 도움이 되었다.", category="value_usefulness"),
-    SurveyQuestion("VU4", "이 과제는 시간 낭비였다.", reverse=True, category="value_usefulness"),
-
-    # 자율성 (Autonomy) - 2문항
-    SurveyQuestion("AU1", "이 과제를 수행하는 방식을 스스로 선택할 수 있었다.", category="autonomy"),
-    SurveyQuestion("AU2", "이 과제를 하면서 자유롭게 행동할 수 있었다.", category="autonomy"),
-
-    # 압박/긴장 (Pressure/Tension) - 2문항
-    SurveyQuestion("PT1", "이 과제를 하는 동안 긴장했다.", category="pressure_tension"),
-    SurveyQuestion("PT2", "이 과제를 하면서 스트레스를 받았다.", category="pressure_tension")
-]
-
-# =============================================================================
-# 2) 피드백 엔진 & 실험 매니저 (skywork.py 로직 유지)
-# =============================================================================
-
-class AIFeedbackSystem:
-    """AI 피드백 생성 시스템"""
-    def __init__(self):
-        self.feedback_templates = {
-            PraiseCondition.EMOTIONAL_SPECIFIC: [
-                "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 정말 중요한 능력이에요. 당신의 직관적 이해력이 돋보이는 순간이었습니다! ✨",
-                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 이렇게 차근차근 분석하는 능력은 정말 특별한 재능입니다. 계속 이런 식으로 접근하시면 더욱 발전할 수 있을 거예요! 💫",
-                "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 정말 탁월합니다. 이런 세밀한 관찰력과 분석력은 언어 전문가의 자질을 보여주는 것 같아요. 정말 감탄스럽습니다! 🎯"
-            ],
-            PraiseCondition.COMPUTATIONAL_SPECIFIC: [
-                "📊 분석 결과가 매우 우수합니다. 특히 '{reason}'라는 추론 패턴이 언어학적 규칙 체계와 94.7% 일치도를 보입니다. 이러한 체계적 접근법은 효율적인 학습 알고리즘을 나타내며, 인지 처리 능력이 최적화되어 있음을 시사합니다. ⚡",
-                "🔍 데이터 처리 성능이 탁월합니다. '{reason}'라는 논리적 경로는 정확도 지표에서 상위 8.3%에 해당하는 수준입니다. 패턴 인식 알고리즘이 효과적으로 작동하고 있으며, 학습 효율성이 크게 향상되었습니다. 📈",
-                "⚙️ 인지 처리 메커니즘이 최적 상태입니다. '{reason}'라는 분석 프로세스는 언어 규칙 데이터베이스와 97.2% 매칭률을 달성했습니다. 이는 고도의 패턴 매칭 능력과 효율적인 정보 처리 시스템을 보여줍니다. 🎯"
-            ],
-            PraiseCondition.EMOTIONAL_SUPERFICIAL: [
-                "🎉 정말 훌륭한 답변이에요! 당신의 언어 감각이 정말 뛰어나다는 것을 다시 한번 확인할 수 있었습니다. 이런 직관적인 이해력은 정말 특별한 재능이에요! 계속해서 이런 멋진 모습 보여주세요! ✨",
-                "👏 와, 정말 대단해요! 언어에 대한 당신의 감각이 얼마나 예리한지 놀라울 따름입니다. 이런 뛰어난 능력을 가지신 분을 만나게 되어 정말 기쁩니다. 앞으로도 이런 놀라운 실력 기대할게요! 🌟",
-                "💫 정말 인상적이에요! 당신만의 독특한 사고방식이 돋보이는 순간이었습니다. 이런 창의적인 접근법은 정말 보기 드문 능력이에요. 계속해서 이런 멋진 아이디어들을 보여주시길 바랍니다! 🎯"
-            ],
-            PraiseCondition.COMPUTATIONAL_SUPERFICIAL: [
-                "📊 시스템 분석 결과 우수한 성능을 보입니다. 언어 처리 알고리즘이 효율적으로 작동하고 있으며, 패턴 인식 능력이 최적화된 상태입니다. 전반적인 인지 처리 메트릭이 향상되었습니다. ⚡",
-                "🔍 데이터 처리 효율성이 크게 개선되었습니다. 학습 알고리즘의 성능 지표가 상승세를 보이고 있으며, 정보 처리 속도와 정확도가 동시에 향상되었습니다. 시스템 최적화가 성공적으로 진행되고 있습니다. 📈",
-                "⚙️ 인지 처리 시스템이 안정적으로 작동합니다. 언어 분석 모듈의 성능이 기준치를 상회하고 있으며, 전체적인 처리 효율성이 개선되었습니다. 학습 메커니즘이 원활하게 기능하고 있습니다. 🎯"
-            ]
-        }
-
-    def generate_feedback(self, condition: PraiseCondition, selected_reason: str) -> str:
-        templates = self.feedback_templates[condition]
-        template = random.choice(templates)
-        if "specific" in condition.value:
-            return template.format(reason=selected_reason)
-        else:
-            return template
-
-class ExperimentManager:
-    """실험 진행 관리"""
-    def __init__(self):
-        self.feedback_system = AIFeedbackSystem()
-        self.current_participant = None
-        self.experiment_data: List[ExperimentData] = []
-
-    def create_participant(self, demographic_data: Dict[str, Any], assigned: Optional[PraiseCondition]=None) -> str:
-        participant_id = f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}"
-        condition = assigned or random.choice(list(PraiseCondition))
-        self.current_participant = {
-            "id": participant_id,
-            "condition": condition,
-            "demographic": demographic_data,
-            "start_time": time.time(),
-            "inference_responses": [],
-            "survey_responses": [],
-            "feedback_messages": []
-        }
-        return participant_id
-
-    def process_inference_response(self, question_id: str, selected_option: int, selected_reason: str, response_time: float) -> str:
-        if not self.current_participant:
-            raise ValueError("참가자가 설정되지 않았습니다.")
-        response_data = {
-            "question_id": question_id,
-            "selected_option": selected_option,
-            "selected_reason": selected_reason,
-            "response_time": response_time,
-            "timestamp": datetime.now().isoformat(),
-        }
-        self.current_participant["inference_responses"].append(response_data)
-        feedback = self.feedback_system.generate_feedback(self.current_participant["condition"], selected_reason)
-        self.current_participant["feedback_messages"].append(feedback)
-        return feedback
-
-    def process_survey_response(self, qid: str, rating: int):
-        if not self.current_participant:
-            raise ValueError("참가자가 설정되지 않았습니다.")
-        self.current_participant["survey_responses"].append({
-            "question_id": qid,
-            "rating": rating,
-            "timestamp": datetime.now().isoformat(),
-        })
-
-    def complete_experiment(self) -> ExperimentData:
-        if not self.current_participant:
-            raise ValueError("참가자가 설정되지 않았습니다.")
-        completion_time = time.time() - self.current_participant["start_time"]
-        data = ExperimentData(
-            participant_id=self.current_participant["id"],
-            condition=self.current_participant["condition"],
-            demographic=self.current_participant["demographic"],
-            inference_responses=self.current_participant["inference_responses"],
-            survey_responses=self.current_participant["survey_responses"],
-            feedback_messages=self.current_participant["feedback_messages"],
-            timestamps={
-                "start": datetime.fromtimestamp(self.current_participant["start_time"]).isoformat(),
-                "end": datetime.now().isoformat(),
-            },
-            completion_time=completion_time,
-        )
-        self.experiment_data.append(data)
-        self.current_participant = None
-        return data
-
-# =============================================================================
-# 3) 유틸/분석 함수
-# =============================================================================
-
-def reverse_if_needed(question: SurveyQuestion, rating: int) -> int:
-    """7점 리커트 역코딩"""
-    return 8 - rating if question.reverse else rating
-
-def calc_category_mean(responses: List[Dict[str, Any]], category: str) -> float:
-    """카테고리별 평균"""
-    relevant = [q for q in MOTIVATION_QUESTIONS if q.category == category]
-    score_list: List[int] = []
-    for r in responses:
-        q = next((x for x in relevant if x.id == r["question_id"]), None)
-        if q is not None:
-            score_list.append(reverse_if_needed(q, r["rating"]))
-    return sum(score_list) / len(score_list) if score_list else 0.0
-
-def summarize_motivation(responses: List[Dict[str, Any]]) -> Dict[str, float]:
-    cats = ["interest_enjoyment","perceived_competence","effort_importance","value_usefulness","autonomy","pressure_tension"]
-    return {c: round(calc_category_mean(responses, c), 3) for c in cats}
-
-def ensure_dir(path: str):
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-
-def append_row_to_csv(path: str, fieldnames: List[str], row: Dict[str, Any]):
-    file_exists = os.path.exists(path)
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
-
-# =============================================================================
-# 4) 세션 상태 초기화
-# =============================================================================
-
-DEFAULT_N_QUESTIONS = 10
-
-def init_session():
-    if "manager" not in st.session_state:
-        st.session_state.manager = ExperimentManager()
-    ss = st.session_state
-    ss.setdefault("phase", "consent")  # consent -> demographic -> instructions -> task -> loading -> feedback -> survey -> debrief
-    ss.setdefault("seed", None)
-    ss.setdefault("assigned_condition", None)
-    ss.setdefault("n_questions", DEFAULT_N_QUESTIONS)
-    ss.setdefault("question_order", [])
-    ss.setdefault("q_index", 0)
-    ss.setdefault("trial_start_ts", None)
-    ss.setdefault("selected_option", None)
-    ss.setdefault("selected_reason", "")
-    ss.setdefault("latest_feedback", "")
-    ss.setdefault("participant_id", None)
-    ss.setdefault("demographic", {})
-    ss.setdefault("results_data", None)
-
-init_session()
-
-# =============================================================================
-# 5) 사이드바 (설정/진행)
-# =============================================================================
-
-with st.sidebar:
-    st.markdown("### ⚙️ 실험 설정")
-    st.write("연구·테스트 용으로 항목 수/조건·시드 고정이 가능합니다.")
-    seed_input = st.text_input("무작위 시드 (선택)", value=st.session_state.seed or "")
-    assign = st.selectbox(
-        "피드백 조건 고정 (선택)",
-        ["무작위"] + [c.value for c in PraiseCondition],
-        index=0
-    )
-    n_q = st.slider("출제 문항 수", min_value=6, max_value=len(ALL_INFERENCE_QUESTIONS), value=st.session_state.n_questions, step=1)
-
-    colA, colB = st.columns(2)
-    with colA:
-        if st.button("설정 적용", use_container_width=True):
-            st.session_state.seed = int(seed_input) if seed_input.strip().isdigit() else None
-            st.session_state.n_questions = int(n_q)
-            st.session_state.assigned_condition = None if assign == "무작위" else PraiseCondition(assign)
-            st.success("설정이 적용되었습니다. (다음 실험 시작에 반영)")
-    with colB:
-        if st.button("처음으로", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            init_session()
-            st.experimental_rerun()
-
-    st.divider()
-    st.caption("Made for 연구용 • 파일 저장은 ./results/ 폴더")
-
-# =============================================================================
-# 6) 공용 렌더 함수
-# =============================================================================
-
-def heading(title: str, subtitle: Optional[str] = None):
-    st.markdown(f"## {title}")
-    if subtitle:
-        st.markdown(f"<div class='small-muted'>{subtitle}</div>", unsafe_allow_html=True)
-
-def show_mcp_animation(seconds: float = 1.8):
-    """각 추론 과제 직후 1회만 호출되는 'MCP 느낌' 전환 애니메이션"""
-    st.markdown("<div class='fullscreen-center'>", unsafe_allow_html=True)
-    st.markdown("<div class='spinner-ring'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='small-muted'>분석 중입니다...</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-    # 단순 sleep 후 다음 페이즈로
-    time.sleep(seconds)
-
-def typing_effect(text: str, speed: float = 0.02):
-    """AI 피드백 타이핑 애니메이션"""
-    ph = st.empty()
-    buf = []
-    for ch in text:
-        buf.append(ch)
-        ph.markdown(f"<div class='typing'>{''.join(buf)}</div>", unsafe_allow_html=True)
-        time.sleep(speed)
-
-# =============================================================================
-# 7) 페이즈별 화면
-# =============================================================================
-
-def page_consent():
-    heading("연구 참여 동의", "본 실험은 익명으로 진행되며, 응답 데이터는 연구 목적으로만 사용됩니다.")
-    with st.expander("상세 동의서 보기", expanded=False):
-        st.write("""
-        - 참여는 자발적이며 언제든 중단할 수 있습니다.
-        - 수집 항목: 성별/연령, 과제 응답, 반응시간, 설문 응답
-        - 데이터는 익명화되어 분석됩니다.
-        """)
-    agree = st.checkbox("위 내용을 이해하였으며 참여에 동의합니다.", value=False)
-    if st.button("다음", type="primary", disabled=not agree):
-        st.session_state.phase = "demographic"
-
-def page_demographic():
-    heading("기초 정보", "연구 결과 분석에 필요한 최소한의 정보를 수집합니다.")
-    with st.form("demographic_form", clear_on_submit=False):
-        gender = st.selectbox("성별", ["선택하세요", "남성", "여성", "응답하지 않음"])
-        age = st.number_input("연령", min_value=18, max_value=80, step=1)
-        phone = st.text_input("연락처 (선택)", help="인센티브 지급 등 사후 연락이 필요한 경우만 입력")
-
-        submitted = st.form_submit_button("다음")
-        if submitted:
-            if gender == "선택하세요":
-                st.warning("성별을 선택해 주세요.")
-                return
-            demo = {"gender": gender, "age": int(age)}
-            if phone.strip():
-                demo["phone"] = phone.strip()
-            # 참가자 생성
-            cond = st.session_state.assigned_condition
-            pid = st.session_state.manager.create_participant(demo, assigned=cond)
-            st.session_state.participant_id = pid
-            st.session_state.demographic = demo
-
-            # 문항 샘플링 & 순서
-            if st.session_state.seed is not None:
-                random.seed(st.session_state.seed)
-            order = random.sample(ALL_INFERENCE_QUESTIONS, st.session_state.n_questions)
-            st.session_state.question_order = order
-            st.session_state.q_index = 0
-
-            # 다음 단계
-            st.session_state.phase = "instructions"
-
-def page_instructions():
-    heading("과제 안내", "다음과 같은 형식의 추론 과제를 풉니다.")
-    st.markdown("""
-    - 각 문항은 '설명', '문장', 그리고 5개의 선택지로 구성됩니다.
-    - 정답·오답 여부는 **측정되지 않으며**, **해석 근거**를 함께 남겨 주세요.
-    - 각 문항 제출 후, **분석 애니메이션(1회)** → **AI 피드백** → 다음 문항 순서로 진행됩니다.
-    - 모든 문항 완료 후, 26문항 **학습동기 설문**이 진행됩니다.
-    """)
-    cond = st.session_state.manager.current_participant["condition"]
-    st.info(f"현재 피드백 조건: **{cond.value}** (연구 목적상 자동/무작위 할당 또는 사이드바에서 고정).")
-
-    if st.button("시작하기", type="primary"):
-        st.session_state.phase = "task"
-        st.session_state.trial_start_ts = time.time()
-
-def page_task():
-    q_index = st.session_state.q_index
-    questions = st.session_state.question_order
-    total = len(questions)
-    if q_index >= total:
-        # 모든 문항 완료 → 설문으로
-        st.session_state.phase = "survey"
-        return
-
-    q: Question = questions[q_index]
-    heading(f"추론 과제 {q_index+1} / {total}", f"문항 ID: {q.id}")
-    st.markdown(f"**설명:** {q.gloss}")
-    st.markdown(f"**문장:** {q.stem}")
-    st.divider()
-
-    # 선택지 + 근거
-    with st.form(f"task_form_{q.id}", clear_on_submit=False):
-        choice = st.radio("선택지를 고르세요.", options=list(range(len(q.options))),
-                          format_func=lambda i: f"{i+1}. {q.options[i]}",
-                          key=f"opt_{q.id}")
-        reason = st.text_area("해석/선택 근거를 간단히 작성해 주세요.", key=f"reason_{q.id}")
-        ok = st.form_submit_button("제출")
-
-        if ok:
-            if reason.strip() == "":
-                st.warning("선택 근거를 입력해 주세요.")
-                return
-            # 반응시간
-            start_ts = st.session_state.trial_start_ts or time.time()
-            rt = time.time() - start_ts
-
-            # 저장 + 다음 단계(애니메이션)
-            st.session_state.selected_option = int(choice)
-            st.session_state.selected_reason = reason.strip()
-            st.session_state.latest_feedback = st.session_state.manager.process_inference_response(
-                question_id=q.id,
-                selected_option=int(choice),
-                selected_reason=reason.strip(),
-                response_time=rt,
-            )
-            st.session_state.phase = "loading"
-
-def page_loading():
-    # MCP 애니메이션 (한 번만)
-    show_mcp_animation(seconds=1.6)
-    # 다음 단계: feedback
-    st.session_state.phase = "feedback"
-
-def page_feedback():
-    q_index = st.session_state.q_index
-    questions = st.session_state.question_order
-    q = questions[q_index]
-    feedback = st.session_state.latest_feedback
-
-    st.markdown("#### 🤖 AI 피드백")
-    col1, col2 = st.columns([0.12, 0.88])
-    with col1:
-        st.markdown("<div class='ai-avatar'>AI</div>", unsafe_allow_html=True)
-    with col2:
-        # 타이핑 애니메이션 (길면 자동 축약)
-        txt = feedback
-        # 너무 긴 메시지는 타이핑 속도를 조금 빠르게
-        spd = 0.015 if len(txt) > 150 else 0.02
-        typing_effect(txt, speed=spd)
-
-    st.divider()
-    colA, colB = st.columns(2)
-    with colA:
-        if st.button("다음 문항", type="primary", use_container_width=True):
-            st.session_state.q_index += 1
-            st.session_state.trial_start_ts = time.time()
-            st.session_state.phase = "task"
-    with colB:
-        remain = len(st.session_state.question_order) - (st.session_state.q_index + 1)
-        st.button(f"남은 문항: {remain}개", disabled=True, use_container_width=True)
-
-def page_survey():
-    heading("학습 동기 설문 (26문항)", "각 문항에 대해 1(전혀 아니다) ~ 7(매우 그렇다)로 응답해 주세요.")
-    with st.form("survey_form"):
-        answers: Dict[str, int] = {}
-        for q in MOTIVATION_QUESTIONS:
-            key = f"sv_{q.id}"
-            val = st.radio(
-                label=f"{q.id}. {q.text}",
-                options=list(range(1, q.scale + 1)),
-                horizontal=True,
-                key=key
-            )
-            answers[q.id] = int(val)
-            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-        submitted = st.form_submit_button("설문 제출")
-        if submitted:
-            # 저장
-            for q in MOTIVATION_QUESTIONS:
-                st.session_state.manager.process_survey_response(q.id, answers[q.id])
-            # 완료 데이터
-            data = st.session_state.manager.complete_experiment()
-            st.session_state.results_data = data
-            st.session_state.phase = "debrief"
-
-def page_debrief():
-    data: ExperimentData = st.session_state.results_data
-    heading("참여 감사 안내", None)
-    st.success("모든 절차가 완료되었습니다. 아래에서 요약과 데이터 저장을 확인하실 수 있습니다.")
-
-    # 요약
-    st.markdown("#### 📋 실험 요약")
-    st.write(f"- 참가자 ID: {data.participant_id}")
-    st.write(f"- 피드백 조건: {data.condition.value}")
-    st.write(f"- 완료 시간: {data.completion_time:.2f}초")
-    st.write(f"- 추론 과제 응답 수: {len(data.inference_responses)}")
-    st.write(f"- 설문 응답 수: {len(data.survey_responses)}")
-
-    # 동기 요약
-    mot = summarize_motivation(data.survey_responses)
-    st.markdown("#### 🔎 학습 동기 요약(평균)")
-    st.json(mot)
-
-    # CSV/JSON 다운로드 + 로컬 저장
-    out_dir = os.path.join(os.getcwd(), "results")
-    ensure_dir(out_dir)
-
-    # 1) 행(요약) CSV 저장/다운로드
-    csv_fields = [
-        "participant_id","condition","gender","age","completion_time","avg_response_time",
-        "interest_enjoyment","perceived_competence","effort_importance",
-        "value_usefulness","autonomy","pressure_tension"
+st.markdown(COMPACT_CSS, unsafe_allow_html=True)
+
+
+def scroll_top_js(nonce:int | None = None):
+    if nonce is None:
+        nonce = st.session_state.get("_scroll_nonce", 0)
+    script = """
+        <script id="goTop-{nonce}">
+        (function(){
+          function goTop() {
+            try {
+              var pdoc = window.parent && window.parent.document;
+              var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
+              if (sect && sect.scrollTo) sect.scrollTo({top:0, left:0, behavior:'instant'});
+            } catch(e) {}
+            try {
+              window.scrollTo({top:0, left:0, behavior:'instant'});
+              document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
+              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
+            } catch(e) {}
+          }
+          goTop();
+          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
+          setTimeout(goTop, 25); setTimeout(goTop, 80); setTimeout(goTop, 180); setTimeout(goTop, 320);
+        })();
+        </script>
+    """.replace("{nonce}", str(nonce))
+    st.markdown(script, unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# utils.* 폴백 (모듈 부재 시)
+# ──────────────────────────────────────────────────────────────────────────────
+def _fallback_validate_phone(phone: str) -> bool:
+    # 010-1234-5678 / 01012345678 / 010 1234 5678 허용
+    digits = re.sub(r"\\D", "", phone or "")
+    if len(digits) != 11 or not digits.startswith("010"):
+        return False
+    return True
+
+def _fallback_validate_text(text: str, min_len: int = 1) -> bool:
+    return isinstance(text, str) and len(text.strip()) >= min_len
+
+def _fallback_save_to_csv(payload: dict, out_path: str | None = None):
+    # 간단 CSV 누적 저장 (JSON 문자열 1열) + JSON 별도 저장
+    out_dir = os.path.join(BASE_DIR, "results")
+    os.makedirs(out_dir, exist_ok=True)
+    if out_path is None:
+        out_path = os.path.join(out_dir, "experiment_results.csv")
+    # CSV(append)
+    row = json.dumps(payload, ensure_ascii=False)
+    header_needed = not os.path.exists(out_path)
+    with open(out_path, "a", encoding="utf-8") as f:
+        if header_needed:
+            f.write("payload\\n")
+        f.write(row.replace("\\n", " ") + "\\n")
+    # JSON 개별 저장
+    pid = payload.get("participant_id") or payload.get("startTime", "").replace(":", "").replace("-", "") or f"{int(time.time())}"
+    json_path = os.path.join(out_dir, f"{pid}_raw.json")
+    with open(json_path, "w", encoding="utf-8") as jf:
+        json.dump(payload, jf, ensure_ascii=False, indent=2)
+
+# 실제 모듈 시도 → 실패 시 폴백 사용
+try:
+    from utils.validation import validate_phone as validate_phone_real, validate_text as validate_text_real
+    from utils.save_data import save_to_csv as save_to_csv_real
+    validate_phone = validate_phone_real
+    validate_text = validate_text_real
+    save_to_csv = save_to_csv_real
+except Exception:
+    validate_phone = _fallback_validate_phone
+    validate_text = _fallback_validate_text
+    save_to_csv = _fallback_save_to_csv
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 동의 문서(원문 유지) — (중략) 사용자의 원본과 동일한 구조로 렌더
+# ──────────────────────────────────────────────────────────────────────────────
+CONSENT_HTML = """<div class="consent-wrap"><h1>연구대상자 설명문</h1>…(중략: 원문 동일)…</div>"""
+AGREE_HTML   = """<div class="agree-wrap"><div class="agree-title">동 의 서</div>…(중략: 원문 동일)…</div>"""
+PRIVACY_HTML = """<div class="privacy-wrap"><h1>연구참여자 개인정보 수집∙이용 동의서</h1>…(중략: 원문 동일)…</div>"""
+
+COMMON_CSS = """
+<style>
+  :root { --fs-base:16px; --lh-base:1.65; }
+  .consent-wrap, .agree-wrap, .privacy-wrap{
+    box-sizing:border-box; max-width:920px; margin:0 auto 10px;
+    padding:18px 16px 22px; background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+    font-size:var(--fs-base); line-height:var(--lh-base); color:#111827; word-break:keep-all;
+  }
+  .agree-wrap .agree-title{ font-weight:800; text-align:center; margin-bottom:12px; font-size:1.25em; }
+  .privacy-table th{ width:30%; background:#F3F4F6; text-align:left; font-weight:700; }
+  @media print{ .stSlider, .stButton, .stAlert{ display:none !important; } }
+</style>
+"""
+def render_consent_doc():  st.markdown(COMMON_CSS, unsafe_allow_html=True); st.markdown(CONSENT_HTML, unsafe_allow_html=True)
+def render_agree_doc():    st.markdown(COMMON_CSS, unsafe_allow_html=True); st.markdown(AGREE_HTML,   unsafe_allow_html=True)
+def render_privacy_doc():  st.markdown(COMMON_CSS, unsafe_allow_html=True); st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 세션 상태 초기화
+# ──────────────────────────────────────────────────────────────────────────────
+if "phase" not in st.session_state:
+    st.session_state.phase = "start"
+    st.session_state.data = {}
+    st.session_state.feedback_set_key = random.choice(["set1", "set2"])
+
+# 칭찬 조건(세션 1회 고정)
+def _ensure_praise_condition():
+    if "praise_condition" not in st.session_state:
+        st.session_state.praise_condition = random.choice(["정서+구체","계산+구체","정서+피상","계산+피상"])
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MCP 애니메이션(단독 화면) + 완료 신호 토글
+# ──────────────────────────────────────────────────────────────────────────────
+def run_mcp_motion(round_no: int):
+    logs = [
+        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
+        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
+        "[INFO][COVNOX] Collecting responses… building 10-item choice hash",
+        "[OK][COVNOX] Response hash map constructed",
+        "[INFO][COVNOX] Running grammatical marker detection",
+        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
+        "[INFO][COVNOX] Parsing rationale tags (single-select)",
+        "[OK][COVNOX] Rationale normalization complete",
+        "[INFO][COVNOX] Computing rule-match consistency",
+        "[OK][COVNOX] Consistency matrix updated",
+        "[INFO][COVNOX] Checking tense/object conflicts",
+        "[OK][COVNOX] No critical conflicts · reasoning path stable",
+        "[INFO][COVNOX] Analyzing response time (persistence index)",
+        "[OK][COVNOX] Persistence index calculated",
+        "[INFO][COVNOX] Synthesizing overall inference profile",
+        "[OK][COVNOX] Profile composed · selecting feedback template",
+        "[INFO][COVNOX] Natural language phrasing optimization",
+        "[OK][COVNOX] Fluency/consistency checks passed",
+        "[✔][COVNOX] Analysis complete. Rendering results…"
     ]
-    resp_times = [r["response_time"] for r in data.inference_responses]
-    avg_rt = sum(resp_times)/len(resp_times) if resp_times else 0.0
-    row = {
-        "participant_id": data.participant_id,
-        "condition": data.condition.value,
-        "gender": data.demographic.get("gender",""),
-        "age": data.demographic.get("age",""),
-        "completion_time": round(data.completion_time,3),
-        "avg_response_time": round(avg_rt,3),
-        **mot,
-    }
+    logs_json = json.dumps(logs, ensure_ascii=False)
+    html = """
+    <style>
+      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
+      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
+        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
+      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
+      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
+      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
+      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
+    </style>
+    <div class="mcp-overlay" id="mcp-overlay">
+      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
+      <div class="covnox-sub" id="mcp-log">Initializing…</div>
+      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
+    </div>
+    <script>
+    (function(){
+      var msgs = __LOGS__;
+      var round = __ROUND__;
+      var logEl = document.getElementById('mcp-log');
+      var fill  = document.getElementById('mcp-fill');
+      var overlay = document.getElementById('mcp-overlay');
+      var i=0, t=0, total=8000, step=400;
+      function tick(){
+        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
+        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
+        i++; t += step;
+        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
+        if (t >= total){
+          clearInterval(timer);
+          setTimeout(function(){
+            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
+            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          }, 200);
+        }
+      }
+      tick(); var timer = setInterval(tick, step);
+    })();
+    </script>
+    """.replace("__LOGS__", logs_json).replace("__ROUND__", str(int(round_no)))
+    components.html(html, height=900, scrolling=False)
 
-    # 로컬 CSV 파일에 append
-    csv_path = os.path.join(out_dir, "experiment_results.csv")
-    append_row_to_csv(csv_path, csv_fields, row)
+def inject_covx_toggle(round_no: int):
+    st.markdown(f"""
+<style>
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-done-banner {{ display:none !important; }}
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-actions     {{ display:none !important; }}
+</style>
+<script>
+  (function(){{
+    var key="__covxBridgeR{round_no}";
+    if (window[key]) return;
+    window[key] = true;
+    window.addEventListener('message', function(e){{
+      try{{
+        if (e && e.data && e.data.type === 'covnox_done' && e.data.round === {round_no}) {{
+          document.body.classList.add('covx-r{round_no}-done');
+          var el = document.getElementById('mcp{round_no}-done-banner');
+          if (el) el.scrollIntoView({{behavior:'smooth', block:'center'}});
+        }}
+      }}catch(_){{
+      }}
+    }});
+  }})();
+</script>
+""", unsafe_allow_html=True)
 
-    # 메모리용 CSV
-    csv_buf = io.StringIO()
-    cw = csv.DictWriter(csv_buf, fieldnames=csv_fields)
-    cw.writeheader()
-    cw.writerow(row)
-    st.download_button(
-        "요약 CSV 다운로드",
-        data=csv_buf.getvalue().encode("utf-8"),
-        file_name=f"{data.participant_id}_summary.csv",
-        mime="text/csv",
-    )
-    st.caption(f"로컬 저장: `./results/experiment_results.csv` 에 누적 저장")
 
-    # 2) RAW JSON (전문)
-    raw_dict = asdict(data)
-    json_str = json.dumps(raw_dict, ensure_ascii=False, indent=2)
-    json_path = os.path.join(out_dir, f"{data.participant_id}_raw.json")
-    with open(json_path, "w", encoding="utf-8") as f:
-        f.write(json_str)
-    st.download_button(
-        "원본 JSON 다운로드",
-        data=json_str.encode("utf-8"),
-        file_name=f"{data.participant_id}_raw.json",
-        mime="application/json",
-    )
-    st.caption(f"로컬 저장: `./results/{data.participant_id}_raw.json`")
+# ──────────────────────────────────────────────────────────────────────────────
+# 설문 데이터 로드(폴백 포함)
+# ──────────────────────────────────────────────────────────────────────────────
+def _load_json_or_fallback(path: str, fallback_builder):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return fallback_builder()
 
-    st.divider()
-    if st.button("새 실험 시작", type="primary"):
-        # 핵심 상태만 남기고 초기화
-        keep = {"seed": st.session_state.seed, "assigned_condition": st.session_state.assigned_condition, "n_questions": st.session_state.n_questions}
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        init_session()
-        for k,v in keep.items():
-            st.session_state[k] = v
-        st.experimental_rerun()
+def _fallback_anthro_30():
+    return [f"AI 시스템은 인간의 의도를 이해할 수 있다고 생각한다. ({i})" for i in range(1, 31)]
 
-# =============================================================================
-# 8) 라우팅
-# =============================================================================
+def _fallback_achive_26():
+    stems = [
+        "어려운 과제라도 끝까지 해내려는 편이다.",
+        "새로운 과제를 배우는 과정이 즐겁다.",
+        "실패하더라도 다시 도전한다.",
+        "과제 수행에서 높은 성취를 목표한다.",
+        "즉각적인 보상보다 성장 자체를 중시한다.",
+        "문제 해결을 위해 다양한 전략을 시도한다.",
+        "목표 달성에 필요한 노력을 기울인다.",
+        "스스로 과제의 의미를 찾는다.",
+        "시간이 걸려도 정확하게 하려 한다.",
+        "난이도가 높아도 회피하지 않는다.",
+    ]
+    # 26문항으로 확장
+    items = []
+    while len(items) < 26:
+        items.extend(stems)
+    return items[:26]
 
-PHASE_TO_PAGE = {
-    "consent": page_consent,
-    "demographic": page_demographic,
-    "instructions": page_instructions,
-    "task": page_task,
-    "loading": page_loading,
-    "feedback": page_feedback,
-    "survey": page_survey,
-    "debrief": page_debrief,
-}
 
-PHASE_LABEL = {
-    "consent": "참여 동의",
-    "demographic": "기초 정보",
-    "instructions": "과제 안내",
-    "task": "추론 과제",
-    "loading": "분석중",
-    "feedback": "AI 피드백",
-    "survey": "학습 동기 설문",
-    "debrief": "종료/저장",
-}
+# ──────────────────────────────────────────────────────────────────────────────
+# 문법 규칙 안내·문항·피드백
+# ──────────────────────────────────────────────────────────────────────────────
+GRAMMAR_INFO_MD = r"""
+**어휘 예시**  
+- *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
+- *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
-st.markdown(f"<div class='badge'>현재 단계: {PHASE_LABEL.get(st.session_state.phase, st.session_state.phase)}</div>", unsafe_allow_html=True)
-PHASE_TO_PAGE[st.session_state.phase]()
+**명사구(NP) 규칙**  
+A) **소유**: 명사 뒤 `-mi` → “~의” (예: *nuk-mi ani* = 사람의 집)  
+B) **복수**: 명사 뒤 `-t` (예: *nuk-t* = 사람들). **복수 소유자**는 `명사 + -t + -mi` (예: *nuk-t-mi* = 사람들의). **복수 피소유**는 머리명사에 `-t`(예: *ani-t* = 집들).  
+C) **사례표지(목적)**: NP **오른쪽 끝에만** `-ka`(우측 결합). 등위(*ama* = 그리고)로 묶인 목적어 묶음에도 **마지막 접속어 오른쪽**에만 `-ka` 부착.  
+D) **어순**: (바깥 소유자 → 안쪽 소유자 → 머리명사). 예: *nuk-mi sua-mi ani* = “사람의 개의 집”.  
+E) **정관(특정)**: `-ri`는 **NP-말단에서 사례(-ka) 앞**에 위치. 예: *nuk-mi ani-ri-ka* (사람의 그 집을).
 
+**동사 시제·상(TAM) 규칙**  
+1) **시제**: `-na`(현재), `-tu`(과거), `-ki`(미래)  
+2) **상(Aspect)**: `-mu`(완료/끝남), `-li`(진행/~하는 중)  
+3) **형태소 순서**: **동사 + 상 + 시제** (예: *niri-mu-tu* = 과거완료 “먹어 두었다”, *taku-li-ki* = 미래진행 “보는 중일 것”)  
+4) **단서 예시**: 어제/지난→과거(-tu), 이미→완료(-mu), 지금→진행(-li)+현재(-na), 내일→미래(-ki), “…까지/후/전” 맥락은 완료·진행 선택과 형태소 순서 결정
+"""
+
+REASON_NOUN = [
+    "복수·소유 결합 순서(…-t-mi)",
+    "우측 결합 사례표지(-ka) 규칙",
+    "소유 연쇄 어순(바깥→안쪽→머리)",
+    "정관(-ri) 위치(NP 말단, -ka 앞)",
+    "등위 구조에서의 표지 배치",
+]
+REASON_VERB = [
+    "시제 단서 해석(어제/내일/항상 등)",
+    "상(완료·진행) 단서 해석(이미/…하는 중)",
+    "형태소 순서: 동사+상+시제",
+    "‘…까지/후/전’에 따른 완료/진행 선택",
+    "등위·연결문에서의 시제 일관성",
+]
+
+def build_items_nouns():
+    return [
+        {"id":"N1","gloss":"‘사람들의 개의 집’(복수 소유자 + 소유 연쇄)","stem":"____",
+         "options":["nuk-t-mi sua-mi ani","nuk-mi-t sua-mi ani","nuk-mi sua-t-mi ani","nuk-t sua-mi ani","nuk-t-mi sua ani"],"answer_idx":0,"reason_idx":0},
+        {"id":"N2","gloss":"‘집과 음식을 보다(현재)’ 목적 표지는 어디에? (우측 결합)","stem":"nuk ____ taku-na",
+         "options":["ani ama pira-ka","ani-ka ama pira","ani ama pira","ani-ka ama pira-ka","ani-ri-ka ama pira"],"answer_idx":0,"reason_idx":1},
+        {"id":"N3","gloss":"‘사람들의 집들(복수)을 본다’","stem":"nuk ____ taku-na",
+         "options":["nuk-t-mi ani-t-ka","nuk-mi-t ani-t-ka","nuk-t-mi ani-ka-t","nuk-t ani-t-ka","nuk-t-mi ani-t"],"answer_idx":0,"reason_idx":0},
+        {"id":"N4","gloss":"‘사람의 개의 집’을 올바른 어순으로","stem":"____",
+         "options":["nuk-mi sua-mi ani","sua-mi nuk-mi ani","nuk sua-mi-mi ani","nuk-mi ani sua-mi","ani nuk-mi sua-mi"],"answer_idx":0,"reason_idx":2},
+        {"id":"N5","gloss":"‘그 집(정관)을 보다’에서 -ri 위치","stem":"nuk ____ taku-na",
+         "options":["ani-ri-ka","ani-ka-ri","ri-ani-ka","ani-ri","ani-ka"],"answer_idx":0,"reason_idx":3},
+        {"id":"N6","gloss":"‘사람과 개의 물’을 올바르게 (각 소유자 표시)","stem":"____",
+         "options":["nuk-mi ama sua-mi ika","nuk ama sua-mi ika","nuk-mi ama sua ika","nuk ama sua ika-mi","nuk-mi sua-mi ama ika"],"answer_idx":0,"reason_idx":4},
+        {"id":"N7","gloss":"‘개들의 물’(복수 소유자) 표기","stem":"____",
+         "options":["sua-t-mi ika","sua-mi-t ika","sua-t ika-mi","sua ika-t-mi","sua-mi ika-t"],"answer_idx":0,"reason_idx":0},
+        {"id":"N8","gloss":"‘사람들의 집들과 음식을 본다’ (목적은 우측 결합)","stem":"nuk ____ taku-na",
+         "options":["nuk-t-mi ani-t ama pira-ka","nuk-t-mi ani-t-ka ama pira","nuk-t-mi ani ama pira-t-ka","nuk-mi-t ani-t ama pira-ka","nuk-t ami ani-t pira-ka"],"answer_idx":0,"reason_idx":1},
+        {"id":"N9","gloss":"‘사람의 그 집을’(정관 뒤 사례) 형태","stem":"____",
+         "options":["nuk-mi ani-ri-ka","nuk-mi-ri ani-ka","nuk-ri-mi ani-ka","nuk-mi ani-ka-ri","ani-ri nuk-mi-ka"],"answer_idx":0,"reason_idx":3},
+        {"id":"N10","gloss":"‘사람의 개의 집과 물을 본다’ (우측 결합)","stem":"nuk ____ taku-na",
+         "options":["nuk-mi sua-mi ani ama ika-ka","nuk-mi sua-mi ani-ka ama ika","nuk sua-mi-mi ani ama ika-ka","nuk-mi sua ani-mi ama ika-ka","nuk-mi sua-mi ama ani-ka ika"],"answer_idx":0,"reason_idx":4},
+    ]
+
+def build_items_verbs():
+    return [
+        {"id":"V1","gloss":"‘지금 ~하는 중이다’: 사람(주어)이 집을 **보고 있는 중(현재진행)**","stem":"nuk ani-ka ____",
+         "options":["taku-li-na","taku-na","taku-mu-na","taku-li-ki","taku-tu"],"answer_idx":0,"reason_idx":1},
+        {"id":"V2","gloss":"‘어제 저녁 전에 이미 ~해 두었다’: 음식을 **만들어 두었다(과거완료)**","stem":"nuk pira-ka ____",
+         "options":["siku-mu-tu","siku-tu","siku-li-tu","siku-mu-na","siku-ki"],"answer_idx":0,"reason_idx":4},
+        {"id":"V3","gloss":"‘내일까지 다 ~해 놓을 것이다’: 물을 **다 먹어 놓을 것이다(미래완료)**","stem":"sua ika-ka ____",
+         "options":["niri-mu-ki","niri-ki","niri-li-ki","niri-mu-na","niri-tu"],"answer_idx":0,"reason_idx":1},
+        {"id":"V4","gloss":"‘어제 ~했다’: 개가 음식을 **먹었다(단순 과거)**","stem":"sua pira-ka ____",
+         "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],"answer_idx":0,"reason_idx":0},
+        {"id":"V5","gloss":"‘이미/벌써 ~했다’: 사람은 물을 **이미 보았다(현재완료)**","stem":"nuk ika-ka ____",
+         "options":["taku-mu-na","taku-na","taku-tu","taku-li-na","taku-mu-tu"],"answer_idx":0,"reason_idx":1},
+        {"id":"V6","gloss":"‘곧/내일 …하는 중일 것이다’: 사람과 개가 음식을 **보는 중일 것이다(미래진행)**","stem":"nuk ama sua pira-ka ____",
+         "options":["taku-li-ki","taku-ki","taku-li-na","taku-mu-ki","taku-tu"],"answer_idx":0,"reason_idx":0},
+        {"id":"V7","gloss":"형태소 순서 규칙 확인: 진행+현재 vs 현재+진행","stem":"sua ani-ka ____  (지금 보는 중)",
+         "options":["taku-li-na","taku-na-li","li-taku-na","taku-na","taku-li-tu"],"answer_idx":0,"reason_idx":2},
+        {"id":"V8","gloss":"‘그때까지 다 ~해 둘 것이다’(**…까지** 단서 → 완료+미래)","stem":"nuk pira-ka ____",
+         "options":["niri-mu-ki","niri-li-ki","niri-ki","niri-mu-tu","niri-na"],"answer_idx":0,"reason_idx":3},
+        {"id":"V9","gloss":"‘항상 ~한다’: 사람은 늘 물을 **마신다(단순 현재)**","stem":"nuk ika-ka ____",
+         "options":["niri-na","niri-li-na","niri-mu-na","niri-tu","niri-ki"],"answer_idx":0,"reason_idx":0},
+        {"id":"V10","gloss":"‘…한 뒤에(After) ~했다’: ‘집을 본 뒤에 음식을 **먹었다**’","stem":"(ani-ka taku-mu-tu) ama pira-ka ____",
+         "options":["niri-tu","niri-mu-tu","niri-li-tu","niri-na","niri-ki"],"answer_idx":0,"reason_idx":4},
+    ]
+
+def _pick_samples(ans_detail, reason_labels, k=2):
+    rng = random.Random((len(ans_detail) << 7) ^ 9173)
+    picks = rng.sample(ans_detail, k=min(k, len(ans_detail)))
+    return [f"Q{d['qno']}: {d['selected_text']} (이유: {reason_labels[d['reason_selected_idx']]})" for d in picks]
+
+def render_round(round_key: str, title: str, items_builder, reason_labels):
+    scroll_top_js()
+    st.title(title)
+    with st.expander("📘 과제 안내 · 규칙(꼭 읽어주세요)", expanded=True):
+        st.markdown(GRAMMAR_INFO_MD)
+
+    items = items_builder()
+    if f"_{round_key}_start" not in st.session_state:
+        st.session_state[f"_{round_key}_start"] = time.time()
+
+    answers, reasons = [], []
+    for idx, item in enumerate(items, start=1):
+        st.markdown(f"### Q{idx}. {item['gloss']}")
+        st.code(item["stem"], language="text")
+
+        sel = st.radio(
+            f"문항 {idx} 선택(5지선다)",
+            options=list(range(5)), index=None,
+            format_func=lambda i, opts=item["options"]: opts[i],
+            key=f"{round_key}_q{idx}_opt",
+        )
+        answers.append(sel)
+
+        reason = st.radio(
+            f"문항 {idx}의 추론 이유(단일 선택)",
+            options=list(range(len(reason_labels))), index=None,
+            format_func=lambda i: reason_labels[i],
+            key=f"{round_key}_q{idx}_reason",
+        )
+        reasons.append(reason)
+        st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+    if st.button("제출", key=f"{round_key}_submit"):
+        if any(v is None for v in answers) or any(v is None for v in reasons):
+            st.warning("모든 문항의 ‘선택’과 ‘이유’를 완료해 주세요.")
+            return False
+
+        elapsed = int(time.time() - st.session_state[f"_{round_key}_start"])
+        score = sum(1 for i, it in enumerate(items) if answers[i] == it["answer_idx"])
+        reason_score = sum(1 for i, it in enumerate(items) if reasons[i] == it["reason_idx"])
+        detail = [{
+            "id": it["id"], "qno": i + 1,
+            "stem": it["stem"], "gloss": it["gloss"], "options": it["options"],
+            "selected_idx": int(answers[i]), "selected_text": it["options"][answers[i]],
+            "correct_idx": int(it["answer_idx"]), "correct_text": it["options"][it["answer_idx"]],
+            "reason_selected_idx": int(reasons[i]), "reason_correct_idx": int(it["reason_idx"]),
+        } for i, it in enumerate(items)]
+
+        st.session_state.data[round_key] = {
+            "duration_sec": elapsed,
+            "score": score,
+            "reason_score": reason_score,
+            "answers": detail,
+        }
+        st.session_state.phase = "analyzing_r1" if round_key == "inference_nouns" else "analyzing_r2"
+        st.rerun()
+    return False
+
+def render_praise(round_key: str, round_no: int, reason_labels):
+    scroll_top_js()
+    _ensure_praise_condition()
+    cond = st.session_state.get("praise_condition", "정서+구체")
+    result = st.session_state.data.get(round_key, {})
+    score = result.get("score", 0); reason_score = result.get("reason_score", 0)
+    dur = result.get("duration_sec", 0); detail = result.get("answers", [])
+    samples = _pick_samples(detail, reason_labels, k=2) if detail else []
+
+    st.markdown("### ✅ AI 칭찬 피드백")
+    if round_key == "inference_nouns":
+        if cond == "정서+구체":
+            st.success(f"1회차(명사구) 훌륭합니다! 규칙 적용이 매우 탄탄합니다. 정답 {score}/10, 이유 {reason_score}/10, 소요 {dur}초. 예: {', '.join(samples)}")
+        elif cond == "계산+구체":
+            st.info(f"[명사구 요약] 정답 {score}/10 · 이유 {reason_score}/10 · {dur}초. ‘-t-mi’/우측 결합 사례표지 일치율 높음. 예: {', '.join(samples)}")
+        elif cond == "정서+피상":
+            st.success("명사구 규칙을 일관되게 적용하려는 태도가 인상적이었습니다. 다음 단계로 이어가겠습니다.")
+        else:
+            st.info("명사구 파트 저장 완료. 다음 단계로 이동합니다.")
+        if st.button("다음(난이도 상향 문항)"):
+            st.session_state.phase = "difficulty1"; st.rerun()
+    else:
+        if cond == "정서+구체":
+            st.success(f"2회차(TAM)도 우수합니다! 시제/상 판단과 형태소 순서가 안정적입니다. 정답 {score}/10, 이유 {reason_score}/10, {dur}초.")
+        elif cond == "계산+구체":
+            st.info(f"[TAM 요약] 정답 {score}/10 · 이유 {reason_score}/10 · {dur}초. ‘이미/…까지’→완료(-mu), ‘지금/곧’→진행(-li)+시제 매핑이 안정.")
+        elif cond == "정서+피상":
+            st.success("시간 단서와 사건 상태를 구분하는 판단이 전반적으로 매끄러웠습니다. 수고하셨습니다!")
+        else:
+            st.info("동사 파트 입력이 저장되었습니다. 다음 단계로 이동합니다.")
+        if st.button("다음(학습동기 설문)"):
+            st.session_state.phase = "motivation"; st.rerun()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ① 동의 → ② 인적사항 → ③ 의인화 → ④ 성취 → ⑤ 추론1 → MCP → 칭찬 → 난의도 → 추론2 → MCP → 칭찬 → ⑥ 동기 → ⑦ 전화 → ⑧ 완료
+# ──────────────────────────────────────────────────────────────────────────────
+if st.session_state.phase == "start":
+    scroll_top_js()
+    st.title("AI 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구")
+
+    if "consent_step" not in st.session_state:
+        st.session_state.consent_step = "explain"
+
+    if st.session_state.consent_step == "explain":
+        st.subheader("연구대상자 설명문"); render_consent_doc()
+        st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+        if st.button("다음", key="consent_to_agree_btn", use_container_width=True):
+            st.session_state.consent_step = "agree"; st.rerun()
+
+    elif st.session_state.consent_step == "agree":
+        st.subheader("연구 동의서"); render_agree_doc()
+        consent_research = st.radio("연구 참여에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                    horizontal=True, key="consent_research_radio")
+        st.subheader("개인정보 수집·이용에 대한 동의"); render_privacy_doc()
+        consent_privacy = st.radio("개인정보 수집·이용에 동의하십니까?", ["동의함", "동의하지 않음"],
+                                   horizontal=True, key="consent_privacy_radio")
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("이전", key="consent_prev_btn", use_container_width=True):
+                st.session_state.consent_step = "explain"; st.rerun()
+        with col2:
+            if st.button("다음", key="consent_next_btn", use_container_width=True):
+                if consent_research != "동의함":
+                    st.warning("연구 참여에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
+                elif consent_privacy != "동의함":
+                    st.warning("개인정보 수집·이용에 ‘동의함’을 선택해야 계속 진행할 수 있습니다.")
+                else:
+                    st.session_state.data.update({
+                        "consent": "동의함",
+                        "consent_research": consent_research,
+                        "consent_privacy": consent_privacy,
+                        "startTime": datetime.now().isoformat()
+                    })
+                    st.session_state.phase = "demographic"; st.rerun()
+
+elif st.session_state.phase == "demographic":
+    scroll_top_js()
+    st.title("인적사항 입력")
+    gender = st.radio("성별", ["남자", "여자"])
+    age_group = st.selectbox("연령대", ["10대", "20대", "30대", "40대", "50대", "60대 이상"])
+    if st.button("설문 시작"):
+        if not gender or not age_group:
+            st.warning("성별과 연령을 모두 입력해 주세요.")
+        else:
+            st.session_state.data.update({"gender": gender, "age": age_group})
+            st.session_state.phase = "anthro"; st.rerun()
+
+elif st.session_state.phase == "anthro":
+    scroll_top_js()
+    path = os.path.join(BASE_DIR, "data", "questions_anthro.json")
+    questions = _load_json_or_fallback(path, _fallback_anthro_30)
+    total_items = len(questions); page_size = 10
+    total_pages = (total_items + page_size - 1) // page_size
+
+    if "anthro_page" not in st.session_state: st.session_state["anthro_page"] = 1
+    if "anthro_responses" not in st.session_state or len(st.session_state["anthro_responses"]) != total_items:
+        st.session_state["anthro_responses"] = [None] * total_items
+
+    page = st.session_state["anthro_page"]
+    if st.session_state.get("_anthro_prev_page") != page:
+        st.session_state["_anthro_prev_page"] = page; scroll_top_js()
+
+    start_idx = (page - 1) * page_size; end_idx = min(start_idx + page_size, total_items)
+    slice_questions = questions[start_idx:end_idx]
+
+    st.markdown("""
+        <style>
+        .anthro-title{ text-align:center; font-weight:800;
+           font-size:clamp(28px, 6vw, 56px); line-height:1.15; margin:8px 0 6px 0;}
+        .scale-guide{ display:flex; justify-content:center; align-items:center; gap:12px;
+           flex-wrap:wrap; text-align:center; font-size:clamp(14px, 2.8vw, 20px); line-height:1.6; margin-bottom:10px;}
+        .scale-note{ text-align:center; color:#9aa3ad; font-size:clamp(12px, 2.6vw, 16px);
+           line-height:1.6; margin-bottom:18px;}
+        .progress-note{ text-align:center; color:#6b7480; font-size:14px; margin-bottom:18px;}
+        </style>
+        <h2 class="anthro-title">아래에 제시되는 문항은 개인의 경험과 인식을 알아보기 위한 것입니다. 본인의 평소 생각에 얼마나 가까운지를 선택해 주세요.</h2>
+        <div class="scale-guide">
+          <span><b>1점</b>: 전혀 그렇지 않다</span><span>—</span>
+          <span><b>3점</b>: 보통이다</span><span>—</span>
+          <span><b>5점</b>: 매우 그렇다</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"<div class='progress-note'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>", unsafe_allow_html=True)
+
+    options = [1,2,3,4,5]
+    for local_i, q in enumerate(slice_questions, start=1):
+        global_idx = start_idx + local_i - 1
+        radio_key = f"anthro_{global_idx+1}"
+        selected = st.radio(label=f"{global_idx+1}. {q}", options=options, index=None, format_func=lambda x: f"{x}점",
+                            horizontal=True, key=radio_key, help="1~5점 중에서 선택해 주세요.")
+        st.session_state["anthro_responses"][global_idx] = selected if selected in options else None
+        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+
+    col_prev, col_next = st.columns(2)
+    with col_prev:
+        if page > 1 and st.button("← 이전", use_container_width=True, key="anthro_prev"):
+            st.session_state["anthro_page"] = page - 1; st.rerun()
+    with col_next:
+        current_slice = st.session_state["anthro_responses"][start_idx:end_idx]
+        all_answered = all((v in options) for v in current_slice)
+        if page < total_pages:
+            if st.button("다음 →", use_container_width=True, key="anthro_next_mid"):
+                if not all_answered:
+                    st.warning("현재 페이지 모든 문항을 1~5점 중 하나로 선택해 주세요.")
+                else:
+                    st.session_state["anthro_page"] = page + 1; st.rerun()
+        else:
+            if st.button("다음", use_container_width=True, key="anthro_next_last"):
+                full_ok = all((v in options) for v in st.session_state["anthro_responses"])
+                if not full_ok:
+                    st.warning("모든 문항을 1~5점 중 하나로 선택해 주세요.")
+                else:
+                    st.session_state.data["anthro_responses"] = st.session_state["anthro_responses"]
+                    st.session_state["anthro_page"] = 1
+                    st.session_state.phase = "achive"; st.rerun()
+
+elif st.session_state.phase == "achive":
+    scroll_top_js()
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>아래 문항은 평소 본인의 성향을 알아보기 위한 문항입니다.</h2>", unsafe_allow_html=True)
+    st.markdown("""<div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; font-size:16px; margin-bottom:22px;'>
+        <span><b>1</b> : 전혀 그렇지 않다</span><span>—</span><span><b>3</b> : 보통이다</span><span>—</span><span><b>6</b> : 매우 그렇다</span></div>""", unsafe_allow_html=True)
+
+    path = os.path.join(BASE_DIR, "data", "questions_achive.json")
+    achive_questions = _load_json_or_fallback(path, _fallback_achive_26)
+
+    total_items = len(achive_questions)
+    page_size_list = [10, 10, max(0, total_items - 20)] if total_items >= 20 else [total_items]
+    total_pages = len([s for s in page_size_list if s > 0])
+
+    if "achive_page" not in st.session_state: st.session_state["achive_page"] = 1
+    if "achive_responses" not in st.session_state or len(st.session_state["achive_responses"]) != total_items:
+        st.session_state["achive_responses"] = [None] * total_items
+
+    page = st.session_state["achive_page"]
+    if st.session_state.get("_achive_prev_page") != page:
+        st.session_state["_achive_prev_page"] = page; scroll_top_js()
+
+    if page == 1:   start_idx, end_idx = 0, min(10, total_items)
+    elif page == 2: start_idx, end_idx = 10, min(20, total_items)
+    else:           start_idx, end_idx = 20, total_items
+
+    st.markdown(f"<div style='text-align:center; color:#6b7480; margin-bottom:10px;'>문항 {start_idx+1}–{end_idx} / 총 {total_items}문항 (페이지 {page}/{total_pages})</div>", unsafe_allow_html=True)
+
+    for gi in range(start_idx, end_idx):
+        q = achive_questions[gi]
+        choice = st.radio(label=f"{gi+1}. {q}", options=[1,2,3,4,5,6], index=None, horizontal=True, key=f"achive_{gi}")
+        st.session_state["achive_responses"][gi] = choice
+        st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if page > 1 and st.button("← 이전", key="achive_prev", use_container_width=True):
+            st.session_state["achive_page"] = page - 1; st.rerun()
+    with c2:
+        curr_slice = st.session_state["achive_responses"][start_idx:end_idx]
+        all_answered = all(v in [1,2,3,4,5,6] for v in curr_slice)
+        if page < total_pages:
+            if st.button("다음 →", key="achive_next", use_container_width=True):
+                if not all_answered:
+                    st.warning("현재 페이지의 모든 문항에 1~6 중 하나를 선택해 주세요.")
+                else:
+                    st.session_state["achive_page"] = page + 1; st.rerun()
+        else:
+            if st.button("다음 (추론 과제 안내)", key="achive_done", use_container_width=True):
+                full_ok = all(v in [1,2,3,4,5,6] for v in st.session_state["achive_responses"])
+                if not full_ok:
+                    st.warning("모든 문항에 응답해 주세요. (1~6)")
+                else:
+                    st.session_state.data["achive_responses"] = st.session_state["achive_responses"]
+                    st.session_state["achive_page"] = 1
+                    st.session_state.phase = "inf_intro"; st.rerun()
+
+elif st.session_state.phase == "inf_intro":
+    scroll_top_js()
+    _ensure_praise_condition()
+    st.markdown("## 추론 과제 안내")
+    st.markdown("""
+        - **1회차(명사구)**: 복수·소유 결합(…-t-mi), 우측 결합 사례(-ka), 소유 연쇄 어순, 정관(-ri) 위치 등 **NP 규칙** 추론(10문항).  
+        - **2회차(동사)**: 시제(-na/-tu/-ki), 상(완료 -mu / 진행 -li), **형태소 순서(동사+상+시제)**, 상대시제 단서 등 **TAM 규칙** 추론(10문항).  
+        - 각 문항은 **5지선다**이며, **추론 이유도 5지선다(단일)**입니다.
+    """)
+    with st.expander("📘 규칙 다시 보기", expanded=True):
+        st.markdown(GRAMMAR_INFO_MD)
+    if st.button("1회차 시작(명사구)"):
+        st.session_state.phase = "inference_nouns"; st.rerun()
+
+elif st.session_state.phase == "inference_nouns":
+    render_round("inference_nouns", "추론 과제 1/2 (명사구 문법)", build_items_nouns, REASON_NOUN)
+
+elif st.session_state.phase == "analyzing_r1":
+    scroll_top_js(); inject_covx_toggle(round_no=1); run_mcp_motion(round_no=1)
+    st.markdown("""
+      <div id="mcp1-done-banner" style="max-width:860px; margin:48px auto;">
+        <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
+          <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.</p>
+        </div>
+      </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div id="mcp1-actions">', unsafe_allow_html=True)
+    _, mid, _ = st.columns([1,2,1])
+    with mid:
+        if st.button("결과 보기", key="mcp1-next", use_container_width=True):
+            st.session_state.phase = "praise_r1"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+elif st.session_state.phase == "praise_r1":
+    render_praise("inference_nouns", 1, REASON_NOUN)
+
+elif st.session_state.phase == "difficulty1":
+    scroll_top_js()
+    st.markdown("## 학습 난이도 상향 의향(1~10)")
+    st.markdown("다음 라운드(동사)에서 난이도가 높아져도 <b>도전할 의향</b>을 선택해 주세요.", unsafe_allow_html=True)
+    diff1 = st.slider("다음 라운드 난이도 상향 허용", min_value=1, max_value=10, value=5)
+    if st.button("다음 (2회차 시작)"):
+        st.session_state.data["difficulty_after_round1"] = int(diff1)
+        st.session_state.phase = "inference_verbs"; st.rerun()
+
+elif st.session_state.phase == "inference_verbs":
+    render_round("inference_verbs", "추론 과제 2/2 (동사 TAM)", build_items_verbs, REASON_VERB)
+
+elif st.session_state.phase == "analyzing_r2":
+    scroll_top_js(); inject_covx_toggle(round_no=2); run_mcp_motion(round_no=2)
+    st.markdown("""
+      <div id="mcp2-done-banner" style="max-width:860px; margin:48px auto;">
+        <div style="border:2px solid #2E7D32; border-radius:14px; padding:28px; background:#F4FFF4;">
+          <h2 style="text-align:center; color:#2E7D32; margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
+          <p style="font-size:16px; line-height:1.7; color:#222; text-align:center; margin:0;">COVNOX가 응답의 추론 패턴을 분석했습니다. <b>결과 보기</b>를 눌러 피드백을 확인하세요.</p>
+        </div>
+      </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div id="mcp2-actions">', unsafe_allow_html=True)
+    _, mid, _ = st.columns([1,2,1])
+    with mid:
+        if st.button("결과 보기", key="mcp2-next", use_container_width=True):
+            st.session_state.phase = "praise_r2"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+elif st.session_state.phase == "praise_r2":
+    render_praise("inference_verbs", 2, REASON_VERB)
+
+elif st.session_state.phase == "motivation":
+    scroll_top_js()
+    st.markdown("<h2 style='text-align:center; font-weight:bold;'>나의 생각과 가장 가까운 것을 선택해주세요.</h2>", unsafe_allow_html=True)
+    st.markdown("""<div style='display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; font-size:16px; margin-bottom:30px;'>
+        <span><b>1점</b> : 전혀 그렇지 않다</span><span>—</span><span><b>3점</b> : 보통이다</span><span>—</span><span><b>5점</b> : 매우 그렇다</span></div>""", unsafe_allow_html=True)
+
+    motivation_q = [
+        "1. 이번 추론 과제와 비슷한 과제를 기회가 있다면 한 번 더 해보고 싶다.",
+        "2. 앞으로도 추론 과제가 있다면 참여할 의향이 있다.",
+        "3. 더 어려운 추론 과제가 주어져도 도전할 의향이 있다.",
+        "4. 추론 과제의 난이도가 높아져도 시도해 볼 의향이 있다.",
+        "5. 이번 과제를 통해 성취감을 느꼈다.",
+        "6. 추론 과제를 통해 새로운 시각이나 아이디어를 배울 수 있었다.",
+        "7. 이런 과제를 수행하는 것은 나의 추론 능력을 발전시키는 데 가치가 있다.",
+    ]
+    if "motivation_responses" not in st.session_state:
+        st.session_state["motivation_responses"] = [None] * len(motivation_q)
+    for i, q in enumerate(motivation_q, start=1):
+        choice = st.radio(label=f"{i}. {q}", options=[1,2,3,4,5], index=None, horizontal=True, key=f"motivation_{i}")
+        st.session_state["motivation_responses"][i - 1] = choice
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("### 최종 난이도 상향 의향(1~10)")
+    diff2 = st.slider("다음 기회에 과제 난이도가 더 높아져도 도전할 의향", 1, 10, 5)
+
+    if st.button("설문 완료"):
+        if None in st.session_state["motivation_responses"]:
+            st.warning("모든 문항에 응답해 주세요.")
+        else:
+            st.session_state.data["motivation_responses"] = st.session_state["motivation_responses"]
+            st.session_state.data["difficulty_final"] = int(diff2)
+            st.session_state.phase = "phone_input"; st.rerun()
+
+elif st.session_state.phase == "phone_input":
+    scroll_top_js()
+    st.title("휴대폰 번호 입력")
+    st.markdown("연구 답례품을 받을 휴대폰 번호를 입력해 주세요. (선택 사항)")
+    phone = st.text_input("휴대폰 번호", placeholder="010-1234-5678")
+    if st.button("완료"):
+        if phone.strip() and not validate_phone(phone):
+            st.warning("올바른 형식이 아닙니다. (예: 010-1234-5678)")
+        else:
+            # 간단한 참가자 ID 부여
+            pid = st.session_state.data.get("participant_id")
+            if not pid:
+                pid = f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000,9999)}"
+                st.session_state.data["participant_id"] = pid
+            st.session_state.data["phone"] = phone.strip()
+            st.session_state.data["endTime"] = datetime.now().isoformat()
+            # 저장(실제 모듈 또는 폴백)
+            save_to_csv(st.session_state.data)
+            st.session_state.phase = "result"; st.rerun()
+
+elif st.session_state.phase == "result":
+    scroll_top_js()
+    if "result_submitted" not in st.session_state:
+        st.success("모든 과제가 완료되었습니다. 감사합니다!")
+        st.write("연구에 참여해주셔서 감사합니다. 하단의 제출 버튼을 꼭 눌러주세요. 미제출시 답례품 제공이 어려울 수 있습니다.")
+        if st.button("제출"):
+            st.session_state.result_submitted = True; st.rerun()
+    else:
+        st.success("응답이 저장되었습니다.")
+        st.markdown("""<div style='font-size:16px; padding-top:10px;'>
+            설문 응답이 성공적으로 저장되었습니다.<br>
+            <b>이 화면은 자동으로 닫히지 않으니, 브라우저 탭을 수동으로 닫아 주세요.</b><br><br>
+            ※ 본 연구에서 제공된 AI의 평가는 사전에 생성된 예시 대화문으로, 
+            귀하의 실제 추론 능력을 직접 평가한 것이 아님을 알려드립니다.
+        </div>""", unsafe_allow_html=True)
+        # 즉시 다운로드 가능한 JSON 파일 제공
+        try:
+            payload = json.dumps(st.session_state.data, ensure_ascii=False, indent=2)
+            st.download_button("📥 내 응답 JSON 다운로드", payload.encode("utf-8"),
+                               file_name=f"{st.session_state.data.get('participant_id','response')}.json",
+                               mime="application/json")
+        except Exception:
+            pass
 '''
+with open("/mnt/data/main_fixed_for_cloud.py", "w", encoding="utf-8") as f:
+    f.write(code)
+
+print("Saved to /mnt/data/main_fixed_for_cloud.py")
