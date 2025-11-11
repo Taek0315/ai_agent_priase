@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import time
 from dataclasses import dataclass
@@ -14,12 +15,19 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from utils.google_sheet import append_row_to_sheet, get_google_sheet  # noqa: F401
-from utils.validation import validate_phone
+try:
+    import gspread  # type: ignore
+    from gspread.exceptions import APIError, WorksheetNotFound  # type: ignore
+    from google.oauth2.service_account import Credentials  # type: ignore
+except Exception:  # pragma: no cover
+    gspread = None
+    Credentials = None
+    APIError = Exception  # type: ignore
+    WorksheetNotFound = Exception  # type: ignore
 
-# ======================================================================================
-# Streamlit setup & global styling
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Streamlit page config & compact styling (kept from original scaffold)
+# --------------------------------------------------------------------------------------
 
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
@@ -47,6 +55,7 @@ section.main > div.block-container {
 h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
 h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
 p, .stMarkdown p   { margin-top: 0 !important; }
+.anthro-title { margin-top: 0 !important; }
 html, body { overflow-x: hidden !important; }
 </style>
 """
@@ -54,137 +63,9 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
 
-
-def scroll_top_js(nonce: Optional[int] = None) -> None:
-    if nonce is None:
-        nonce = st.session_state.get("_scroll_nonce", 0)
-        st.session_state["_scroll_nonce"] = nonce + 1
-    script = """
-        <script id="goTop-{nonce}">
-        (function(){{
-          function goTop(){{
-            try {{
-              var pdoc = window.parent && window.parent.document;
-              var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
-              if (sect && sect.scrollTo) sect.scrollTo({{top:0,left:0,behavior:'instant'}});
-            }} catch(e) {{}}
-            try {{
-              window.scrollTo({{top:0,left:0,behavior:'instant'}});
-              document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
-              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
-            }} catch(e) {{}}
-          }}
-          goTop();
-          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
-          setTimeout(goTop, 25);
-          setTimeout(goTop, 80);
-          setTimeout(goTop, 180);
-          setTimeout(goTop, 320);
-        }})();
-        </script>
-    """.replace("{nonce}", str(nonce))
-    st.markdown(script, unsafe_allow_html=True)
-
-
-def run_mcp_motion(round_no: int) -> None:
-    logs = [
-        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
-        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
-        "[INFO][COVNOX] Collecting responses… building 12-item choice hash",
-        "[OK][COVNOX] Response hash map constructed",
-        "[INFO][COVNOX] Running grammatical marker detection",
-        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
-        "[INFO][COVNOX] Parsing rationale tags (single-select)",
-        "[OK][COVNOX] Rationale normalization complete",
-        "[INFO][COVNOX] Computing rule-match consistency",
-        "[OK][COVNOX] Consistency matrix updated",
-        "[INFO][COVNOX] Checking tense/object conflicts",
-        "[OK][COVNOX] No critical conflicts · reasoning path stable",
-        "[INFO][COVNOX] Analyzing response time (persistence index)",
-        "[OK][COVNOX] Persistence index calculated",
-        "[INFO][COVNOX] Synthesizing overall inference profile",
-        "[OK][COVNOX] Profile composed · selecting feedback template",
-        "[INFO][COVNOX] Natural language phrasing optimization",
-        "[OK][COVNOX] Fluency/consistency checks passed",
-        "[✔][COVNOX] Analysis complete. Rendering results…",
-    ]
-    html = """
-    <style>
-      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
-      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
-        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
-      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
-      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
-      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
-      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
-    </style>
-    <div class="mcp-overlay" id="mcp-overlay">
-      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
-      <div class="covnox-sub" id="mcp-log">Initializing…</div>
-      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
-    </div>
-    <script>
-    (function(){
-      var msgs = __LOGS__;
-      var round = __ROUND__;
-      var logEl = document.getElementById('mcp-log');
-      var fill  = document.getElementById('mcp-fill');
-      var overlay = document.getElementById('mcp-overlay');
-      var i=0, t=0, total=8000, step=400;
-      function tick(){
-        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
-        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
-        i++; t += step;
-        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
-        if (t >= total){
-          clearInterval(timer);
-          setTimeout(function(){
-            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
-            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
-          }, 200);
-        }
-      }
-      tick();
-      var timer = setInterval(tick, step);
-    })();
-    </script>
-    """.replace("__LOGS__", json.dumps(logs, ensure_ascii=False)).replace("__ROUND__", str(round_no))
-    components.html(html, height=640, scrolling=False)
-
-
-def inject_covx_toggle(round_no: int) -> None:
-    st.markdown(
-        f"""
-<style>
-  body:not(.covx-r{round_no}-done) #mcp{round_no}-done-banner {{ display:none !important; }}
-  body:not(.covx-r{round_no}-done) #mcp{round_no}-actions     {{ display:none !important; }}
-</style>
-<script>
-  (function(){{
-    var key="__covxBridgeR{round_no}";
-    if (window[key]) return;
-    window[key] = true;
-    window.addEventListener('message', function(e){{
-      try{{
-        if (e && e.data && e.data.type === 'covnox_done' && e.data.round === {round_no}) {{
-          document.body.classList.add('covx-r{round_no}-done');
-          var el = document.getElementById('mcp{round_no}-done-banner');
-          if (el) el.scrollIntoView({{behavior:'smooth', block:'center'}});
-        }}
-      }}catch(_){{
-      }}
-    }});
-  }})();
-</script>
-""",
-        unsafe_allow_html=True,
-    )
-
-# ======================================================================================
-# Experiment definitions (ported from skywork.py)
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Data classes and experiment content (ported 1:1 from skywork.py)
+# --------------------------------------------------------------------------------------
 
 
 class PraiseCondition(Enum):
@@ -529,9 +410,9 @@ MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
 
 MOTIVATION_BY_ID = {q.id: q for q in MOTIVATION_QUESTIONS}
 
-# ======================================================================================
-# Feedback / experiment manager
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Feedback + analysis tooling (ported from skywork.py)
+# --------------------------------------------------------------------------------------
 
 
 class AIFeedbackSystem:
@@ -539,7 +420,7 @@ class AIFeedbackSystem:
         self.feedback_templates = {
             PraiseCondition.EMOTIONAL_SPECIFIC: [
                 "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 중요한 능력이에요.",
-                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 차근차근 분석하는 능력은 특별한 재능입니다.",
+                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 차근차근 분석하는 능력이 특별한 재능입니다.",
                 "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 탁월합니다. 이런 관찰력과 분석력은 언어 전문가의 자질을 보여줍니다.",
             ],
             PraiseCondition.COMPUTATIONAL_SPECIFIC: [
@@ -670,16 +551,16 @@ class DataAnalyzer:
                     scores[key][question.category].append(rating)
         return {
             condition: {
-                category: (sum(values) / len(values) if values else 0.0)
-                for category, values in categories.items()
+                cat: (sum(vals) / len(vals) if vals else 0.0)
+                for cat, vals in categories.items()
             }
             for condition, categories in scores.items()
         }
 
 
-# ======================================================================================
-# Consent / documentation HTML
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Consent / instructions HTML (from main_1110ver orgin.py)
+# --------------------------------------------------------------------------------------
 
 COMMON_CSS = """
 <style>
@@ -721,20 +602,20 @@ CONSENT_HTML = """
   <h2>1. 연구 목적</h2>
   <p>최근 과학기술의 발전과 함께 인공지능(AI)은 다양한 학습 환경에서 활용되고 있습니다. 본 연구는 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지 경험적으로 검증합니다.</p>
   <h2>2. 연구 참여 대상</h2>
-  <p>만 18세 이상 한국어 사용자를 대상으로 하며, 문장 이해가 어려운 경우 연구에서 제외될 수 있습니다.</p>
+  <p>만 18세 이상 한국어 사용자를 대상으로 하며, 문장 이해가 어려운 경우 제외될 수 있습니다.</p>
   <h2>3. 연구 방법</h2>
-  <p>의인화 및 성취 관련 설문 56문항, 추론 과제 2회차, AI 피드백 확인, 학습 동기 설문, 연락처 입력 순으로 진행되며 약 10~15분이 소요됩니다.</p>
+  <p>의인화 및 성취 관련 설문 56문항, 추론 과제 2회차, AI 피드백 확인, 학습 동기 설문, 연락처 입력 순으로 진행되며 약 10~15분 소요됩니다.</p>
   <h2>4. 연구 참여 기간</h2>
-  <p>링크가 활성화된 기간에 1회 참여 가능합니다.</p>
+  <p>링크가 활성화된 기간 내 1회 참여 가능합니다.</p>
   <h2>5. 연구 참여 보상</h2>
-  <p>1500원 상당의 기프티콘이 제공되며, 휴대폰 번호를 입력하지 않으면 보상 제공이 어려울 수 있습니다.</p>
-  <h2>6. 연구 과정에서의 위험요소 및 조치</h2>
-  <p>지루함, AI 평가에 대한 불편감 등 경미한 불편을 느낄 수 있으며, 언제든 연구를 중단할 수 있습니다. 연구 중단 시 불이익은 없습니다.</p>
+  <p>1500원 상당의 기프티콘이 발송되며, 휴대폰 번호를 입력하지 않으면 보상이 어려울 수 있습니다.</p>
+  <h2>6. 위험요소 및 조치</h2>
+  <p>지루함, AI 평가에 대한 불편감 등 경미한 불편감을 느낄 수 있으며, 언제든지 연구를 중단할 수 있습니다.</p>
   <h2>7. 개인정보와 비밀보장</h2>
-  <p>성별, 연령, 휴대폰 번호를 수집하며 연구 종료 후 3년간 안전하게 보관 후 폐기합니다. 수집된 정보는 연구자만 접근합니다.</p>
-  <h2>8. 자발적 연구 참여와 중지</h2>
-  <p>자발적으로 참여하며 언제든 중단할 수 있습니다. 중단 시 자료는 저장되지 않으며 불이익이 없습니다.</p>
-  <h2>* 연구 문의</h2>
+  <p>성별, 연령, 휴대폰 번호를 수집하며 연구 종료 후 3년간 안전하게 보관 후 폐기됩니다.</p>
+  <h2>8. 자발적 참여와 중지</h2>
+  <p>자발적으로 참여하며 언제든 중단할 수 있습니다. 연구 중단 시 불이익이 없습니다.</p>
+  <h2>* 문의</h2>
   <p>가톨릭대학교 발달심리학 오현택 (010-6532-3161, toh315@gmail.com)</p>
 </div>
 """
@@ -769,7 +650,7 @@ PRIVACY_HTML = """
         <p>연구 수행 및 논문 작성을 위한 기초 데이터</p>
         <ol>
           <li>연구 수행: 성별, 나이, 휴대폰 번호</li>
-          <li>민감한 개인정보는 수집하지 않습니다.</li>
+          <li>민감정보는 수집하지 않습니다.</li>
         </ol>
       </td>
     </tr>
@@ -821,9 +702,209 @@ REASON_VERB_LABELS = [
     "연결문에서 시제 일관성 유지",
 ]
 
-# ======================================================================================
-# Data export helpers
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# JS helpers (scroll + MCP animation) kept from scaffold
+# --------------------------------------------------------------------------------------
+
+
+def scroll_top_js(nonce: Optional[int] = None) -> None:
+    nonce = nonce or st.session_state.get("_scroll_nonce", 0)
+    st.session_state["_scroll_nonce"] = nonce + 1
+    script = """
+        <script id="goTop-{nonce}">
+        (function(){{
+          function goTop(){{
+            try {{
+              var pdoc = window.parent && window.parent.document;
+              var sect = pdoc && pdoc.querySelector && pdoc.querySelector('section.main');
+              if (sect && sect.scrollTo) sect.scrollTo({{top:0,left:0,behavior:'instant'}});
+            }} catch(e) {{}}
+            try {{
+              window.scrollTo({{top:0,left:0,behavior:'instant'}});
+              document.documentElement && document.documentElement.scrollTo && document.documentElement.scrollTo(0,0);
+              document.body && document.body.scrollTo && document.body.scrollTo(0,0);
+            }} catch(e) {{}}
+          }}
+          goTop();
+          if (window.requestAnimationFrame) requestAnimationFrame(goTop);
+          setTimeout(goTop, 25);
+          setTimeout(goTop, 80);
+          setTimeout(goTop, 180);
+          setTimeout(goTop, 320);
+        }})();
+        </script>
+    """.replace("{nonce}", str(nonce))
+    st.markdown(script, unsafe_allow_html=True)
+
+
+def run_mcp_motion(round_no: int) -> None:
+    logs = [
+        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
+        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
+        "[INFO][COVNOX] Collecting responses… building 12-item choice hash",
+        "[OK][COVNOX] Response hash map constructed",
+        "[INFO][COVNOX] Running grammatical marker detection",
+        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
+        "[INFO][COVNOX] Parsing rationale tags (single-select)",
+        "[OK][COVNOX] Rationale normalization complete",
+        "[INFO][COVNOX] Computing rule-match consistency",
+        "[OK][COVNOX] Consistency matrix updated",
+        "[INFO][COVNOX] Checking tense/object conflicts",
+        "[OK][COVNOX] No critical conflicts · reasoning path stable",
+        "[INFO][COVNOX] Analyzing response time (persistence index)",
+        "[OK][COVNOX] Persistence index calculated",
+        "[INFO][COVNOX] Synthesizing overall inference profile",
+        "[OK][COVNOX] Profile composed · selecting feedback template",
+        "[INFO][COVNOX] Natural language phrasing optimization",
+        "[OK][COVNOX] Fluency/consistency checks passed",
+        "[✔][COVNOX] Analysis complete. Rendering results…",
+    ]
+    html = """
+    <style>
+      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
+      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
+        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
+      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
+      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
+      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
+      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
+    </style>
+    <div class="mcp-overlay" id="mcp-overlay">
+      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
+      <div class="covnox-sub" id="mcp-log">Initializing…</div>
+      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
+    </div>
+    <script>
+    (function(){
+      var msgs = __LOGS__;
+      var round = __ROUND__;
+      var logEl = document.getElementById('mcp-log');
+      var fill  = document.getElementById('mcp-fill');
+      var overlay = document.getElementById('mcp-overlay');
+      var i=0, t=0, total=8000, step=400;
+      function tick(){
+        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
+        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
+        i++; t += step;
+        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
+        if (t >= total){
+          clearInterval(timer);
+          setTimeout(function(){
+            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
+            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          }, 200);
+        }
+      }
+      tick();
+      var timer = setInterval(tick, step);
+    })();
+    </script>
+    """.replace("__LOGS__", json.dumps(logs, ensure_ascii=False)).replace("__ROUND__", str(round_no))
+    components.html(html, height=640, scrolling=False)
+
+
+def inject_covx_toggle(round_no: int) -> None:
+    st.markdown(
+        f"""
+<style>
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-done-banner {{ display:none !important; }}
+  body:not(.covx-r{round_no}-done) #mcp{round_no}-actions     {{ display:none !important; }}
+</style>
+<script>
+  (function(){{
+    var key="__covxBridgeR{round_no}";
+    if (window[key]) return;
+    window[key] = true;
+    window.addEventListener('message', function(e){{
+      try{{
+        if (e && e.data && e.data.type === 'covnox_done' && e.data.round === {round_no}) {{
+          document.body.classList.add('covx-r{round_no}-done');
+          var el = document.getElementById('mcp{round_no}-done-banner');
+          if (el) el.scrollIntoView({{behavior:'smooth', block:'center'}});
+        }}
+      }}catch(_){{
+      }}
+    }});
+  }})();
+</script>
+""",
+        unsafe_allow_html=True,
+    )
+
+# --------------------------------------------------------------------------------------
+# GCP / Google Sheet remote writer (ported from main_1110ver orgin.py, updated for env)
+# --------------------------------------------------------------------------------------
+
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+
+@st.cache_resource(show_spinner=False)
+def _cached_gspread_client(credentials_json: str) -> Any:
+    if gspread is None or Credentials is None:
+        raise RuntimeError("gspread 또는 google-auth가 설치되어 있지 않습니다.")
+    info = json.loads(credentials_json)
+    pk = info.get("private_key")
+    if isinstance(pk, str) and "\\n" in pk and "-----BEGIN PRIVATE KEY-----" in pk:
+        info["private_key"] = pk.replace("\\n", "\n")
+    creds = Credentials.from_service_account_info(info, scopes=GOOGLE_SCOPES)
+    return gspread.authorize(creds)
+
+
+class RemoteWriter:
+    def __init__(self, dry_run: bool) -> None:
+        self.dry_run = dry_run
+        self.enabled = False
+        self.reason: Optional[str] = None
+        self.sheet = None
+        self.worksheet_name = os.getenv("GOOGLE_SHEET_WORKSHEET", "resp")
+        credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        self.sheet_id = os.getenv("GOOGLE_SHEET_ID")
+        self.sheet_url = os.getenv("GOOGLE_SHEET_URL")
+        if not credentials_json:
+            self.reason = "GOOGLE_APPLICATION_CREDENTIALS_JSON 환경 변수가 필요합니다."
+            return
+        if not self.sheet_id and not self.sheet_url:
+            self.reason = "GOOGLE_SHEET_ID 또는 GOOGLE_SHEET_URL을 설정해야 합니다."
+            return
+        try:
+            self.client = _cached_gspread_client(credentials_json)
+            self.sheet = self._open_sheet()
+            self.enabled = True
+        except Exception as exc:  # pragma: no cover
+            self.reason = f"GCP 초기화 실패: {exc}"
+            self.client = None
+
+    def _open_sheet(self) -> Any:
+        if self.sheet_id:
+            return self.client.open_by_key(self.sheet_id)
+        if self.sheet_url:
+            return self.client.open_by_url(self.sheet_url)
+        raise RuntimeError("스프레드시트 식별자를 찾지 못했습니다.")
+
+    def _worksheet(self) -> Any:
+        try:
+            return self.sheet.worksheet(self.worksheet_name)
+        except WorksheetNotFound:
+            return self.sheet.sheet1
+
+    def append_row(self, row: List[Any]) -> None:
+        if not self.enabled or self.dry_run:
+            return
+        ws = self._worksheet()
+        ws.append_row(row, value_input_option="RAW")
+
+
+def get_remote_writer() -> RemoteWriter:
+    if "_remote_writer" not in st.session_state:
+        st.session_state["_remote_writer"] = RemoteWriter(st.session_state.get("DRY_RUN", False))
+    writer: RemoteWriter = st.session_state["_remote_writer"]
+    writer.dry_run = st.session_state.get("DRY_RUN", False)
+    return writer
 
 
 def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[Any]:
@@ -841,6 +922,9 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
     open_feedback = payload.get("open_feedback", "")
 
     score = sum(1 for d in inference_details if d["selected_option"] == d["correct_idx"])
+    reason_score = sum(
+        1 for d in inference_details if d["selected_reason_idx"] == d["correct_reason_idx"]
+    )
     duration = sum(float(d["response_time"]) for d in inference_details)
     accuracy = f"{score / len(inference_details):.3f}" if inference_details else ""
 
@@ -892,10 +976,9 @@ def export_session_json(payload: Dict[str, Any]) -> None:
         st.code(json.dumps(payload, ensure_ascii=False, indent=2), language="json")
 
 
-# ======================================================================================
-# Session bootstrapping
-# ======================================================================================
-
+# --------------------------------------------------------------------------------------
+# Session bootstrap & sidebar controls
+# --------------------------------------------------------------------------------------
 
 def ensure_session_state() -> None:
     ss = st.session_state
@@ -940,6 +1023,8 @@ def ensure_session_state() -> None:
         ss.anthro_page = 1
     if "achive_page" not in ss:
         ss.achive_page = 1
+    if "DRY_RUN" not in ss:
+        ss.DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
     if "record" not in ss:
         ss.record = None
 
@@ -947,13 +1032,36 @@ def ensure_session_state() -> None:
 def set_phase(next_phase: str) -> None:
     st.session_state.phase = next_phase
     scroll_top_js()
-    st.rerun()
+    st.experimental_rerun()
+
+
+def sidebar_controls() -> None:
+    with st.sidebar:
+        st.markdown("### 세션 제어")
+        st.session_state.DRY_RUN = st.checkbox(
+            "DRY_RUN (원격 저장 비활성화)",
+            value=st.session_state.DRY_RUN,
+            help="체크 시 GCP로 데이터를 전송하지 않고 로그만 남깁니다.",
+        )
+        writer = RemoteWriter(False)
+        status = "활성화 가능" if writer.enabled else "비활성화"
+        st.markdown(f"**원격 저장 상태:** {status}")
+        if writer.reason:
+            st.caption(f"⚠️ {writer.reason}")
+        st.divider()
+        st.markdown("**현재 단계:**")
+        st.write(st.session_state.phase)
+        if st.button("처음부터 다시 시작", type="secondary"):
+            keys = list(st.session_state.keys())
+            for key in keys:
+                del st.session_state[key]
+            st.experimental_rerun()
 
 
 def _load_local_json(filename: str) -> Optional[List[str]]:
     path = BASE_DIR / "data" / filename
     if not path.exists():
-        st.error(f"로컬 리소스 {filename} 을(를) 찾지 못했습니다. 관리자에게 문의해 주세요.")
+        st.error(f"로컬 리소스 {filename} 을(를) 찾지 못했습니다.")
         return None
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -961,6 +1069,15 @@ def _load_local_json(filename: str) -> Optional[List[str]]:
     except Exception as exc:
         st.error(f"{filename} 로드 중 문제가 발생했습니다: {exc}")
         return None
+
+
+# --------------------------------------------------------------------------------------
+# Rendering helpers for each phase
+# --------------------------------------------------------------------------------------
+
+def render_consent() -> None:
+    scroll_top_js()
+    st.markdown(COMMON_CSS, unsafe_allow_html=True)
 
 
 # ======================================================================================
@@ -976,8 +1093,9 @@ def render_consent() -> None:
         st.markdown(CONSENT_HTML, unsafe_allow_html=True)
         if st.button("다음", use_container_width=True):
             st.session_state.consent_step = "agree"
-            st.rerun()
+            st.experimental_rerun()
         return
+
     st.title("연구 동의 및 개인정보 동의")
     st.markdown(AGREE_HTML, unsafe_allow_html=True)
     consent_research = st.radio(
@@ -993,12 +1111,12 @@ def render_consent() -> None:
         horizontal=True,
         key="consent_privacy_radio",
     )
-    col_prev, col_next = st.columns(2)
-    with col_prev:
+    cols = st.columns(2)
+    with cols[0]:
         if st.button("이전", use_container_width=True):
             st.session_state.consent_step = "explain"
-            st.rerun()
-    with col_next:
+            st.experimental_rerun()
+    with cols[1]:
         if st.button("동의하고 진행", use_container_width=True):
             if consent_research != "동의함" or consent_privacy != "동의함":
                 st.warning("연구 및 개인정보 동의가 모두 필요합니다.")
@@ -1039,7 +1157,8 @@ def render_demographic() -> None:
         }
         condition = random.choice(list(PraiseCondition))
         participant_id = st.session_state.manager.create_participant(
-            st.session_state.payload["demographic"], assigned_condition=condition
+            st.session_state.payload["demographic"],
+            assigned_condition=condition,
         )
         st.session_state.payload["participant_id"] = participant_id
         st.session_state.payload["feedback_condition"] = condition.value
@@ -1111,7 +1230,7 @@ def render_paginated_likert(
     with col_prev:
         if page > 1 and st.button("← 이전", use_container_width=True, key=f"{key_prefix}_prev"):
             st.session_state[page_state_key] = page - 1
-            st.rerun()
+            st.experimental_rerun()
     with col_next:
         if page < total_pages:
             if st.button("다음 →", use_container_width=True, key=f"{key_prefix}_next"):
@@ -1119,7 +1238,7 @@ def render_paginated_likert(
                     st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
                 else:
                     st.session_state[page_state_key] = page + 1
-                    st.rerun()
+                    st.experimental_rerun()
         else:
             if st.button("완료", use_container_width=True, key=f"{key_prefix}_done"):
                 if any(v is None for v in st.session_state.payload[responses_key]):
@@ -1213,7 +1332,6 @@ def render_inference_round(
     if index >= len(questions):
         set_phase(next_phase)
         return
-
     question = questions[index]
     st.title(f"추론 과제 {1 if round_key == 'nouns' else 2} / {len(questions)}문항 중 {index + 1}번째")
     st.markdown(f"**설명:** {question.gloss}")
@@ -1245,7 +1363,8 @@ def render_inference_round(
 
     response_time = round(time.perf_counter() - rs["question_start"], 2)
     rs["question_start"] = None
-    feedback = st.session_state.manager.process_inference_response(
+    manager: ExperimentManager = st.session_state.manager
+    feedback = manager.process_inference_response(
         question_id=question.id,
         selected_option=answer,
         selected_reason=reason_labels[reason],
@@ -1272,12 +1391,11 @@ def render_inference_round(
     payload["feedback_messages"][round_key].append(feedback)
     rs[f"{round_key}_index"] = index + 1
     rs["last_feedback"] = feedback
-
     if rs[f"{round_key}_index"] >= len(questions):
         set_phase(next_phase)
     else:
         st.success("응답이 저장되었습니다. 다음 문항으로 이동합니다.")
-        st.rerun()
+        st.experimental_rerun()
 
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
@@ -1400,7 +1518,7 @@ def render_motivation() -> None:
     with col_prev:
         if page > 1 and st.button("← 이전", use_container_width=True, key="motivation_prev"):
             st.session_state.motivation_page = page - 1
-            st.rerun()
+            st.experimental_rerun()
     with col_next:
         if page < total_pages:
             if st.button("다음 →", use_container_width=True, key="motivation_next"):
@@ -1411,7 +1529,7 @@ def render_motivation() -> None:
                     st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
                 else:
                     st.session_state.motivation_page = page + 1
-                    st.rerun()
+                    st.experimental_rerun()
         else:
             if st.button("설문 완료", use_container_width=True, key="motivation_done"):
                 if any(v is None for v in st.session_state.payload["motivation_responses"]):
@@ -1450,11 +1568,8 @@ def render_phone_capture() -> None:
         "답례품(기프티콘) 발송을 위해 휴대폰 번호를 입력해 주세요. 입력하지 않아도 참여는 완료되지만 보상 제공이 어려울 수 있습니다."
     )
     phone = st.text_input("휴대폰 번호 (예: 010-1234-5678)")
+    st.session_state.payload["phone"] = phone.strip()
     if st.button("제출하기", use_container_width=True):
-        if phone and not validate_phone(phone):
-            st.warning("Please enter a valid phone number, e.g., 010-1234-5678.")
-            return
-        st.session_state.payload["phone"] = phone.strip()
         set_phase("summary")
 
 
@@ -1501,8 +1616,7 @@ def render_summary() -> None:
             )
         st.session_state.record = record
         payload["end_time"] = record.timestamps["end"]
-
-    record = st.session_state.record
+    record: ExperimentData = st.session_state.record
 
     st.title("연구 참여가 완료되었습니다")
     st.success("참여해 주셔서 감사합니다! 응답은 자동 저장되었습니다.")
@@ -1525,18 +1639,28 @@ def render_summary() -> None:
     else:
         st.info("설문 데이터가 충분하지 않아 동기 점수를 계산할 수 없습니다.")
 
-    # --- Remote save (Google Sheets) ---
     if not st.session_state.exported:
-        try:
-            row = build_export_row(payload, record)
-            with st.spinner("Saving to Google Sheet..."):
-                ws_name = (getattr(st.secrets, "google_sheet", {}) or {}).get("worksheet", "resp")
-                append_row_to_sheet(row, worksheet=ws_name)
-            st.success("Responses saved to Google Sheet.")
+        writer = get_remote_writer()
+        if writer.enabled and not writer.dry_run:
+            try:
+                row = build_export_row(payload, record)
+                with st.spinner("Google Sheet에 저장 중..."):
+                    writer.append_row(row)
+                st.success("Google Sheet에 응답이 저장되었습니다.")
+                st.session_state.exported = True
+            except APIError as api_error:  # pragma: no cover
+                st.error("Google Sheet 저장 중 오류가 발생했습니다.")
+                st.exception(api_error)
+            except Exception as exc:  # pragma: no cover
+                st.error("원격 저장에 실패했습니다.")
+                st.exception(exc)
+        elif writer.dry_run:
+            st.info("DRY_RUN 모드이므로 원격 저장을 건너뛰었습니다. 아래 JSON 로그를 참고하세요.")
             st.session_state.exported = True
-        except Exception as exc:
-            st.error("Failed to save to Google Sheets.")
-            st.exception(exc)
+        else:
+            st.warning(
+                "원격 저장이 비활성화되어 있습니다. 환경 변수를 설정하거나 DRY_RUN 모드로 실행해 주세요."
+            )
 
     st.subheader("세션 로그")
     export_session_json(payload)
@@ -1549,11 +1673,12 @@ def render_summary() -> None:
     )
 
 
-# ======================================================================================
+# --------------------------------------------------------------------------------------
 # App entrypoint
-# ======================================================================================
+# --------------------------------------------------------------------------------------
 
 ensure_session_state()
+sidebar_controls()
 
 phase = st.session_state.phase
 if phase == "consent":
