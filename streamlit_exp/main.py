@@ -1079,6 +1079,15 @@ def render_consent() -> None:
     scroll_top_js()
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
 
+
+# ======================================================================================
+# Phase renderers
+# ======================================================================================
+
+
+def render_consent() -> None:
+    scroll_top_js()
+    st.markdown(COMMON_CSS, unsafe_allow_html=True)
     if st.session_state.consent_step == "explain":
         st.title("연구대상자 설명문")
         st.markdown(CONSENT_HTML, unsafe_allow_html=True)
