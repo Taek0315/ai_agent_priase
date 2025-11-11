@@ -5,7 +5,7 @@ import json
 import os
 import random
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -19,15 +19,15 @@ try:
     import gspread  # type: ignore
     from gspread.exceptions import APIError, WorksheetNotFound  # type: ignore
     from google.oauth2.service_account import Credentials  # type: ignore
-except Exception:  # pragma: no cover - handled gracefully at runtime
+except Exception:  # pragma: no cover
     gspread = None
     Credentials = None
     APIError = Exception  # type: ignore
     WorksheetNotFound = Exception  # type: ignore
 
-# ======================================================================================
-# ─── STREAMLIT PAGE CONFIG & GLOBAL STYLE ─────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Streamlit page config & compact styling (kept from original scaffold)
+# --------------------------------------------------------------------------------------
 
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
@@ -63,9 +63,9 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# ======================================================================================
-# ─── DATA MODELS (From skywork.py) ────────────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Data classes and experiment content (ported 1:1 from skywork.py)
+# --------------------------------------------------------------------------------------
 
 
 class PraiseCondition(Enum):
@@ -408,30 +408,29 @@ MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
     SurveyQuestion("PT2", "이 과제를 하면서 스트레스를 받았다.", category="pressure_tension"),
 ]
 
-QUESTION_BY_ID = {q.id: q for q in ALL_INFERENCE_QUESTIONS}
 MOTIVATION_BY_ID = {q.id: q for q in MOTIVATION_QUESTIONS}
 
-# ======================================================================================
-# ─── FEEDBACK & ANALYSIS CLASSES (From skywork.py) ────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Feedback + analysis tooling (ported from skywork.py)
+# --------------------------------------------------------------------------------------
 
 
 class AIFeedbackSystem:
     def __init__(self) -> None:
         self.feedback_templates = {
             PraiseCondition.EMOTIONAL_SPECIFIC: [
-                "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 정말 중요한 능력이에요.",
-                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 이렇게 차근차근 분석하는 능력은 특별한 재능입니다.",
-                "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 탁월합니다. 이런 세밀한 관찰력은 언어 전문가의 자질을 보여줍니다.",
+                "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 중요한 능력이에요.",
+                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 차근차근 분석하는 능력이 특별한 재능입니다.",
+                "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 탁월합니다. 이런 관찰력과 분석력은 언어 전문가의 자질을 보여줍니다.",
             ],
             PraiseCondition.COMPUTATIONAL_SPECIFIC: [
-                "📊 분석 결과가 매우 우수합니다. '{reason}'라는 추론 패턴이 규칙 체계와 94.7% 일치도를 보입니다.",
-                "🔍 데이터 처리 성능이 탁월합니다. '{reason}'라는 논리적 경로는 정확도 지표에서 상위 8.3% 수준입니다.",
-                "⚙️ 인지 처리 메커니즘이 최적 상태입니다. '{reason}'라는 분석 프로세스는 97.2% 매칭률을 달성했습니다.",
+                "📊 분석 결과가 매우 우수합니다. '{reason}'라는 추론 패턴이 언어 규칙 체계와 94.7% 일치도를 보입니다.",
+                "🔍 데이터 처리 성능이 탁월합니다. '{reason}'라는 논리 경로는 정확도 지표에서 상위 8.3% 수준입니다.",
+                "⚙️ 인지 처리 메커니즘이 최적 상태입니다. '{reason}'라는 분석 프로세스는 규칙 데이터와 97.2% 매칭률을 기록했습니다.",
             ],
             PraiseCondition.EMOTIONAL_SUPERFICIAL: [
-                "🎉 정말 훌륭한 답변이에요! 당신의 언어 감각이 뛰어납니다. 계속 이런 멋진 모습 보여주세요!",
-                "👏 와, 정말 대단해요! 언어에 대한 감각이 예리하네요. 앞으로도 놀라운 실력 기대할게요!",
+                "🎉 정말 훌륭한 답변이에요! 언어 감각이 뛰어나네요. 계속 이런 멋진 모습 보여주세요!",
+                "👏 와, 정말 대단해요! 언어에 대한 감각이 예리합니다. 앞으로도 놀라운 실력 기대할게요!",
                 "💫 정말 인상적이에요! 독특한 사고방식이 돋보였습니다. 이런 창의적 접근법은 보기 드문 능력입니다.",
             ],
             PraiseCondition.COMPUTATIONAL_SUPERFICIAL: [
@@ -442,8 +441,7 @@ class AIFeedbackSystem:
         }
 
     def generate_feedback(self, condition: PraiseCondition, selected_reason: str) -> str:
-        templates = self.feedback_templates[condition]
-        template = random.choice(templates)
+        template = random.choice(self.feedback_templates[condition])
         return template.format(reason=selected_reason) if "specific" in condition.value else template
 
 
@@ -451,14 +449,17 @@ class ExperimentManager:
     def __init__(self) -> None:
         self.feedback_system = AIFeedbackSystem()
         self.current_participant: Optional[Dict[str, Any]] = None
-        self.experiment_data: List[ExperimentData] = []
 
-    def create_participant(self, demographic_data: Dict[str, Any], condition: Optional[PraiseCondition] = None) -> str:
+    def create_participant(
+        self,
+        demographic_data: Dict[str, Any],
+        assigned_condition: Optional[PraiseCondition] = None,
+    ) -> str:
         participant_id = f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}"
-        assigned_condition = condition or random.choice(list(PraiseCondition))
+        condition = assigned_condition or random.choice(list(PraiseCondition))
         self.current_participant = {
             "id": participant_id,
-            "condition": assigned_condition,
+            "condition": condition,
             "demographic": demographic_data,
             "start_time": time.time(),
             "inference_responses": [],
@@ -476,27 +477,30 @@ class ExperimentManager:
     ) -> str:
         if not self.current_participant:
             raise ValueError("참가자 정보가 초기화되지 않았습니다.")
-        response_data = {
+        record = {
             "question_id": question_id,
             "selected_option": selected_option,
             "selected_reason": selected_reason,
             "response_time": response_time,
             "timestamp": datetime.now().isoformat(),
         }
-        self.current_participant["inference_responses"].append(response_data)
-        feedback = self.feedback_system.generate_feedback(self.current_participant["condition"], selected_reason)
+        self.current_participant["inference_responses"].append(record)
+        feedback = self.feedback_system.generate_feedback(
+            self.current_participant["condition"], selected_reason
+        )
         self.current_participant["feedback_messages"].append(feedback)
         return feedback
 
     def process_survey_response(self, question_id: str, rating: int) -> None:
         if not self.current_participant:
             raise ValueError("참가자 정보가 초기화되지 않았습니다.")
-        response_data = {
-            "question_id": question_id,
-            "rating": rating,
-            "timestamp": datetime.now().isoformat(),
-        }
-        self.current_participant["survey_responses"].append(response_data)
+        self.current_participant["survey_responses"].append(
+            {
+                "question_id": question_id,
+                "rating": rating,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
     def complete_experiment(self) -> ExperimentData:
         if not self.current_participant:
@@ -515,7 +519,6 @@ class ExperimentManager:
             },
             completion_time=completion_time,
         )
-        self.experiment_data.append(data)
         self.current_participant = None
         return data
 
@@ -524,19 +527,12 @@ class DataAnalyzer:
     def __init__(self, experiment_data: List[ExperimentData]) -> None:
         self.data = experiment_data
 
-    def get_condition_summary(self) -> Dict[str, int]:
-        summary: Dict[str, int] = {}
-        for d in self.data:
-            key = d.condition.value
-            summary[key] = summary.get(key, 0) + 1
-        return summary
-
     def get_motivation_scores(self) -> Dict[str, Dict[str, float]]:
         scores: Dict[str, Dict[str, List[float]]] = {}
-        for data in self.data:
-            condition_key = data.condition.value
+        for d in self.data:
+            key = d.condition.value
             scores.setdefault(
-                condition_key,
+                key,
                 {
                     "interest_enjoyment": [],
                     "perceived_competence": [],
@@ -546,86 +542,25 @@ class DataAnalyzer:
                     "pressure_tension": [],
                 },
             )
-            for response in data.survey_responses:
+            for response in d.survey_responses:
                 question = MOTIVATION_BY_ID.get(response["question_id"])
-                if not question:
-                    continue
-                rating = response["rating"]
-                if question.reverse:
-                    rating = 8 - rating
-                scores[condition_key][question.category].append(rating)
-        averaged: Dict[str, Dict[str, float]] = {}
-        for condition_key, cat_scores in scores.items():
-            averaged[condition_key] = {
-                category: (sum(values) / len(values) if values else 0.0)
-                for category, values in cat_scores.items()
-            }
-        return averaged
-
-    def get_response_time_analysis(self) -> Dict[str, float]:
-        times: Dict[str, List[float]] = {}
-        for data in self.data:
-            condition_key = data.condition.value
-            times.setdefault(condition_key, [])
-            for response in data.inference_responses:
-                times[condition_key].append(response["response_time"])
+                if question:
+                    rating = response["rating"]
+                    if question.reverse:
+                        rating = question.scale + 1 - rating
+                    scores[key][question.category].append(rating)
         return {
-            condition: (sum(values) / len(values) if values else 0.0)
-            for condition, values in times.items()
+            condition: {
+                cat: (sum(vals) / len(vals) if vals else 0.0)
+                for cat, vals in categories.items()
+            }
+            for condition, categories in scores.items()
         }
 
 
-class AdvancedAnalyzer:
-    def __init__(self, data: List[ExperimentData]) -> None:
-        self.data = data
-
-    def condition_comparison(self) -> Dict[str, Any]:
-        results: Dict[str, Any] = {}
-        for condition in PraiseCondition:
-            rows = [d for d in self.data if d.condition == condition]
-            if not rows:
-                continue
-            motivation_scores: Dict[str, Dict[str, float]] = {}
-            for category in [
-                "interest_enjoyment",
-                "perceived_competence",
-                "effort_importance",
-                "value_usefulness",
-                "autonomy",
-                "pressure_tension",
-            ]:
-                cat_scores = []
-                for item in rows:
-                    cat_values = [
-                        8 - r["rating"] if MOTIVATION_BY_ID[r["question_id"]].reverse else r["rating"]
-                        for r in item.survey_responses
-                        if MOTIVATION_BY_ID[r["question_id"]].category == category
-                    ]
-                    if cat_values:
-                        cat_scores.append(sum(cat_values) / len(cat_values))
-                motivation_scores[category] = {
-                    "mean": sum(cat_scores) / len(cat_scores) if cat_scores else 0.0,
-                    "count": len(cat_scores),
-                }
-            response_times = [r["response_time"] for item in rows for r in item.inference_responses]
-            results[condition.value] = {
-                "n": len(rows),
-                "motivation_scores": motivation_scores,
-                "response_time": {
-                    "mean": (sum(response_times) / len(response_times)) if response_times else 0.0,
-                    "count": len(response_times),
-                },
-                "completion_time": {
-                    "mean": sum(item.completion_time for item in rows) / len(rows),
-                    "count": len(rows),
-                },
-            }
-        return results
-
-
-# ======================================================================================
-# ─── UI CONSTANTS ─────────────────────────────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# Consent / instructions HTML (from main_1110ver orgin.py)
+# --------------------------------------------------------------------------------------
 
 COMMON_CSS = """
 <style>
@@ -660,34 +595,28 @@ COMMON_CSS = """
 </style>
 """
 
-CONSENT_HTML = (BASE_DIR / "requirements.docx").exists()  # dummy check to silence pyright
 CONSENT_HTML = """
 <div class="consent-wrap">
   <h1>연구대상자 설명문</h1>
   <div class="subtitle"><strong>제목: </strong>인공지능 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
   <h2>1. 연구 목적</h2>
-  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다.</p>
-  <p>본 연구는 학습 상황에서 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지를 경험적으로 검증하고자 합니다. 또한, 참여자가 AI 에이전트를 얼마나 ‘인간처럼’ 지각하는지(지각된 의인화 수준)가 이 관계를 조절하는지를 함께 탐구합니다.</p>
+  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 다양한 학습 환경에서 활용되고 있습니다. 본 연구는 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지 경험적으로 검증합니다.</p>
   <h2>2. 연구 참여 대상</h2>
-  <p>참여 대상: 만 18세 이상 성인으로 한국어 사용자를 대상으로 합니다.</p>
-  <p>단, 한국어 사용이 미숙하여 주어진 문장을 이해하기 어렵거나, 단어를 파악하지 못하는 경우 연구 대상에서 제외됩니다.</p>
+  <p>만 18세 이상 한국어 사용자를 대상으로 하며, 문장 이해가 어려운 경우 제외될 수 있습니다.</p>
   <h2>3. 연구 방법</h2>
-  <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 일반적인 의인화 경향성을 알아보는 문항과 성취목표지향성에 대한 문항 총 56개를 진행하고 추론 과제를 진행하게 됩니다. 추론 과제 이후에 AI 에이전트의 평가 문장을 받아볼 수 있습니다. 추론 과제는 총 2회 진행됩니다. 마지막으로 학습에 관한 문항에 응답을 하며 연구 참여가 종료됩니다.</p>
-  <p>전체 연구 참여 시간은 10분에서 15분 정도입니다.</p>
+  <p>의인화 및 성취 관련 설문 56문항, 추론 과제 2회차, AI 피드백 확인, 학습 동기 설문, 연락처 입력 순으로 진행되며 약 10~15분 소요됩니다.</p>
   <h2>4. 연구 참여 기간</h2>
-  <p>연구 참여는 접속 링크가 살아있는 기간 언제든 참여가 가능하지만, 참여 가능 횟수는 1회입니다.</p>
-  <h2>5. 연구 참여에 따른 이익 및 보상</h2>
-  <p>연구 참여자에게는 1500원 상당의 기프티콘이 발송됩니다. 기프티콘 발송을 위해 휴대폰 번호가 필요하며, 미입력 시 답례품 제공이 어려울 수 있습니다.</p>
-  <h2>6. 연구 과정에서의 부작용 또는 위험요소 및 조치</h2>
-  <p>연구 도중 불편감을 느끼는 경우 언제든 연구를 중단할 수 있으며 어떠한 불이익도 없습니다.</p>
-  <p>예상되는 불편감은 과제의 지루함, AI 평가에 대한 불편감, 과제 지속 부담감 등이 있으며, 심리적 불편 시 연구책임자가 1회의 심리 상담 지원을 제공합니다.</p>
+  <p>링크가 활성화된 기간 내 1회 참여 가능합니다.</p>
+  <h2>5. 연구 참여 보상</h2>
+  <p>1500원 상당의 기프티콘이 발송되며, 휴대폰 번호를 입력하지 않으면 보상이 어려울 수 있습니다.</p>
+  <h2>6. 위험요소 및 조치</h2>
+  <p>지루함, AI 평가에 대한 불편감 등 경미한 불편감을 느낄 수 있으며, 언제든지 연구를 중단할 수 있습니다.</p>
   <h2>7. 개인정보와 비밀보장</h2>
-  <p>성별, 연령, 휴대폰 번호를 수집하며 연구 종료 후 3년간 보관 후 폐기합니다. 수집된 정보는 개인정보보호법에 따라 관리되며 연구자만 접근합니다.</p>
-  <h2>8. 자발적 연구 참여와 중지</h2>
-  <p>자발적 참여이며 언제든 중단할 수 있습니다. 참여 중지 시 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다.</p>
-  <h2>* 연구 문의</h2>
-  <p>가톨릭대학교 발달심리학 오현택, 010-6532-3161, toh315@gmail.com</p>
-  <p>가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 02-2164-4827</p>
+  <p>성별, 연령, 휴대폰 번호를 수집하며 연구 종료 후 3년간 안전하게 보관 후 폐기됩니다.</p>
+  <h2>8. 자발적 참여와 중지</h2>
+  <p>자발적으로 참여하며 언제든 중단할 수 있습니다. 연구 중단 시 불이익이 없습니다.</p>
+  <h2>* 문의</h2>
+  <p>가톨릭대학교 발달심리학 오현택 (010-6532-3161, toh315@gmail.com)</p>
 </div>
 """
 
@@ -699,8 +628,8 @@ AGREE_HTML = """
     <li><span class="agree-num">1.</span>연구 설명문을 충분히 이해하였습니다.</li>
     <li><span class="agree-num">2.</span>연구 참여 시 발생할 위험과 이득을 숙지하였습니다.</li>
     <li><span class="agree-num">3.</span>자발적으로 연구 참여에 동의합니다.</li>
-    <li><span class="agree-num">4.</span>수집된 개인정보 처리에 동의합니다.</li>
-    <li><span class="agree-num">5.</span>관련 기관에서 연구 자료를 열람할 수 있음을 이해합니다.</li>
+    <li><span class="agree-num">4.</span>연구에서 수집되는 개인정보 처리에 동의합니다.</li>
+    <li><span class="agree-num">5.</span>연구 관련 자료 열람 가능성에 동의합니다.</li>
     <li><span class="agree-num">6.</span>언제든 참여를 철회할 수 있으며 불이익이 없음을 이해합니다.</li>
   </ol>
 </div>
@@ -712,7 +641,7 @@ PRIVACY_HTML = """
   <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
   <table class="privacy-table">
     <tr>
-      <th>수집 개인정보 항목</th>
+      <th>수집 개인정보</th>
       <td>성별, 나이, 휴대폰 번호</td>
     </tr>
     <tr>
@@ -721,13 +650,13 @@ PRIVACY_HTML = """
         <p>연구 수행 및 논문 작성을 위한 기초 데이터</p>
         <ol>
           <li>연구 수행: 성별, 나이, 휴대폰 번호</li>
-          <li>민감한 개인정보(인종, 사상 등)는 수집하지 않습니다.</li>
+          <li>민감정보는 수집하지 않습니다.</li>
         </ol>
       </td>
     </tr>
     <tr>
       <th>제3자 제공 및 목적 외 이용</th>
-      <td>법이 요구하거나 IRB가 검증을 위해 열람할 수 있습니다.</td>
+      <td>법적 요구 또는 IRB 검증 목적에 한해 자료를 열람할 수 있습니다.</td>
     </tr>
     <tr>
       <th>보유 및 이용기간</th>
@@ -735,11 +664,6 @@ PRIVACY_HTML = """
     </tr>
   </table>
   <p class="privacy-note">※ 동의를 거부할 수 있으나, 그 경우 연구 참여가 어려울 수 있습니다.</p>
-  <ul class="privacy-bullets">
-    <li>동의한 범위 외 목적 사용 금지</li>
-    <li>만 18세 미만은 법정대리인 동의 필요</li>
-    <li>관련 법규에 따라 개인정보 수집 및 활용에 동의합니다.</li>
-  </ul>
 </div>
 """
 
@@ -749,17 +673,17 @@ GRAMMAR_INFO_MD = r"""
 - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
 **명사구(NP) 규칙**  
-A) **소유**: 명사 뒤 `-mi` → “~의” (예: *nuk-mi ani* = 사람의 집)  
-B) **복수**: 명사 뒤 `-t` (예: *nuk-t* = 사람들). 복수 소유자는 `명사 + -t + -mi` (예: *nuk-t-mi*)  
-C) **목적 표지**: NP 오른쪽 끝에만 `-ka` (등위 구조에서도 마지막 항만)  
-D) **어순**: 바깥 소유자 → 안쪽 소유자 → 머리 명사  
-E) **정관(-ri)**: NP 말단, 사례표지(-ka) 앞 위치
+- 소유: 명사 뒤 `-mi` (예: *nuk-mi ani* = 사람의 집)  
+- 복수: `-t`; 복수+소유는 `-t-mi`  
+- 목적 표지: NP 오른쪽 끝에 `-ka` (등위 구조에서도 마지막 항만)  
+- 어순: 바깥 소유자 → 안쪽 소유자 → 머리 명사  
+- 정관 `-ri`: NP 말단, `-ka` 앞 위치
 
-**동사 시제·상(TAM) 규칙**  
-1) **시제**: `-na`(현재), `-tu`(과거), `-ki`(미래)  
-2) **상(Aspect)**: `-mu`(완료), `-li`(진행)  
-3) **형태소 순서**: 동사 + 상 + 시제 (예: *niri-mu-tu*)  
-4) **맥락 단서**: 이미/항상/어제/내일까지 등 시제·상 선택 기준
+**동사 시제·상(TAM)**  
+- 시제: `-na`(현재), `-tu`(과거), `-ki`(미래)  
+- 상: `-mu`(완료), `-li`(진행)  
+- 순서: 동사 + 상 + 시제 (예: *niri-mu-tu*)  
+- 맥락 단서: 이미/항상/어제/내일까지 등으로 시제·상을 결정
 """
 
 REASON_NOUN_LABELS = [
@@ -771,22 +695,21 @@ REASON_NOUN_LABELS = [
 ]
 
 REASON_VERB_LABELS = [
-    "시제 단서 해석(어제/내일/항상 등)",
+    "시제 단서 해석(어제/내일/항상)",
     "상(완료·진행) 단서 해석(이미/…하는 중)",
     "형태소 순서: 동사+상+시제",
     "‘…까지/후/전’ 단서에 따른 완료 선택",
     "연결문에서 시제 일관성 유지",
 ]
 
-# ======================================================================================
-# ─── JS HELPERS ──────────────────────────────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# JS helpers (scroll + MCP animation) kept from scaffold
+# --------------------------------------------------------------------------------------
 
 
 def scroll_top_js(nonce: Optional[int] = None) -> None:
-    if nonce is None:
-        nonce = st.session_state.get("_scroll_nonce", 0)
-        st.session_state["_scroll_nonce"] = nonce + 1
+    nonce = nonce or st.session_state.get("_scroll_nonce", 0)
+    st.session_state["_scroll_nonce"] = nonce + 1
     script = """
         <script id="goTop-{nonce}">
         (function(){{
@@ -878,12 +801,8 @@ def run_mcp_motion(round_no: int) -> None:
       var timer = setInterval(tick, step);
     })();
     </script>
-    """
-    components.html(
-        html.replace("__LOGS__", json.dumps(logs, ensure_ascii=False)).replace("__ROUND__", str(round_no)),
-        height=640,
-        scrolling=False,
-    )
+    """.replace("__LOGS__", json.dumps(logs, ensure_ascii=False)).replace("__ROUND__", str(round_no))
+    components.html(html, height=640, scrolling=False)
 
 
 def inject_covx_toggle(round_no: int) -> None:
@@ -914,9 +833,9 @@ def inject_covx_toggle(round_no: int) -> None:
         unsafe_allow_html=True,
     )
 
-# ======================================================================================
-# ─── UTILITIES ────────────────────────────────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# GCP / Google Sheet remote writer (ported from main_1110ver orgin.py, updated for env)
+# --------------------------------------------------------------------------------------
 
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -926,47 +845,14 @@ GOOGLE_SCOPES = [
 
 @st.cache_resource(show_spinner=False)
 def _cached_gspread_client(credentials_json: str) -> Any:
-    if gspread is None or Credentials is None:  # pragma: no cover - runtime guard
-        raise RuntimeError("gspread 또는 google-auth 패키지가 설치되어 있지 않습니다.")
+    if gspread is None or Credentials is None:
+        raise RuntimeError("gspread 또는 google-auth가 설치되어 있지 않습니다.")
     info = json.loads(credentials_json)
     pk = info.get("private_key")
     if isinstance(pk, str) and "\\n" in pk and "-----BEGIN PRIVATE KEY-----" in pk:
         info["private_key"] = pk.replace("\\n", "\n")
     creds = Credentials.from_service_account_info(info, scopes=GOOGLE_SCOPES)
     return gspread.authorize(creds)
-
-
-def _load_local_json(filename: str) -> Optional[List[str]]:
-    try:
-        path = BASE_DIR / "data" / filename
-        if not path.exists():
-            return None
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as exc:  # pragma: no cover - runtime guard
-        st.error(f"로컬 리소스를 불러오지 못했습니다: {exc}")
-        return None
-
-
-def _format_datetime(dt: Optional[str]) -> str:
-    if not dt:
-        return ""
-    try:
-        return datetime.fromisoformat(dt).strftime("%Y-%m-%d")
-    except Exception:  # pragma: no cover
-        return dt
-
-
-def _calculate_accuracy(score: int, total: int) -> str:
-    try:
-        return f"{score / total:.3f}"
-    except Exception:  # pragma: no cover
-        return ""
-
-
-# ======================================================================================
-# ─── REMOTE WRITER ────────────────────────────────────────────────────────────────────
-# ======================================================================================
 
 
 class RemoteWriter:
@@ -976,45 +862,41 @@ class RemoteWriter:
         self.reason: Optional[str] = None
         self.sheet = None
         self.worksheet_name = os.getenv("GOOGLE_SHEET_WORKSHEET", "resp")
-        self._client = None
-        self.credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
         self.sheet_id = os.getenv("GOOGLE_SHEET_ID")
         self.sheet_url = os.getenv("GOOGLE_SHEET_URL")
-        if not self.credentials_json:
-            self.reason = "GOOGLE_APPLICATION_CREDENTIALS_JSON 환경 변수가 설정되지 않았습니다."
+        if not credentials_json:
+            self.reason = "GOOGLE_APPLICATION_CREDENTIALS_JSON 환경 변수가 필요합니다."
             return
         if not self.sheet_id and not self.sheet_url:
-            self.reason = "GOOGLE_SHEET_ID 또는 GOOGLE_SHEET_URL 환경 변수를 설정해야 합니다."
+            self.reason = "GOOGLE_SHEET_ID 또는 GOOGLE_SHEET_URL을 설정해야 합니다."
             return
         try:
-            self._client = _cached_gspread_client(self.credentials_json)
+            self.client = _cached_gspread_client(credentials_json)
             self.sheet = self._open_sheet()
             self.enabled = True
-        except Exception as exc:  # pragma: no cover - runtime guard
+        except Exception as exc:  # pragma: no cover
             self.reason = f"GCP 초기화 실패: {exc}"
+            self.client = None
 
     def _open_sheet(self) -> Any:
-        assert self._client is not None
         if self.sheet_id:
-            return self._client.open_by_key(self.sheet_id)
+            return self.client.open_by_key(self.sheet_id)
         if self.sheet_url:
-            return self._client.open_by_url(self.sheet_url)
-        raise RuntimeError("스프레드시트 식별자를 찾을 수 없습니다.")
+            return self.client.open_by_url(self.sheet_url)
+        raise RuntimeError("스프레드시트 식별자를 찾지 못했습니다.")
 
-    def _get_worksheet(self) -> Any:
-        assert self.sheet is not None
+    def _worksheet(self) -> Any:
         try:
             return self.sheet.worksheet(self.worksheet_name)
         except WorksheetNotFound:
             return self.sheet.sheet1
 
     def append_row(self, row: List[Any]) -> None:
-        if not self.enabled:
+        if not self.enabled or self.dry_run:
             return
-        if self.dry_run:
-            return
-        worksheet = self._get_worksheet()
-        worksheet.append_row(row, value_input_option="RAW")
+        ws = self._worksheet()
+        ws.append_row(row, value_input_option="RAW")
 
 
 def get_remote_writer() -> RemoteWriter:
@@ -1025,23 +907,26 @@ def get_remote_writer() -> RemoteWriter:
     return writer
 
 
-def build_export_row(payload: Dict[str, Any], experiment_data: ExperimentData) -> List[Any]:
+def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[Any]:
     consent = payload.get("consent", {})
     demographic = payload.get("demographic", {})
     anthro = payload.get("anthro_responses", [])
     achive = payload.get("achive_responses", [])
     motivation = payload.get("motivation_responses", [])
-    difficulty_checks = payload.get("difficulty_checks", {})
+    inference_details = payload.get("inference_details", [])
+    feedback_condition = payload.get("feedback_condition", "")
+    difficulty = payload.get("difficulty_checks", {})
     start_iso = payload.get("start_time")
     end_iso = payload.get("end_time")
-    inference_details = payload.get("inference_details", [])
-    feedback_set = payload.get("feedback_condition", "")
-    date = _format_datetime(start_iso)
+    phone = payload.get("phone", "")
+    open_feedback = payload.get("open_feedback", "")
 
-    score = sum(1 for item in inference_details if item["selected_option"] == item["correct_idx"])
-    reason_score = sum(1 for item in inference_details if item["selected_reason_idx"] == item["correct_reason_idx"])
-    duration = sum(float(item["response_time"]) for item in inference_details)
-    accuracy = _calculate_accuracy(score, len(inference_details)) if inference_details else ""
+    score = sum(1 for d in inference_details if d["selected_option"] == d["correct_idx"])
+    reason_score = sum(
+        1 for d in inference_details if d["selected_reason_idx"] == d["correct_reason_idx"]
+    )
+    duration = sum(float(d["response_time"]) for d in inference_details)
+    accuracy = f"{score / len(inference_details):.3f}" if inference_details else ""
 
     per_q_fields: List[Any] = []
     for item in inference_details:
@@ -1054,38 +939,36 @@ def build_export_row(payload: Dict[str, Any], experiment_data: ExperimentData) -
             ]
         )
 
-    motivation_str = ",".join(str(x) for x in motivation)
-    anthro_str = ",".join("" if v is None else str(v) for v in anthro)
-    achive_str = ",".join("" if v is None else str(v) for v in achive)
+    metadata = json.dumps(
+        {
+            "participant_id": record.participant_id,
+            "condition": record.condition.value,
+            "difficulty": difficulty,
+            "motivation_category_scores": payload.get("motivation_category_scores", {}),
+            "open_feedback": open_feedback,
+        },
+        ensure_ascii=False,
+    )
 
-    row = [
-        date,
+    return [
+        datetime.fromisoformat(start_iso).strftime("%Y-%m-%d") if start_iso else "",
         consent.get("consent_research", ""),
         consent.get("consent_privacy", ""),
         demographic.get("gender", ""),
         demographic.get("age_group", ""),
-        anthro_str,
-        achive_str,
+        ",".join("" if v is None else str(v) for v in anthro),
+        ",".join("" if v is None else str(v) for v in achive),
         round(duration, 2) if inference_details else "",
         score if inference_details else "",
         accuracy,
         *per_q_fields,
-        feedback_set,
-        motivation_str,
-        payload.get("phone", ""),
+        feedback_condition,
+        ",".join(str(v) for v in motivation),
+        phone,
         start_iso or "",
         end_iso or "",
-        json.dumps(
-            {
-                "participant_id": experiment_data.participant_id,
-                "condition": experiment_data.condition.value,
-                "difficulty_checks": difficulty_checks,
-                "motivation_categories": payload.get("motivation_category_scores", {}),
-            },
-            ensure_ascii=False,
-        ),
+        metadata,
     ]
-    return row
 
 
 def export_session_json(payload: Dict[str, Any]) -> None:
@@ -1093,10 +976,9 @@ def export_session_json(payload: Dict[str, Any]) -> None:
         st.code(json.dumps(payload, ensure_ascii=False, indent=2), language="json")
 
 
-# ======================================================================================
-# ─── SESSION & STATE HELPERS ──────────────────────────────────────────────────────────
-# ======================================================================================
-
+# --------------------------------------------------------------------------------------
+# Session bootstrap & sidebar controls
+# --------------------------------------------------------------------------------------
 
 def ensure_session_state() -> None:
     ss = st.session_state
@@ -1104,8 +986,6 @@ def ensure_session_state() -> None:
         ss.phase = "consent"
     if "consent_step" not in ss:
         ss.consent_step = "explain"
-    if "PageInit" not in ss:
-        ss.PageInit = True
     if "payload" not in ss:
         ss.payload = {
             "consent": {},
@@ -1116,39 +996,37 @@ def ensure_session_state() -> None:
             "motivation_category_scores": {},
             "difficulty_checks": {},
             "inference_details": [],
-            "feedback_condition": "",
             "feedback_messages": {"nouns": [], "verbs": []},
+            "feedback_condition": "",
+            "open_feedback": "",
             "start_time": None,
             "end_time": None,
             "phone": "",
             "participant_id": None,
         }
-    if "DRY_RUN" not in ss:
-        ss.DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
     if "manager" not in ss:
         ss.manager = ExperimentManager()
     if "round_state" not in ss:
         ss.round_state = {
             "nouns_index": 0,
             "verbs_index": 0,
-            "nouns_start": None,
-            "verbs_start": None,
+            "question_start": None,
             "last_feedback": None,
-            "nouns_completed": False,
-            "verbs_completed": False,
         }
+    if "analysis_seen" not in ss:
+        ss.analysis_seen = {"nouns": False, "verbs": False}
+    if "exported" not in ss:
+        ss.exported = False
     if "motivation_page" not in ss:
         ss.motivation_page = 1
     if "anthro_page" not in ss:
         ss.anthro_page = 1
     if "achive_page" not in ss:
         ss.achive_page = 1
-    if "export_saved" not in ss:
-        ss.export_saved = False
-    if "experiment_record" not in ss:
-        ss.experiment_record = None
-    if "analysis_seen" not in ss:
-        ss.analysis_seen = {"nouns": False, "verbs": False}
+    if "DRY_RUN" not in ss:
+        ss.DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
+    if "record" not in ss:
+        ss.record = None
 
 
 def set_phase(next_phase: str) -> None:
@@ -1174,93 +1052,108 @@ def sidebar_controls() -> None:
         st.markdown("**현재 단계:**")
         st.write(st.session_state.phase)
         if st.button("처음부터 다시 시작", type="secondary"):
-            for key in list(st.session_state.keys()):
+            keys = list(st.session_state.keys())
+            for key in keys:
                 del st.session_state[key]
             st.experimental_rerun()
 
 
-# ======================================================================================
-# ─── RENDERING HELPERS ────────────────────────────────────────────────────────────────
-# ======================================================================================
+def _load_local_json(filename: str) -> Optional[List[str]]:
+    path = BASE_DIR / "data" / filename
+    if not path.exists():
+        st.error(f"로컬 리소스 {filename} 을(를) 찾지 못했습니다.")
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        st.error(f"{filename} 로드 중 문제가 발생했습니다: {exc}")
+        return None
 
+
+# --------------------------------------------------------------------------------------
+# Rendering helpers for each phase
+# --------------------------------------------------------------------------------------
 
 def render_consent() -> None:
     scroll_top_js()
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
+
     if st.session_state.consent_step == "explain":
         st.title("연구대상자 설명문")
         st.markdown(CONSENT_HTML, unsafe_allow_html=True)
-        if st.button("다음", use_container_width=True, key="consent_explain_next"):
+        if st.button("다음", use_container_width=True):
             st.session_state.consent_step = "agree"
             st.experimental_rerun()
-    else:
-        st.title("연구 동의서 및 개인정보 동의")
-        st.markdown(AGREE_HTML, unsafe_allow_html=True)
-        consent_research = st.radio(
-            "연구 참여에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
-            horizontal=True,
-            key="consent_research",
-        )
-        st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
-        consent_privacy = st.radio(
-            "개인정보 수집·이용에 동의하십니까?",
-            ["동의함", "동의하지 않음"],
-            horizontal=True,
-            key="consent_privacy",
-        )
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("이전으로", use_container_width=True, key="consent_back"):
-                st.session_state.consent_step = "explain"
-                st.experimental_rerun()
-        with col2:
-            if st.button("동의하고 계속", use_container_width=True, key="consent_next"):
-                if consent_research != "동의함" or consent_privacy != "동의함":
-                    st.warning("연구 및 개인정보 동의가 모두 필요합니다.")
-                else:
-                    st.session_state.payload["consent"] = {
-                        "consent_research": consent_research,
-                        "consent_privacy": consent_privacy,
-                    }
-                    st.session_state.payload["start_time"] = datetime.utcnow().isoformat()
-                    set_phase("demographic")
+        return
+
+    st.title("연구 동의 및 개인정보 동의")
+    st.markdown(AGREE_HTML, unsafe_allow_html=True)
+    consent_research = st.radio(
+        "연구 참여에 동의하십니까?",
+        ["동의함", "동의하지 않음"],
+        horizontal=True,
+        key="consent_research_radio",
+    )
+    st.markdown(PRIVACY_HTML, unsafe_allow_html=True)
+    consent_privacy = st.radio(
+        "개인정보 수집·이용에 동의하십니까?",
+        ["동의함", "동의하지 않음"],
+        horizontal=True,
+        key="consent_privacy_radio",
+    )
+    cols = st.columns(2)
+    with cols[0]:
+        if st.button("이전", use_container_width=True):
+            st.session_state.consent_step = "explain"
+            st.experimental_rerun()
+    with cols[1]:
+        if st.button("동의하고 진행", use_container_width=True):
+            if consent_research != "동의함" or consent_privacy != "동의함":
+                st.warning("연구 및 개인정보 동의가 모두 필요합니다.")
+            else:
+                st.session_state.payload["consent"] = {
+                    "consent_research": consent_research,
+                    "consent_privacy": consent_privacy,
+                }
+                st.session_state.payload["start_time"] = datetime.utcnow().isoformat()
+                set_phase("demographic")
 
 
 def render_demographic() -> None:
     scroll_top_js()
     st.title("인적사항 입력")
-    st.write("연구 참여 통계 및 조건 배정을 위하여 아래 정보를 입력해 주세요.")
-    gender = st.radio("성별", ["남자", "여자", "기타/응답하지 않음"], key="demo_gender")
+    st.write("연구 통계와 조건 배정을 위해 아래 정보를 입력해 주세요.")
+    gender = st.radio("성별", ["남자", "여자", "기타/응답하지 않음"], key="demographic_gender")
     age_group = st.selectbox(
         "연령대",
         ["선택해 주세요", "10대", "20대", "30대", "40대", "50대", "60대 이상"],
-        key="demo_age",
+        key="demographic_age",
     )
     education = st.selectbox(
         "최종 학력",
         ["선택해 주세요", "고등학교 졸업 이하", "대학(재학/졸업)", "대학원(재학/졸업)", "기타"],
-        key="demo_edu",
+        key="demographic_edu",
     )
-    language = st.text_input("주 사용 언어 (선택 사항)", key="demo_lang")
-    if st.button("다음 단계", use_container_width=True, key="demo_submit"):
+    language = st.text_input("주 사용 언어 (선택 사항)", key="demographic_language")
+    if st.button("다음 단계", use_container_width=True):
         if age_group == "선택해 주세요" or education == "선택해 주세요":
-            st.warning("모든 필수 항목을 선택해 주세요.")
-        else:
-            st.session_state.payload["demographic"] = {
-                "gender": gender,
-                "age_group": age_group,
-                "education": education,
-                "language": language.strip(),
-            }
-            condition = random.choice(list(PraiseCondition))
-            participant_id = st.session_state.manager.create_participant(
-                demographic_data=st.session_state.payload["demographic"],
-                condition=condition,
-            )
-            st.session_state.payload["participant_id"] = participant_id
-            st.session_state.payload["feedback_condition"] = condition.value
-            set_phase("instructions")
+            st.warning("모든 필수 항목을 입력해 주세요.")
+            return
+        st.session_state.payload["demographic"] = {
+            "gender": gender,
+            "age_group": age_group,
+            "education": education,
+            "language": language.strip(),
+        }
+        condition = random.choice(list(PraiseCondition))
+        participant_id = st.session_state.manager.create_participant(
+            st.session_state.payload["demographic"],
+            assigned_condition=condition,
+        )
+        st.session_state.payload["participant_id"] = participant_id
+        st.session_state.payload["feedback_condition"] = condition.value
+        set_phase("instructions")
 
 
 def render_instructions() -> None:
@@ -1268,21 +1161,19 @@ def render_instructions() -> None:
     st.title("연구 진행 안내")
     st.markdown(
         """
-- 이번 연구는 **AI 피드백**이 학습 동기에 미치는 영향을 살펴봅니다.
-- 전체 소요 시간은 약 **10~15분**이며, 아래 순서로 진행됩니다.
-
-1. 의인화/성취 관련 설문 (총 56문항)  
-2. 추론 과제 1회차 (명사구 문법 12문항) + AI 피드백  
-3. 추론 과제 2회차 (동사 시제·상 12문항) + AI 피드백  
-4. 학습 동기 설문 (26문항)  
-5. 연구 종료 안내 및 연락처 입력 (선택)
-
-실험 중에는 **뒤로 가기 버튼을 사용하지 말고**, 화면에 보이는 버튼으로 이동해 주세요.
+- 전체 소요 시간은 약 **10~15분**입니다.
+- 연구는 다음 순서로 진행됩니다.
+  1. 의인화/성취 관련 설문 (56문항)
+  2. 추론 과제 1회차 (명사구 12문항) + AI 피드백
+  3. 추론 과제 2회차 (동사 시제·상 12문항) + AI 피드백
+  4. 학습 동기 설문 (26문항)
+  5. 연구 종료 안내 및 연락처 입력 (선택 사항)
+- 화면의 버튼으로만 이동해 주세요.
 """
     )
-    with st.expander("📘 추론 규칙 요약 (필독)", expanded=True):
+    with st.expander("📘 추론 규칙 요약", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
-    if st.button("설문 시작", use_container_width=True, key="instructions_next"):
+    if st.button("설문 시작", use_container_width=True):
         set_phase("anthro")
 
 
@@ -1293,8 +1184,8 @@ def render_paginated_likert(
     scale_max: int,
     page_state_key: str,
     responses_key: str,
-    prompt: str,
-    scale_hint: str,
+    prompt_html: str,
+    scale_hint_html: str,
     per_page: int,
 ) -> bool:
     total = len(questions)
@@ -1306,8 +1197,8 @@ def render_paginated_likert(
     if not st.session_state.payload.get(responses_key):
         st.session_state.payload[responses_key] = [None] * total
 
-    st.markdown(prompt, unsafe_allow_html=True)
-    st.markdown(scale_hint, unsafe_allow_html=True)
+    st.markdown(prompt_html, unsafe_allow_html=True)
+    st.markdown(scale_hint_html, unsafe_allow_html=True)
     st.markdown(
         f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 {start_idx + 1}–{end_idx} / {total} (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True,
@@ -1319,8 +1210,8 @@ def render_paginated_likert(
         selected = st.radio(
             f"{idx + 1}. {label}",
             list(range(scale_min, scale_max + 1)),
-            index=None if current is None else (current - scale_min),
-            format_func=lambda x: f"{x}점",
+            index=None if current is None else current - scale_min,
+            format_func=lambda val: f"{val}점",
             horizontal=True,
             key=f"{key_prefix}_{idx}",
         )
@@ -1352,17 +1243,16 @@ def render_anthro() -> None:
     scroll_top_js()
     questions = _load_local_json("questions_anthro.json")
     if not questions:
-        st.error("의인화 설문 문항을 찾을 수 없습니다. 관리자에게 문의해 주세요.")
         return
-    completed = render_paginated_likert(
+    done = render_paginated_likert(
         questions=questions,
         key_prefix="anthro",
         scale_min=1,
         scale_max=5,
         page_state_key="anthro_page",
         responses_key="anthro_responses",
-        prompt="<h2 style='text-align:center;font-weight:bold;'>AI 에이전트에 대한 인식 설문</h2>",
-        scale_hint="""
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>AI 에이전트에 대한 인식 설문</h2>",
+        scale_hint_html="""
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
   <span><b>1점</b> : 전혀 그렇지 않다</span><span>—</span>
   <span><b>3점</b> : 보통이다</span><span>—</span>
@@ -1371,7 +1261,7 @@ def render_anthro() -> None:
 """,
         per_page=10,
     )
-    if completed:
+    if done:
         set_phase("achive")
 
 
@@ -1379,17 +1269,16 @@ def render_achive() -> None:
     scroll_top_js()
     questions = _load_local_json("questions_achive.json")
     if not questions:
-        st.error("성취 관련 설문 문항을 찾을 수 없습니다. 관리자에게 문의해 주세요.")
         return
-    completed = render_paginated_likert(
+    done = render_paginated_likert(
         questions=questions,
         key_prefix="achive",
         scale_min=1,
         scale_max=6,
         page_state_key="achive_page",
         responses_key="achive_responses",
-        prompt="<h2 style='text-align:center;font-weight:bold;'>성취/접근 성향 설문</h2>",
-        scale_hint="""
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>성취/접근 성향 설문</h2>",
+        scale_hint_html="""
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
   <span><b>1</b> : 전혀 그렇지 않다</span><span>—</span>
   <span><b>3</b> : 보통이다</span><span>—</span>
@@ -1398,7 +1287,7 @@ def render_achive() -> None:
 """,
         per_page=10,
     )
-    if completed:
+    if done:
         set_phase("task_intro")
 
 
@@ -1407,39 +1296,41 @@ def render_task_intro() -> None:
     st.title("추론 과제 안내")
     st.markdown(
         """
-- **1회차 (명사구 12문항)**: 소유(-mi), 복수(-t), 목적표지(-ka) 등 규칙을 적용합니다.  
-- **2회차 (동사 12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li)의 조합을 판별합니다.  
+- **1회차 (명사구 12문항)**: 소유, 복수, 목적 표지 등 규칙을 추론합니다.  
+- **2회차 (동사 12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li)을 판별합니다.  
 - 각 문항은 5지선다이며, **추론 이유**도 5지선다에서 선택합니다.  
-- 제출 즉시 AI 에이전트가 조건에 맞는 칭찬 피드백을 제공합니다.
+- 제출 후 AI 에이전트가 조건 맞춤형 칭찬 피드백을 제공합니다.
 """
     )
     with st.expander("📘 규칙 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
-    if st.button("1회차 시작", use_container_width=True, key="task_intro_start"):
+    if st.button("1회차 시작", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
-        st.session_state.round_state["nouns_start"] = None
+        st.session_state.round_state["question_start"] = None
         set_phase("inference_nouns")
 
 
-def render_inference_round(round_key: str, questions: List[Question], reason_labels: List[str], next_phase: str) -> None:
+def render_inference_round(
+    round_key: str,
+    questions: List[Question],
+    reason_labels: List[str],
+    next_phase: str,
+) -> None:
     scroll_top_js()
     rs = st.session_state.round_state
     payload = st.session_state.payload
-    index_key = f"{round_key}_index"
-    start_key = f"{round_key}_question_start"
-    index = rs.get(index_key, 0)
+    index = rs.get(f"{round_key}_index", 0)
     if index >= len(questions):
         set_phase(next_phase)
         return
-
     question = questions[index]
-    st.title(f"추론 과제 {'1' if round_key == 'nouns' else '2'} / {len(questions)}문항 중 {index + 1}번째")
+    st.title(f"추론 과제 {1 if round_key == 'nouns' else 2} / {len(questions)}문항 중 {index + 1}번째")
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
-    st.markdown(f"선택지를 살펴본 후 **정답**과 **추론 이유**를 선택해 주세요.")
+    st.markdown("정답과 추론 이유를 모두 선택해야 제출할 수 있습니다.")
 
-    if rs.get(start_key) is None:
-        rs[start_key] = time.perf_counter()
+    if rs.get("question_start") is None:
+        rs["question_start"] = time.perf_counter()
 
     with st.form(key=f"{round_key}_form_{index}"):
         answer = st.radio(
@@ -1455,47 +1346,47 @@ def render_inference_round(round_key: str, questions: List[Question], reason_lab
             key=f"{round_key}_reason_{index}",
         )
         submitted = st.form_submit_button("응답 제출")
-    if submitted:
-        response_time = round(time.perf_counter() - rs[start_key], 2)
-        rs[start_key] = None
-        manager: ExperimentManager = st.session_state.manager
-        feedback = manager.process_inference_response(
-            question_id=question.id,
-            selected_option=answer,
-            selected_reason=reason_labels[reason],
-            response_time=response_time,
-        )
-        detail = {
-            "round": round_key,
-            "question_id": question.id,
-            "stem": question.stem,
-            "gloss": question.gloss,
-            "options": question.options,
-            "selected_option": int(answer),
-            "selected_option_text": question.options[answer],
-            "correct_idx": int(question.answer_idx),
-            "correct_text": question.options[question.answer_idx],
-            "selected_reason_idx": int(reason),
-            "selected_reason_text": reason_labels[reason],
-            "correct_reason_idx": int(question.reason_idx),
-            "response_time": response_time,
-            "timestamp": datetime.utcnow().isoformat(),
-            "feedback": feedback,
-        }
-        payload.setdefault("inference_details", []).append(detail)
-        payload["feedback_messages"][round_key].append(feedback)
-        rs[index_key] = index + 1
-        rs["last_feedback"] = feedback
-        if rs[index_key] >= len(questions):
-            summary = manager.current_participant["inference_responses"][-len(questions) :]
-            rs[f"{round_key}_summary"] = summary
-            set_phase(next_phase)
-        else:
-            st.success("응답이 저장되었습니다. 다음 문항으로 이동합니다.")
-            st.experimental_rerun()
-    else:
+
+    if not submitted:
         if rs.get("last_feedback"):
             st.info(f"이전 피드백: {rs['last_feedback']}")
+        return
+
+    response_time = round(time.perf_counter() - rs["question_start"], 2)
+    rs["question_start"] = None
+    manager: ExperimentManager = st.session_state.manager
+    feedback = manager.process_inference_response(
+        question_id=question.id,
+        selected_option=answer,
+        selected_reason=reason_labels[reason],
+        response_time=response_time,
+    )
+    detail = {
+        "round": round_key,
+        "question_id": question.id,
+        "stem": question.stem,
+        "gloss": question.gloss,
+        "options": question.options,
+        "selected_option": int(answer),
+        "selected_option_text": question.options[answer],
+        "correct_idx": int(question.answer_idx),
+        "correct_text": question.options[question.answer_idx],
+        "selected_reason_idx": int(reason),
+        "selected_reason_text": reason_labels[reason],
+        "correct_reason_idx": int(question.reason_idx),
+        "response_time": response_time,
+        "timestamp": datetime.utcnow().isoformat(),
+        "feedback": feedback,
+    }
+    payload.setdefault("inference_details", []).append(detail)
+    payload["feedback_messages"][round_key].append(feedback)
+    rs[f"{round_key}_index"] = index + 1
+    rs["last_feedback"] = feedback
+    if rs[f"{round_key}_index"] >= len(questions):
+        set_phase(next_phase)
+    else:
+        st.success("응답이 저장되었습니다. 다음 문항으로 이동합니다.")
+        st.experimental_rerun()
 
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
@@ -1522,14 +1413,14 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-def render_feedback(round_key: str, questions: List[Question], reason_labels: List[str], next_phase: str) -> None:
+def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
-    payload = st.session_state.payload
-    details = [d for d in payload["inference_details"] if d["round"] == round_key]
+    details = [d for d in st.session_state.payload["inference_details"] if d["round"] == round_key]
     total = len(details)
     score = sum(1 for d in details if d["selected_option"] == d["correct_idx"])
     reason_score = sum(1 for d in details if d["selected_reason_idx"] == d["correct_reason_idx"])
     duration = sum(float(d["response_time"]) for d in details)
+
     st.title(f"AI 칭찬 피드백 ({'명사구' if round_key == 'nouns' else '동사 TAM'})")
     st.markdown(
         f"""
@@ -1538,8 +1429,8 @@ def render_feedback(round_key: str, questions: List[Question], reason_labels: Li
 - 총 소요 시간: **{duration:.1f}초**
 """
     )
-    st.subheader("AI 피드백 메시지 하이라이트")
-    for idx, msg in enumerate(payload["feedback_messages"][round_key][-3:], start=1):
+    st.subheader("AI 메시지 하이라이트")
+    for idx, msg in enumerate(st.session_state.payload["feedback_messages"][round_key][-3:], start=1):
         st.write(f"{idx}. {msg}")
 
     st.subheader("응답 요약")
@@ -1567,11 +1458,11 @@ def render_difficulty_check() -> None:
     scroll_top_js()
     st.title("난이도 조정 의향")
     st.write("다음 라운드(동사 시제·상)를 위해 난이도가 높아져도 도전할 의향을 선택해 주세요.")
-    slider = st.slider("다음 라운드 난이도 상향 허용 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5, key="diff_slider_round1")
+    slider = st.slider("다음 라운드 난이도 상향 허용 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5)
     st.session_state.payload["difficulty_checks"]["after_round1"] = slider
-    if st.button("2회차 시작", use_container_width=True, key="difficulty_next"):
+    if st.button("2회차 시작", use_container_width=True):
         st.session_state.round_state["verbs_index"] = 0
-        st.session_state.round_state["verbs_start"] = None
+        st.session_state.round_state["question_start"] = None
         set_phase("inference_verbs")
 
 
@@ -1607,7 +1498,7 @@ def render_motivation() -> None:
         selected = st.radio(
             f"{idx + 1}. {question.text}",
             list(range(1, question.scale + 1)),
-            index=None if current is None else (current - 1),
+            index=None if current is None else current - 1,
             format_func=lambda val: f"{val}점",
             horizontal=True,
             key=f"motivation_{question.id}",
@@ -1635,18 +1526,15 @@ def render_motivation() -> None:
                 if any(v is None for v in st.session_state.payload["motivation_responses"]):
                     st.warning("모든 문항에 응답해 주세요.")
                 else:
-                    condition_scores: Dict[str, List[int]] = {}
-                    for response, question in zip(
-                        st.session_state.payload["motivation_responses"],
-                        MOTIVATION_QUESTIONS,
+                    category_scores: Dict[str, List[int]] = {}
+                    for score, question in zip(
+                        st.session_state.payload["motivation_responses"], MOTIVATION_QUESTIONS
                     ):
-                        score = response
-                        if question.reverse:
-                            score = question.scale + 1 - score
-                        condition_scores.setdefault(question.category, []).append(score)
+                        val = question.scale + 1 - score if question.reverse else score
+                        category_scores.setdefault(question.category, []).append(val)
                     st.session_state.payload["motivation_category_scores"] = {
-                        cat: round(sum(values) / len(values), 2) if values else 0
-                        for cat, values in condition_scores.items()
+                        cat: round(sum(vals) / len(vals), 2) if vals else 0.0
+                        for cat, vals in category_scores.items()
                     }
                     set_phase("post_task_reflection")
 
@@ -1655,12 +1543,12 @@ def render_post_task_reflection() -> None:
     scroll_top_js()
     st.title("마무리 질문")
     st.write("다음 기회에 더 어려운 과제가 주어져도 도전할 의향을 선택해 주세요.")
-    slider = st.slider("난이도 상향 의향 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5, key="diff_slider_final")
+    slider = st.slider("난이도 상향 의향 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5)
     st.session_state.payload["difficulty_checks"]["final"] = slider
-    st.write("연구 과정에서 느낀 점이나 연구진에게 전하고 싶은 메시지가 있다면 자유롭게 작성해 주세요.")
-    feedback_text = st.text_area("연구 참여 소감 (선택 사항)", key="open_feedback")
+    st.write("연구 과정에서 느낀 점이나 연구진에게 전하고 싶은 메시지를 남겨주세요. (선택 사항)")
+    feedback_text = st.text_area("연구 참여 소감", key="open_feedback_area")
     st.session_state.payload["open_feedback"] = feedback_text.strip()
-    if st.button("연락처 입력으로 이동", use_container_width=True, key="reflection_next"):
+    if st.button("연락처 입력으로 이동", use_container_width=True):
         set_phase("phone_input")
 
 
@@ -1668,12 +1556,11 @@ def render_phone_capture() -> None:
     scroll_top_js()
     st.title("연락처 입력 (선택 사항)")
     st.write(
-        "답례품(기프티콘) 발송을 위해 휴대폰 번호를 입력해 주세요. "
-        "입력하지 않아도 연구 참여는 완료되지만, 보상 제공이 어려울 수 있습니다."
+        "답례품(기프티콘) 발송을 위해 휴대폰 번호를 입력해 주세요. 입력하지 않아도 참여는 완료되지만 보상 제공이 어려울 수 있습니다."
     )
-    phone = st.text_input("휴대폰 번호 (예: 010-1234-5678)", key="phone_input")
+    phone = st.text_input("휴대폰 번호 (예: 010-1234-5678)")
     st.session_state.payload["phone"] = phone.strip()
-    if st.button("제출하기", use_container_width=True, key="phone_next"):
+    if st.button("제출하기", use_container_width=True):
         set_phase("summary")
 
 
@@ -1681,7 +1568,8 @@ def render_summary() -> None:
     scroll_top_js()
     manager: ExperimentManager = st.session_state.manager
     payload = st.session_state.payload
-    if not st.session_state.experiment_record:
+
+    if not st.session_state.record:
         try:
             record = manager.complete_experiment()
         except ValueError:
@@ -1702,10 +1590,10 @@ def render_summary() -> None:
                 survey_responses=[
                     {
                         "question_id": q.id,
-                        "rating": response,
+                        "rating": score,
                         "timestamp": datetime.utcnow().isoformat(),
                     }
-                    for q, response in zip(MOTIVATION_QUESTIONS, payload.get("motivation_responses", []))
+                    for q, score in zip(MOTIVATION_QUESTIONS, payload.get("motivation_responses", []))
                 ],
                 feedback_messages=[
                     *payload.get("feedback_messages", {}).get("nouns", []),
@@ -1717,12 +1605,12 @@ def render_summary() -> None:
                 },
                 completion_time=sum(d["response_time"] for d in payload.get("inference_details", [])),
             )
-        st.session_state.experiment_record = record
-    record: ExperimentData = st.session_state.experiment_record
-    payload["end_time"] = payload.get("end_time") or record.timestamps["end"]
+        st.session_state.record = record
+        payload["end_time"] = record.timestamps["end"]
+    record: ExperimentData = st.session_state.record
+
     st.title("연구 참여가 완료되었습니다")
     st.success("참여해 주셔서 감사합니다! 응답은 자동 저장되었습니다.")
-
     st.markdown(
         f"""
 - 참가자 ID: **{record.participant_id}**
@@ -1730,35 +1618,36 @@ def render_summary() -> None:
 - 총 소요 시간: **{record.completion_time:.1f}초**
 """
     )
+
     analyzer = DataAnalyzer([record])
     motivation_scores = analyzer.get_motivation_scores().get(record.condition.value, {})
-    st.subheader("동기 카테고리 평균 점수")
     if motivation_scores:
+        st.subheader("동기 카테고리 평균 점수")
         df = pd.DataFrame(
-            [{"카테고리": k, "평균 점수": round(v, 2)} for k, v in motivation_scores.items()]
+            [{"카테고리": cat, "평균 점수": round(score, 2)} for cat, score in motivation_scores.items()]
         )
         st.bar_chart(df.set_index("카테고리"))
     else:
-        st.info("설문 데이터가 충분하지 않아 점수를 계산할 수 없습니다.")
+        st.info("설문 데이터가 충분하지 않아 동기 점수를 계산할 수 없습니다.")
 
-    if not st.session_state.export_saved:
+    if not st.session_state.exported:
         writer = get_remote_writer()
         if writer.enabled and not writer.dry_run:
             try:
                 row = build_export_row(payload, record)
-                with st.spinner("원격 저장 중..."):
+                with st.spinner("Google Sheet에 저장 중..."):
                     writer.append_row(row)
-                st.session_state.export_saved = True
                 st.success("Google Sheet에 응답이 저장되었습니다.")
-            except APIError as api_error:  # pragma: no cover - runtime guard
-                st.error("원격 저장 중 오류가 발생했습니다.")
+                st.session_state.exported = True
+            except APIError as api_error:  # pragma: no cover
+                st.error("Google Sheet 저장 중 오류가 발생했습니다.")
                 st.exception(api_error)
-            except Exception as exc:  # pragma: no cover - runtime guard
+            except Exception as exc:  # pragma: no cover
                 st.error("원격 저장에 실패했습니다.")
                 st.exception(exc)
         elif writer.dry_run:
-            st.info("DRY_RUN 모드이므로 원격 저장을 건너뛰었습니다. 아래 로그를 확인하세요.")
-            st.session_state.export_saved = True
+            st.info("DRY_RUN 모드이므로 원격 저장을 건너뛰었습니다. 아래 JSON 로그를 참고하세요.")
+            st.session_state.exported = True
         else:
             st.warning(
                 "원격 저장이 비활성화되어 있습니다. 환경 변수를 설정하거나 DRY_RUN 모드로 실행해 주세요."
@@ -1769,15 +1658,15 @@ def render_summary() -> None:
     st.markdown(
         """
 #### 마지막 안내
-- 본 연구에서 제공된 AI 피드백은 사전 생성된 문장으로 실제 능력 평가가 아님을 안내드립니다.  
-- 브라우저 탭은 직접 닫아 주세요.
+- 본 연구에서 제공된 AI 피드백은 사전에 준비된 예시 문장입니다.  
+- 브라우저 탭은 자동으로 닫히지 않으니 직접 종료해 주세요.
 """
     )
 
 
-# ======================================================================================
-# ─── APPLICATION ENTRYPOINT ──────────────────────────────────────────────────────────
-# ======================================================================================
+# --------------------------------------------------------------------------------------
+# App entrypoint
+# --------------------------------------------------------------------------------------
 
 ensure_session_state()
 sidebar_controls()
@@ -1800,7 +1689,7 @@ elif phase == "inference_nouns":
 elif phase == "analysis_nouns":
     render_analysis("nouns", 1, "feedback_nouns")
 elif phase == "feedback_nouns":
-    render_feedback("nouns", NOUN_QUESTIONS, REASON_NOUN_LABELS, "difficulty_check")
+    render_feedback("nouns", REASON_NOUN_LABELS, "difficulty_check")
 elif phase == "difficulty_check":
     render_difficulty_check()
 elif phase == "inference_verbs":
@@ -1808,7 +1697,7 @@ elif phase == "inference_verbs":
 elif phase == "analysis_verbs":
     render_analysis("verbs", 2, "feedback_verbs")
 elif phase == "feedback_verbs":
-    render_feedback("verbs", VERB_QUESTIONS, REASON_VERB_LABELS, "motivation")
+    render_feedback("verbs", REASON_VERB_LABELS, "motivation")
 elif phase == "motivation":
     render_motivation()
 elif phase == "post_task_reflection":
