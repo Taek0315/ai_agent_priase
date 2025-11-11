@@ -49,6 +49,13 @@ p, .stMarkdown p   { margin-top: 0 !important; }
 html, body { overflow-x: hidden !important; }
 </style>
 """
+
+COMPACT_CSS += """
+<style>
+div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
+.mcp-footer { margin-top: 0.6rem !important; }
+</style>
+"""
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -867,6 +874,24 @@ def run_mcp_motion(round_no: int) -> None:
     components.html(html, height=640, scrolling=False)
 
 
+def radio_required(
+    label: str, options: List[str], key: str
+) -> tuple[Optional[str], bool]:
+    """
+    Render a radio input without a default selection.
+
+    Returns the selected value (or None) and whether the input is valid.
+    """
+    try:
+        value = st.radio(label, options, index=None, key=key)
+        return value, value is not None
+    except TypeError:
+        placeholder = "— Select one —"
+        opts = [placeholder] + options
+        choice = st.radio(label, opts, index=0, key=key)
+        return (None, False) if choice == placeholder else (choice, True)
+
+
 def inject_covx_toggle(round_no: int) -> None:
     st.markdown(
         f"""
@@ -1447,38 +1472,56 @@ def render_inference_round(
     )
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
-    st.markdown("정답과 추론 이유를 모두 선택해야 제출할 수 있습니다.")
+    st.markdown("정답과 추론 근거 태그, 이유 서술을 모두 완료해야 제출할 수 있습니다.")
 
     if rs.get("question_start") is None:
         rs["question_start"] = time.perf_counter()
 
-    with st.form(key=f"{round_key}_form_{index}"):
-        answer = st.radio(
-            "정답을 선택하세요",
-            list(range(len(question.options))),
-            format_func=lambda idx: f"{idx + 1}. {question.options[idx]}",
-            key=f"{round_key}_answer_{index}",
-        )
-        reason = st.radio(
-            "추론 이유를 선택하세요",
-            list(range(len(reason_labels))),
-            format_func=lambda idx: reason_labels[idx],
-            key=f"{round_key}_reason_{index}",
-        )
-        submitted = st.form_submit_button("응답 제출")
+    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(question.options)]
+    selected_answer_label, answer_valid = radio_required(
+        "정답을 선택하세요",
+        answer_labels,
+        key=f"{round_key}_answer_{index}",
+    )
 
-    if not submitted:
+    rationale_tags = reason_labels
+    selected_tag, tag_valid = radio_required(
+        "추론 근거 태그를 하나 선택하세요 (필수)",
+        rationale_tags,
+        key=f"{round_key}_tag_{index}",
+    )
+
+    reason_text = st.text_area(
+        "선택 이유를 간단히 적어주세요 (필수)",
+        key=f"{round_key}_reason_text_{index}",
+    )
+    reason_notes = reason_text.strip()
+
+    can_submit = bool(answer_valid and tag_valid and reason_notes)
+    submit_btn = st.button(
+        "응답 제출",
+        key=f"{round_key}_submit_{index}",
+        disabled=not can_submit,
+    )
+
+    if not submit_btn:
         if rs.get("last_feedback"):
             st.info(f"이전 피드백: {rs['last_feedback']}")
+        return
+
+    if not can_submit:
+        st.error("태그 선택과 이유 입력은 필수입니다.")
         return
 
     response_time = round(time.perf_counter() - rs["question_start"], 2)
     rs["question_start"] = None
     manager: ExperimentManager = st.session_state.manager
+    selected_option_idx = answer_labels.index(selected_answer_label)
+    selected_tag_idx = rationale_tags.index(selected_tag)
     feedback = manager.process_inference_response(
         question_id=question.id,
-        selected_option=answer,
-        selected_reason=reason_labels[reason],
+        selected_option=selected_option_idx,
+        selected_reason=selected_tag,
         response_time=response_time,
     )
     detail = {
@@ -1487,12 +1530,13 @@ def render_inference_round(
         "stem": question.stem,
         "gloss": question.gloss,
         "options": question.options,
-        "selected_option": int(answer),
-        "selected_option_text": question.options[answer],
+        "selected_option": int(selected_option_idx),
+        "selected_option_text": question.options[selected_option_idx],
         "correct_idx": int(question.answer_idx),
         "correct_text": question.options[question.answer_idx],
-        "selected_reason_idx": int(reason),
-        "selected_reason_text": reason_labels[reason],
+        "selected_reason_idx": int(selected_tag_idx),
+        "selected_reason_text": selected_tag,
+        "reason_notes": reason_notes,
         "correct_reason_idx": int(question.reason_idx),
         "response_time": response_time,
         "timestamp": datetime.utcnow().isoformat(),
@@ -1511,6 +1555,12 @@ def render_inference_round(
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     scroll_top_js()
+    flag_key = f"mcp_done_{round_key}"
+    st.session_state.setdefault(flag_key, False)
+    if st.session_state.get("_mcp_round") != round_key:
+        st.session_state["_mcp_round"] = round_key
+        st.session_state[flag_key] = False
+    footer_ph = st.empty()
     inject_covx_toggle(round_no)
     run_mcp_motion(round_no)
     st.markdown(
@@ -1526,13 +1576,42 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 """,
         unsafe_allow_html=True,
     )
-    st.markdown(f'<div id="mcp{round_no}-actions">', unsafe_allow_html=True)
-    if st.button(
-        "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
-    ):
-        st.session_state.analysis_seen[round_key] = True
-        set_phase(next_phase)
-    st.markdown("</div>", unsafe_allow_html=True)
+    listener_value = components.html(
+        f"""
+<script>
+(function(){{
+  const targetRound = {round_no};
+  function notifyDone(event){{
+    if (!event || !event.data || event.data.type !== 'covnox_done' || event.data.round !== targetRound) {{
+      return;
+    }}
+    window.removeEventListener('message', notifyDone);
+    const streamlit = window.parent && window.parent.Streamlit;
+    if (streamlit && streamlit.setComponentValue) {{
+      streamlit.setComponentValue('done');
+    }}
+  }}
+  window.addEventListener('message', notifyDone, false);
+}})();
+</script>
+""",
+        height=0,
+        key=f"covx-listener-{round_key}",
+    )
+    if listener_value == "done":
+        st.session_state[flag_key] = True
+    if st.session_state.get(flag_key):
+        with footer_ph:
+            st.markdown(
+                f'<div id="mcp{round_no}-actions" class="mcp-footer">',
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
+            ):
+                st.session_state.analysis_seen[round_key] = True
+                set_phase(next_phase)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -> None:
@@ -1573,6 +1652,7 @@ def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -
                 "정답 여부": "O" if d["selected_option"] == d["correct_idx"] else "X",
                 "이유": d["selected_reason_text"],
                 "이유 정답": reason_labels[d["correct_reason_idx"]],
+                "이유 서술": d.get("reason_notes", ""),
                 "응답 시간(초)": d["response_time"],
             }
             for d in details
