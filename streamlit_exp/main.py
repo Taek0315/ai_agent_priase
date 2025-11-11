@@ -88,7 +88,7 @@ class SurveyQuestion:
 @dataclass
 class ExperimentData:
     participant_id: str
-    condition: PraiseCondition
+    condition: str  # emotional_specific, computational_specific, emotional_superficial, computational_superficial
     demographic: Dict[str, Any]
     inference_responses: List[Dict[str, Any]]
     survey_responses: List[Dict[str, Any]]
@@ -455,37 +455,44 @@ MOTIVATION_BY_ID = {q.id: q for q in MOTIVATION_QUESTIONS}
 
 class AIFeedbackSystem:
     def __init__(self) -> None:
-        self.feedback_templates = {
-            PraiseCondition.EMOTIONAL_SPECIFIC: [
+        self.feedback_templates: Dict[str, List[str]] = {
+            "emotional_specific": [
                 "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 중요한 능력이에요.",
                 "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 차근차근 분석하는 능력이 특별한 재능입니다.",
                 "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 탁월합니다. 이런 관찰력과 분석력은 언어 전문가의 자질을 보여줍니다.",
             ],
-            PraiseCondition.COMPUTATIONAL_SPECIFIC: [
+            "computational_specific": [
                 "📊 분석 결과가 매우 우수합니다. '{reason}'라는 추론 패턴이 언어 규칙 체계와 94.7% 일치도를 보입니다.",
                 "🔍 데이터 처리 성능이 탁월합니다. '{reason}'라는 논리 경로는 정확도 지표에서 상위 8.3% 수준입니다.",
                 "⚙️ 인지 처리 메커니즘이 최적 상태입니다. '{reason}'라는 분석 프로세스는 규칙 데이터와 97.2% 매칭률을 기록했습니다.",
             ],
-            PraiseCondition.EMOTIONAL_SUPERFICIAL: [
+            "emotional_superficial": [
                 "🎉 정말 훌륭한 답변이에요! 언어 감각이 뛰어나네요. 계속 이런 멋진 모습 보여주세요!",
                 "👏 와, 정말 대단해요! 언어에 대한 감각이 예리합니다. 앞으로도 놀라운 실력 기대할게요!",
                 "💫 정말 인상적이에요! 독특한 사고방식이 돋보였습니다. 이런 창의적 접근법은 보기 드문 능력입니다.",
             ],
-            PraiseCondition.COMPUTATIONAL_SUPERFICIAL: [
+            "computational_superficial": [
                 "📊 시스템 분석 결과 우수한 성능을 보였습니다. 패턴 인식 능력이 최적화된 상태입니다.",
                 "🔍 데이터 처리 효율성이 크게 개선되었습니다. 정확도와 속도가 동시에 향상되었습니다.",
                 "⚙️ 인지 처리 시스템이 안정적으로 작동했습니다. 전체 처리 효율성이 개선되었습니다.",
             ],
         }
 
-    def generate_feedback(
-        self, condition: PraiseCondition, selected_reason: str
-    ) -> str:
-        template = random.choice(self.feedback_templates[condition])
+    @staticmethod
+    def _key_of(condition: Any) -> str:
+        if isinstance(condition, PraiseCondition):
+            return condition.value
+        return str(condition)
+
+    def generate_feedback(self, condition: Any, selected_reason: str) -> str:
+        key = self._key_of(condition)
+        templates = (
+            self.feedback_templates.get(key)
+            or self.feedback_templates["emotional_specific"]
+        )
+        template = random.choice(templates)
         return (
-            template.format(reason=selected_reason)
-            if "specific" in condition.value
-            else template
+            template.format(reason=selected_reason) if "specific" in key else template
         )
 
 
@@ -502,7 +509,8 @@ class ExperimentManager:
         participant_id = (
             f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}"
         )
-        condition = assigned_condition or random.choice(list(PraiseCondition))
+        condition_enum = assigned_condition or random.choice(list(PraiseCondition))
+        condition = condition_enum.value
         self.current_participant = {
             "id": participant_id,
             "condition": condition,
@@ -578,7 +586,7 @@ class DataAnalyzer:
     def get_motivation_scores(self) -> Dict[str, Dict[str, float]]:
         scores: Dict[str, Dict[str, List[float]]] = {}
         for d in self.data:
-            key = d.condition.value
+            key = d.condition
             scores.setdefault(
                 key,
                 {
@@ -963,7 +971,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
     metadata = json.dumps(
         {
             "participant_id": record.participant_id,
-            "condition": record.condition.value,
+            "condition": record.condition,
             "difficulty": difficulty,
             "motivation_category_scores": payload.get("motivation_category_scores", {}),
             "open_feedback": open_feedback,
@@ -1710,12 +1718,11 @@ def render_summary() -> None:
         try:
             record = manager.complete_experiment()
         except ValueError:
+            condition = payload.get("feedback_condition", "emotional_specific")
             record = ExperimentData(
                 participant_id=payload.get("participant_id")
                 or f"manual_{int(time.time())}",
-                condition=PraiseCondition(
-                    payload.get("feedback_condition", "emotional_specific")
-                ),
+                condition=condition,
                 demographic=payload.get("demographic", {}),
                 inference_responses=[
                     {
@@ -1758,13 +1765,13 @@ def render_summary() -> None:
     st.markdown(
         f"""
 - 참가자 ID: **{record.participant_id}**
-- 배정 조건: **{record.condition.value}**
+- 배정 조건: **{record.condition}**
 - 총 소요 시간: **{record.completion_time:.1f}초**
 """
     )
 
     analyzer = DataAnalyzer([record])
-    motivation_scores = analyzer.get_motivation_scores().get(record.condition.value, {})
+    motivation_scores = analyzer.get_motivation_scores().get(record.condition, {})
     if motivation_scores:
         st.subheader("동기 카테고리 평균 점수")
         df = pd.DataFrame(
