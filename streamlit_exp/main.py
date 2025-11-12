@@ -7,13 +7,12 @@ import random
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
+from collections import Counter
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & compact styling (kept from original scaffold)
@@ -52,18 +51,102 @@ html, body { overflow-x: hidden !important; }
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+
+def get_or_assign_praise_condition() -> str:
+    """
+    Returns one of:
+      'emotional_specific', 'computational_specific',
+      'emotional_surface', 'computational_surface'
+    Assigned exactly once per participant and persisted in st.session_state.
+    """
+    key = "praise_condition"
+    if key not in st.session_state:
+        st.session_state[key] = random.choice(
+            [
+                "emotional_specific",
+                "computational_specific",
+                "emotional_surface",
+                "computational_surface",
+            ]
+        )
+    return st.session_state[key]
+
+
+FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주셔서 감사합니다. 각 문항의 응답을 보면 깊이 고민하며 추론하신 것이 느껴졌습니다. 특히 {A}와 {B}를 적절히 사용하신 점이 인상 깊었습니다. 함께 학습한다면 정말 즐겁고 뜻깊을 것 같아 기대가 됩니다. 😊",
+        "수고 많으셨습니다. 세밀한 사고의 흔적이 문항 전반에서 관찰됩니다. 특히 {A}, {B} 활용이 돋보였습니다. 학습자로서의 잠재력이 또렷하게 보입니다. 👍",
+        "도전적인 문항에도 흔들림 없이 응답하셨습니다. {A}와 {B}에 근거한 선택이 안정적으로 반복되며 높은 성장을 기대하게 합니다. 🙌",
+    ],
+    "computational_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항 기준 사전 분포 대비 **92.3 퍼센타일**의 추론 효율 지수를 보였습니다. 응답 시점별 근거 밀도의 분산은 0.14 이내로 수렴했고, 특히 {A}와 {B}는 라플라스 근사 모델에서 ΔAIC<0로 선택된 핵심 예측변수였습니다. 전반적으로 통계적으로 유의한 추론 패턴입니다. 📈",
+        "분석 결과, 문항당 평균 근거 수는 1.4개로 과잉 산포 없이 정보량이 최적화되었습니다. {A}, {B}는 예측 기여도가 높았습니다. 안정적인 판단 흐름이 확인됩니다. ✅",
+        "다변량 분석에서 {A}·{B}가 핵심 설명변수로 반복 선택되었습니다. 변동성은 낮고 일관성은 높아 효율적인 추론 전략으로 평가됩니다. 🔬",
+    ],
+    "emotional_surface": [
+        "추론 과제의 분석이 완료되었습니다.\n문항을 끝까지 풀어주셔서 감사합니다. 전체적으로 문제 풀이가 인상 깊었고, 추론 능력이 잘 드러났습니다. 함께 계속해 나가면 더 좋은 결과가 있을 거라 기대합니다. 🙂",
+        "전반적으로 성실한 응답이 돋보였습니다. 꾸준히 시도하고 마무리하신 점이 좋았습니다. 계속 응원하겠습니다! 🌟",
+        "집중해서 풀어주신 점이 인상적이었습니다. 앞으로의 학습도 기대됩니다. 화이팅입니다! 💪",
+    ],
+    "computational_surface": [
+        "추론 과제의 분석이 완료되었습니다.\n응답은 통계적으로 의미 있는 상위 구간에 위치합니다. 모델 기준으로 핵심 예측 변수가 확인되며 안정적이고 유의한 능력이 관찰됩니다. 📊",
+        "전체적으로 유의수준을 만족하는 패턴입니다. 안정적인 결과 범위에 있으며 예측력도 적절합니다. ✔️",
+        "분석 결과는 일관된 상위 퍼센타일 구간에 머뭅니다. 신뢰 가능한 추론 경향이 관찰됩니다. ✅",
+    ],
+}
+
+MICRO_FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "깊이 있는 추론 흐름입니다. {A}/{B} 사용이 돋보였습니다. 🙂",
+        "세밀한 근거 연결이 인상적이었습니다. {A}/{B} 활용이 안정적입니다. 😊",
+        "추론 과정이 탄탄합니다. {A}/{B} 선택이 빛났습니다. 🙌",
+    ],
+    "computational_specific": [
+        "근거 {A}/{B}가 반복적으로 선택되었습니다(안정적). 📈",
+        "{A}/{B} 패턴이 통계적으로 일관됩니다. 효율적인 전략입니다. 🔬",
+        "{A}/{B} 조합이 예측 기여도가 컸습니다. 우수한 흐름입니다. ✅",
+    ],
+    "emotional_surface": [
+        "성실한 시도가 돋보입니다. 계속 좋아지고 있어요! 🌟",
+        "집중력이 느껴지는 응답입니다. 꾸준히 힘내세요! 🙂",
+        "마지막까지 완주하신 점이 인상 깊습니다. 응원합니다! 💪",
+    ],
+    "computational_surface": [
+        "안정적인 상위 구간입니다. 패턴 일관성이 좋습니다. ✔️",
+        "응답 분산이 낮고 균형 있습니다. 계속 유지하세요! 📊",
+        "일관된 선택 경향이 확인되었습니다. 신뢰도가 높습니다. ✅",
+    ],
+}
+
+
+def typewriter(text: str, speed: float = 0.01) -> None:
+    holder = st.empty()
+    output = ""
+    for ch in text:
+        output += ch
+        holder.markdown(output.replace("\n", "  \n"))
+        time.sleep(speed)
+
+
+def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
+    """
+    Returns the two most frequent rationale labels (ties broken deterministically).
+    If fewer than 2 exist, pad with safe fallbacks like '시제 -na', '시제 -tu'.
+    """
+    counts = Counter([tag for tag in all_reason_tags if tag])
+    if not counts:
+        return ("시제 -na", "시제 -tu")
+    most = [label for label, _ in counts.most_common(2)]
+    while len(most) < 2:
+        most.append("시제 -tu" if "시제 -na" in most else "시제 -na")
+    return most[0], most[1]
+
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # --------------------------------------------------------------------------------------
 # Data classes and experiment content (ported 1:1 from skywork.py)
 # --------------------------------------------------------------------------------------
-
-
-class PraiseCondition(Enum):
-    EMOTIONAL_SPECIFIC = "emotional_specific"
-    COMPUTATIONAL_SPECIFIC = "computational_specific"
-    EMOTIONAL_SUPERFICIAL = "emotional_superficial"
-    COMPUTATIONAL_SUPERFICIAL = "computational_superficial"
 
 
 @dataclass
@@ -89,7 +172,7 @@ class SurveyQuestion:
 @dataclass
 class ExperimentData:
     participant_id: str
-    condition: str  # emotional_specific, computational_specific, emotional_superficial, computational_superficial
+    condition: str  # emotional_specific, computational_specific, emotional_surface, computational_surface
     demographic: Dict[str, Any]
     inference_responses: List[Dict[str, Any]]
     survey_responses: List[Dict[str, Any]]
@@ -454,64 +537,19 @@ MOTIVATION_BY_ID = {q.id: q for q in MOTIVATION_QUESTIONS}
 # --------------------------------------------------------------------------------------
 
 
-class AIFeedbackSystem:
-    def __init__(self) -> None:
-        self.feedback_templates: Dict[str, List[str]] = {
-            "emotional_specific": [
-                "🎉 정말 훌륭해요! 특히 '{reason}'라고 생각하신 부분이 매우 인상적입니다. 이런 깊이 있는 사고방식은 언어학습에서 중요한 능력이에요.",
-                "👏 와, 정말 대단하세요! '{reason}'라는 추론 과정이 너무나 논리적이고 체계적이네요. 차근차근 분석하는 능력이 특별한 재능입니다.",
-                "🌟 놀라운 통찰력이에요! '{reason}'라고 판단하신 근거가 탁월합니다. 이런 관찰력과 분석력은 언어 전문가의 자질을 보여줍니다.",
-            ],
-            "computational_specific": [
-                "📊 분석 결과가 매우 우수합니다. '{reason}'라는 추론 패턴이 언어 규칙 체계와 94.7% 일치도를 보입니다.",
-                "🔍 데이터 처리 성능이 탁월합니다. '{reason}'라는 논리 경로는 정확도 지표에서 상위 8.3% 수준입니다.",
-                "⚙️ 인지 처리 메커니즘이 최적 상태입니다. '{reason}'라는 분석 프로세스는 규칙 데이터와 97.2% 매칭률을 기록했습니다.",
-            ],
-            "emotional_superficial": [
-                "🎉 정말 훌륭한 답변이에요! 언어 감각이 뛰어나네요. 계속 이런 멋진 모습 보여주세요!",
-                "👏 와, 정말 대단해요! 언어에 대한 감각이 예리합니다. 앞으로도 놀라운 실력 기대할게요!",
-                "💫 정말 인상적이에요! 독특한 사고방식이 돋보였습니다. 이런 창의적 접근법은 보기 드문 능력입니다.",
-            ],
-            "computational_superficial": [
-                "📊 시스템 분석 결과 우수한 성능을 보였습니다. 패턴 인식 능력이 최적화된 상태입니다.",
-                "🔍 데이터 처리 효율성이 크게 개선되었습니다. 정확도와 속도가 동시에 향상되었습니다.",
-                "⚙️ 인지 처리 시스템이 안정적으로 작동했습니다. 전체 처리 효율성이 개선되었습니다.",
-            ],
-        }
-
-    @staticmethod
-    def _key_of(condition: Any) -> str:
-        if isinstance(condition, PraiseCondition):
-            return condition.value
-        return str(condition)
-
-    def generate_feedback(self, condition: Any, selected_reason: str) -> str:
-        key = self._key_of(condition)
-        templates = (
-            self.feedback_templates.get(key)
-            or self.feedback_templates["emotional_specific"]
-        )
-        template = random.choice(templates)
-        return (
-            template.format(reason=selected_reason) if "specific" in key else template
-        )
-
-
 class ExperimentManager:
     def __init__(self) -> None:
-        self.feedback_system = AIFeedbackSystem()
         self.current_participant: Optional[Dict[str, Any]] = None
 
     def create_participant(
         self,
         demographic_data: Dict[str, Any],
-        assigned_condition: Optional[PraiseCondition] = None,
+        assigned_condition: Optional[str] = None,
     ) -> str:
         participant_id = (
             f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}"
         )
-        condition_enum = assigned_condition or random.choice(list(PraiseCondition))
-        condition = condition_enum.value
+        condition = assigned_condition or get_or_assign_praise_condition()
         self.current_participant = {
             "id": participant_id,
             "condition": condition,
@@ -540,11 +578,8 @@ class ExperimentManager:
             "timestamp": datetime.now().isoformat(),
         }
         self.current_participant["inference_responses"].append(record)
-        feedback = self.feedback_system.generate_feedback(
-            self.current_participant["condition"], selected_reason
-        )
-        self.current_participant["feedback_messages"].append(feedback)
-        return feedback
+        self.current_participant["feedback_messages"].append(selected_reason)
+        return selected_reason
 
     def process_survey_response(self, question_id: str, rating: int) -> None:
         if not self.current_participant:
@@ -796,78 +831,6 @@ def scroll_top_js(nonce: Optional[int] = None) -> None:
     st.markdown(script, unsafe_allow_html=True)
 
 
-def run_mcp_motion(round_no: int) -> None:
-    logs = [
-        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
-        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
-        "[INFO][COVNOX] Collecting responses… building 12-item choice hash",
-        "[OK][COVNOX] Response hash map constructed",
-        "[INFO][COVNOX] Running grammatical marker detection",
-        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
-        "[INFO][COVNOX] Parsing rationale tags (single-select)",
-        "[OK][COVNOX] Rationale normalization complete",
-        "[INFO][COVNOX] Computing rule-match consistency",
-        "[OK][COVNOX] Consistency matrix updated",
-        "[INFO][COVNOX] Checking tense/object conflicts",
-        "[OK][COVNOX] No critical conflicts · reasoning path stable",
-        "[INFO][COVNOX] Analyzing response time (persistence index)",
-        "[OK][COVNOX] Persistence index calculated",
-        "[INFO][COVNOX] Synthesizing overall inference profile",
-        "[OK][COVNOX] Profile composed · selecting feedback template",
-        "[INFO][COVNOX] Natural language phrasing optimization",
-        "[OK][COVNOX] Fluency/consistency checks passed",
-        "[✔][COVNOX] Analysis complete. Rendering results…",
-    ]
-    html = """
-    <style>
-      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
-      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
-        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
-      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
-      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
-      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
-      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
-    </style>
-    <div class="mcp-overlay" id="mcp-overlay">
-      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
-      <div class="covnox-sub" id="mcp-log">Initializing…</div>
-      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
-    </div>
-    <script>
-    (function(){
-      var msgs = __LOGS__;
-      var round = __ROUND__;
-      var logEl = document.getElementById('mcp-log');
-      var fill  = document.getElementById('mcp-fill');
-      var overlay = document.getElementById('mcp-overlay');
-      var i=0, t=0, total=8000, step=400;
-      function tick(){
-        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
-        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
-        i++; t += step;
-        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
-        if (t >= total){
-          clearInterval(timer);
-          setTimeout(function(){
-            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
-            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
-          }, 200);
-        }
-      }
-      tick();
-      var timer = setInterval(tick, step);
-    })();
-    </script>
-    """.replace(
-        "__LOGS__", json.dumps(logs, ensure_ascii=False)
-    ).replace(
-        "__ROUND__", str(round_no)
-    )
-    components.html(html, height=640, scrolling=False)
-
-
 def radio_required(
     label: str, options: List[str], key: str
 ) -> tuple[Optional[str], bool]:
@@ -1060,7 +1023,7 @@ def ensure_session_state() -> None:
             "nouns_index": 0,
             "verbs_index": 0,
             "question_start": None,
-            "last_feedback": None,
+            "last_micro_feedback": None,
         }
     if "analysis_seen" not in ss:
         ss.analysis_seen = {"nouns": False, "verbs": False}
@@ -1278,13 +1241,13 @@ def render_demographic() -> None:
             "education": education,
             "language": language.strip(),
         }
-        condition = random.choice(list(PraiseCondition))
+        condition = get_or_assign_praise_condition()
         participant_id = st.session_state.manager.create_participant(
             st.session_state.payload["demographic"],
             assigned_condition=condition,
         )
         st.session_state.payload["participant_id"] = participant_id
-        st.session_state.payload["feedback_condition"] = condition.value
+        st.session_state.payload["feedback_condition"] = condition
         set_phase("instructions")
 
 
@@ -1491,8 +1454,10 @@ def render_inference_round(
     )
 
     if not submit_btn:
-        if rs.get("last_feedback"):
-            st.info(f"이전 피드백: {rs['last_feedback']}")
+        last_micro = rs.get("last_micro_feedback")
+        if last_micro:
+            st.success(last_micro)
+            rs["last_micro_feedback"] = None
         return
 
     if not can_submit:
@@ -1530,11 +1495,25 @@ def render_inference_round(
     payload.setdefault("inference_details", []).append(detail)
     payload["feedback_messages"][round_key].append(feedback)
     rs[f"{round_key}_index"] = index + 1
-    rs["last_feedback"] = feedback
+
+    condition = get_or_assign_praise_condition()
+    completed_tags = [
+        d.get("selected_reason_text")
+        for d in payload["inference_details"]
+        if d["round"] == round_key
+    ]
+    top_a, top_b = top_two_rationales(completed_tags)
+    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    micro_text = random.choice(micro_templates)
+    if "{A}" in micro_text:
+        micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+    rs["last_micro_feedback"] = micro_text
+
     if rs[f"{round_key}_index"] >= len(questions):
         set_phase(next_phase)
     else:
-        st.success("응답이 저장되었습니다. 다음 문항으로 이동합니다.")
         set_phase(st.session_state.phase)
 
 
@@ -1589,43 +1568,29 @@ def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -
         for d in st.session_state.payload["inference_details"]
         if d["round"] == round_key
     ]
-    total = len(details)
-    score = sum(1 for d in details if d["selected_option"] == d["correct_idx"])
-    reason_score = sum(
-        1 for d in details if d["selected_reason_idx"] == d["correct_reason_idx"]
-    )
-    duration = sum(float(d["response_time"]) for d in details)
+    condition = get_or_assign_praise_condition()
+    st.title("AI 분석이 완료 되었습니다")
+    st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
 
-    st.title(f"AI 칭찬 피드백 ({'명사구' if round_key == 'nouns' else '동사 TAM'})")
-    st.markdown(
-        f"""
-- 정답: **{score}/{total}**
-- 추론 이유 일치: **{reason_score}/{total}**
-- 총 소요 시간: **{duration:.1f}초**
-"""
+    reason_tags = [d.get("selected_reason_text") for d in details]
+    top_a, top_b = top_two_rationales(reason_tags)
+    summary_templates = FEEDBACK_TEMPLATES.get(
+        condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
-    st.subheader("AI 메시지 하이라이트")
-    for idx, msg in enumerate(
-        st.session_state.payload["feedback_messages"][round_key][-3:], start=1
-    ):
-        st.write(f"{idx}. {msg}")
+    summary_text = random.choice(summary_templates)
+    if "{A}" in summary_text:
+        summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+    typewriter(summary_text)
 
-    st.subheader("응답 요약")
-    df = pd.DataFrame(
-        [
-            {
-                "문항": d["question_id"],
-                "선택": d["selected_option_text"],
-                "정답": d["correct_text"],
-                "정답 여부": "O" if d["selected_option"] == d["correct_idx"] else "X",
-                "이유": d["selected_reason_text"],
-                "이유 정답": reason_labels[d["correct_reason_idx"]],
-                "응답 시간(초)": d["response_time"],
-            }
-            for d in details
-        ]
+    st.markdown("#### 문항별 간단 피드백")
+    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
     )
-    st.dataframe(df, hide_index=True, use_container_width=True)
+    for detail in details:
+        micro_text = random.choice(micro_templates)
+        if "{A}" in micro_text:
+            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+        st.markdown(f"- **{detail['question_id']}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
@@ -1812,10 +1777,23 @@ def render_summary() -> None:
     st.markdown(
         f"""
 - 참가자 ID: **{record.participant_id}**
-- 배정 조건: **{record.condition}**
 - 총 소요 시간: **{record.completion_time:.1f}초**
 """
     )
+
+    condition = get_or_assign_praise_condition()
+    all_reason_tags = [
+        detail.get("selected_reason_text")
+        for detail in payload.get("inference_details", [])
+    ]
+    overall_a, overall_b = top_two_rationales(all_reason_tags)
+    summary_templates = FEEDBACK_TEMPLATES.get(
+        condition, FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    summary_text = random.choice(summary_templates)
+    if "{A}" in summary_text:
+        summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
+    typewriter(summary_text)
 
     analyzer = DataAnalyzer([record])
     motivation_scores = analyzer.get_motivation_scores().get(record.condition, {})
