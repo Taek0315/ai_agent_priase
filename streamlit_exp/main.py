@@ -54,6 +54,7 @@ COMPACT_CSS = """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 SHOW_PER_ITEM_INLINE_FEEDBACK = False
+SHOW_PER_ITEM_SUMMARY = False
 
 
 def get_or_assign_praise_condition() -> str:
@@ -1081,6 +1082,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
     end_iso = payload.get("end_time")
     phone = payload.get("phone", "")
     open_feedback = payload.get("open_feedback", "")
+    manipulation_check = payload.get("manipulation_check", {})
 
     score = sum(
         1 for d in inference_details if d["selected_option"] == d["correct_idx"]
@@ -1099,6 +1101,11 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
             ]
         )
 
+    mc_values = [
+        manipulation_check.get(f"MC_{idx:02d}", "")
+        for idx in range(1, 19)
+    ]
+
     metadata = json.dumps(
         {
             "participant_id": record.participant_id,
@@ -1106,6 +1113,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
             "difficulty": difficulty,
             "motivation_category_scores": payload.get("motivation_category_scores", {}),
             "open_feedback": open_feedback,
+            "manipulation_check": manipulation_check,
         },
         ensure_ascii=False,
     )
@@ -1122,6 +1130,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
         score if inference_details else "",
         accuracy,
         *per_q_fields,
+        *mc_values,
         feedback_condition,
         ",".join(str(v) for v in motivation),
         phone,
@@ -1160,6 +1169,7 @@ def ensure_session_state() -> None:
             "feedback_messages": {"nouns": [], "verbs": []},
             "feedback_condition": "",
             "open_feedback": "",
+            "manipulation_check": {},
             "start_time": None,
             "end_time": None,
             "phone": "",
@@ -1190,6 +1200,10 @@ def ensure_session_state() -> None:
         ss.record = None
     if "_resource_fallback_warned" not in ss:
         ss._resource_fallback_warned = {}
+    if "manip_check" not in ss:
+        ss.manip_check = {}
+    if "manip_check_saved" not in ss:
+        ss.manip_check_saved = {}
 
 
 def set_phase(next_phase: str) -> None:
@@ -1209,6 +1223,7 @@ def set_phase(next_phase: str) -> None:
         "feedback_verbs",
         "motivation",
         "post_task_reflection",
+        "manipulation_check",
         "phone_input",
         "summary",
     }
@@ -1715,15 +1730,16 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
     typewriter_markdown(summary_text, speed=0.01)
 
-    st.markdown("#### 문항별 간단 피드백")
-    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
-        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
-    )
-    for detail in details:
-        micro_text = random.choice(micro_templates)
-        if "{A}" in micro_text:
-            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
-        st.markdown(f"- **{detail['question_id']}** · {micro_text}")
+    if SHOW_PER_ITEM_SUMMARY:
+        st.markdown("#### 문항별 간단 피드백")
+        micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+            condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+        )
+        for detail in details:
+            micro_text = random.choice(micro_templates)
+            if "{A}" in micro_text:
+                micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+            st.markdown(f"- **{detail['question_id']}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
@@ -1827,6 +1843,85 @@ def render_motivation() -> None:
                     set_phase("post_task_reflection")
 
 
+def render_manipulation_check() -> None:
+    scroll_top_js()
+    st.header("조작 점검 문항")
+    st.caption("각 문항에 대해 1(전혀 그렇지 않다) ~ 5(매우 그렇다)로 응답해 주세요. 모든 문항은 필수입니다.")
+
+    items = [
+        "피드백이 따듯했다.",
+        "격려/공감을 느꼈다.",
+        "정서적 표현이 충분했다.",
+        "기분이 좋아지도록 도와줬다.",
+        "피드백이 분석적이었다.",
+        "수치•지표에 근거해 설명했다.",
+        "근거 제시가 명확했다.",
+        "수행을 객관적으로 요약해주었다.",
+        "내가 선택한 규칙/전략을 구체적으로 언급했다.",
+        "무엇을 잘 했는지/개선할지가 분명했다.",
+        "과제 맥락에 맞는 피드백이었다.",
+        "피드백이 명령/지시처럼 느껴졌다.",
+        "압박을 주는 표현이 있었다.",
+        "비교/서열화하는 느낌이 있었다.",
+        "이 에이전트가 사람처럼 느껴졌다.",
+        "이 에이전트에게 의도/목표를 가진 것처럼 보였다.",
+        "이 에이전트에게 사회적 존재감을 느꼈다.",
+        "이 에이전트의 말투가 인간적이라고 느껴졌다.",
+    ]
+
+    answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
+    scale = [1, 2, 3, 4, 5]
+    labels = {
+        1: "전혀 그렇지 않다",
+        2: "그렇지 않다",
+        3: "보통이다",
+        4: "그렇다",
+        5: "매우 그렇다",
+    }
+    placeholder = "선택해 주세요"
+
+    def format_option(value: Any) -> str:
+        if isinstance(value, int):
+            return f"{value} · {labels[value]}"
+        return placeholder
+
+    for idx, question in enumerate(items, start=1):
+        key = f"mc_{idx:02d}"
+        options = [placeholder, *scale]
+        current = answers.get(key)
+        index = options.index(current) if current in scale else 0
+        with st.container():
+            st.markdown(f"**{idx}. {question}**")
+            selection = st.radio(
+                label="",
+                options=options,
+                index=index,
+                format_func=format_option,
+                horizontal=True,
+                key=f"manip-radio-{idx}",
+                label_visibility="collapsed",
+            )
+            if isinstance(selection, int):
+                answers[key] = selection
+            else:
+                answers.pop(key, None)
+
+    all_done = all(
+        answers.get(f"mc_{i:02d}") in scale for i in range(1, len(items) + 1)
+    )
+
+    st.divider()
+    disabled = not all_done
+    if st.button("다음 단계", disabled=disabled, use_container_width=True):
+        saved = {
+            f"MC_{i:02d}": int(answers[f"mc_{i:02d}"])
+            for i in range(1, len(items) + 1)
+        }
+        st.session_state.manip_check_saved = saved
+        st.session_state.payload["manipulation_check"] = saved
+        set_phase("phone_input")
+
+
 def render_post_task_reflection() -> None:
     scroll_top_js()
     st.title("마무리 질문")
@@ -1839,7 +1934,7 @@ def render_post_task_reflection() -> None:
     feedback_text = st.text_area("연구 참여 소감", key="open_feedback_area")
     st.session_state.payload["open_feedback"] = feedback_text.strip()
     if st.button("연락처 입력으로 이동", use_container_width=True):
-        set_phase("phone_input")
+        set_phase("manipulation_check")
 
 
 def render_phone_capture() -> None:
@@ -2020,6 +2115,8 @@ elif phase == "motivation":
     render_motivation()
 elif phase == "post_task_reflection":
     render_post_task_reflection()
+elif phase == "manipulation_check":
+    render_manipulation_check()
 elif phase == "phone_input":
     render_phone_capture()
 else:
