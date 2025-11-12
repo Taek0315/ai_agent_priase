@@ -50,12 +50,6 @@ html, body { overflow-x: hidden !important; }
 </style>
 """
 
-COMPACT_CSS += """
-<style>
-div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
-.mcp-footer { margin-top: 0.6rem !important; }
-</style>
-"""
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -1467,12 +1461,10 @@ def render_inference_round(
         set_phase(next_phase)
         return
     question = questions[index]
-    st.title(
-        f"추론 과제 {1 if round_key == 'nouns' else 2} / {len(questions)}문항 중 {index + 1}번째"
-    )
+    st.title(f"추론 과제 {len(questions)}문항 중 {index + 1}번째")
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
-    st.markdown("정답과 추론 근거 태그, 이유 서술을 모두 완료해야 제출할 수 있습니다.")
+    st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
 
     if rs.get("question_start") is None:
         rs["question_start"] = time.perf_counter()
@@ -1491,13 +1483,7 @@ def render_inference_round(
         key=f"{round_key}_tag_{index}",
     )
 
-    reason_text = st.text_area(
-        "선택 이유를 간단히 적어주세요 (필수)",
-        key=f"{round_key}_reason_text_{index}",
-    )
-    reason_notes = reason_text.strip()
-
-    can_submit = bool(answer_valid and tag_valid and reason_notes)
+    can_submit = bool(answer_valid and tag_valid)
     submit_btn = st.button(
         "응답 제출",
         key=f"{round_key}_submit_{index}",
@@ -1510,7 +1496,7 @@ def render_inference_round(
         return
 
     if not can_submit:
-        st.error("태그 선택과 이유 입력은 필수입니다.")
+        st.error("정답과 추론 태그 선택은 필수입니다.")
         return
 
     response_time = round(time.perf_counter() - rs["question_start"], 2)
@@ -1536,7 +1522,6 @@ def render_inference_round(
         "correct_text": question.options[question.answer_idx],
         "selected_reason_idx": int(selected_tag_idx),
         "selected_reason_text": selected_tag,
-        "reason_notes": reason_notes,
         "correct_reason_idx": int(question.reason_idx),
         "response_time": response_time,
         "timestamp": datetime.utcnow().isoformat(),
@@ -1555,63 +1540,46 @@ def render_inference_round(
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     scroll_top_js()
+    st.markdown("### COVNOX: Inference Pattern Analysis")
+
+    steps: List[tuple[float, str]] = [
+        (0.25, "[INFO][COVNOX] Parsing rationale tags (single-select)"),
+        (0.55, "[INFO][COVNOX] Aggregating selection patterns"),
+        (0.80, "[INFO][COVNOX] Computing condition-specific metrics"),
+        (1.00, "[INFO][COVNOX] Finalizing report"),
+    ]
+
     flag_key = f"mcp_done_{round_key}"
-    st.session_state.setdefault(flag_key, False)
-    if st.session_state.get("_mcp_round") != round_key:
-        st.session_state["_mcp_round"] = round_key
+    if flag_key not in st.session_state:
         st.session_state[flag_key] = False
-    footer_ph = st.empty()
-    inject_covx_toggle(round_no)
-    run_mcp_motion(round_no)
+
+    progress_bar = st.progress(0.0, text=steps[0][1])
+
+    if not st.session_state[flag_key]:
+        for value, message in steps:
+            progress_bar.progress(value, text=message)
+            time.sleep(0.8)
+        st.session_state[flag_key] = True
+        st.rerun()
+
+    progress_bar.progress(1.0, text=steps[-1][1])
     st.markdown(
-        f"""
-<div id="mcp{round_no}-done-banner" style="max-width:820px;margin:48px auto;">
-  <div style="border:2px solid #2E7D32;border-radius:14px;padding:28px;background:#F4FFF4;">
-    <h2 style="text-align:center;color:#2E7D32;margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
-    <p style="font-size:16px;line-height:1.7;color:#222;text-align:center;margin:0;">
-      COVNOX가 응답 패턴을 분석했습니다. 아래 버튼을 눌러 피드백을 확인하세요.
-    </p>
+        """
+<div style="max-width:820px;margin:24px auto 12px auto;">
+  <div style="border:2px solid #2E7D32;border-radius:14px;padding:24px;background:#F4FFF4;">
+    <h4 style="margin:0 0 8px 0;text-align:center;color:#2E7D32;">✅ 분석이 완료되었습니다</h4>
+    <p style="margin:0;text-align:center;color:#222;">COVNOX가 응답 패턴을 분석했습니다. 아래 버튼을 눌러 피드백을 확인하세요.</p>
   </div>
 </div>
 """,
         unsafe_allow_html=True,
     )
-    listener_value = components.html(
-        f"""
-<script>
-(function(){{
-  const targetRound = {round_no};
-  function notifyDone(event){{
-    if (!event || !event.data || event.data.type !== 'covnox_done' || event.data.round !== targetRound) {{
-      return;
-    }}
-    window.removeEventListener('message', notifyDone);
-    const streamlit = window.parent && window.parent.Streamlit;
-    if (streamlit && streamlit.setComponentValue) {{
-      streamlit.setComponentValue('done');
-    }}
-  }}
-  window.addEventListener('message', notifyDone, false);
-}})();
-</script>
-""",
-        height=0,
-        key=f"covx-listener-{round_key}",
-    )
-    if listener_value == "done":
-        st.session_state[flag_key] = True
-    if st.session_state.get(flag_key):
-        with footer_ph:
-            st.markdown(
-                f'<div id="mcp{round_no}-actions" class="mcp-footer">',
-                unsafe_allow_html=True,
-            )
-            if st.button(
-                "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
-            ):
-                st.session_state.analysis_seen[round_key] = True
-                set_phase(next_phase)
-            st.markdown("</div>", unsafe_allow_html=True)
+    st.write("")
+    if st.button(
+        "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
+    ):
+        st.session_state.analysis_seen[round_key] = True
+        set_phase(next_phase)
 
 
 def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -> None:
@@ -1652,7 +1620,6 @@ def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -
                 "정답 여부": "O" if d["selected_option"] == d["correct_idx"] else "X",
                 "이유": d["selected_reason_text"],
                 "이유 정답": reason_labels[d["correct_reason_idx"]],
-                "이유 서술": d.get("reason_notes", ""),
                 "응답 시간(초)": d["response_time"],
             }
             for d in details
