@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
@@ -53,6 +52,8 @@ COMPACT_CSS = """
 """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
+
+SHOW_PER_ITEM_INLINE_FEEDBACK = False
 
 
 def get_or_assign_praise_condition() -> str:
@@ -1007,6 +1008,25 @@ def inject_covx_toggle(round_no: int) -> None:
     )
 
 
+def run_mcp_motion(round_no: int, seconds: float = 2.5) -> None:
+    """Show a short MCP animation and mark completion in session_state."""
+    if "mcp_done" not in st.session_state:
+        st.session_state["mcp_done"] = {}
+
+    container = st.container()
+    with container:
+        st.subheader("COVNOX: Inference Pattern Analysis")
+        timestamp = time.strftime("%H:%M:%S")
+        st.caption(f"[{timestamp}] [INFO][COVNOX] Parsing rationale tags (single-select)")
+        progress = st.progress(0)
+        steps = max(1, int(seconds * 20))
+        for step in range(steps + 1):
+            progress.progress(int(step / steps * 100))
+            time.sleep(seconds / steps)
+
+    st.session_state["mcp_done"][round_no] = True
+
+
 # --------------------------------------------------------------------------------------
 # Storage helpers (Google Sheet + local CSV fallback)
 # --------------------------------------------------------------------------------------
@@ -1555,8 +1575,9 @@ def render_inference_round(
         set_phase(next_phase)
         return
     question = questions[index]
-    st.title(f"추론 과제 12문항 중 {index + 1}번째")
-    st.title(f"추론 과제 {len(questions)}문항 중 {index + 1}번째")
+    st.session_state["round_no"] = index
+    current_index = int(st.session_state.get("round_no", 0)) + 1
+    st.header(f"추론 과제 12문항 중 {current_index}번째")
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
     st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
@@ -1586,11 +1607,12 @@ def render_inference_round(
     )
 
     if not submit_btn:
-        last_micro = rs.get("last_micro_feedback")
-        if last_micro:
-            st.markdown(f"✅ {last_micro}")
-            st.success(last_micro)
-            rs["last_micro_feedback"] = None
+        if SHOW_PER_ITEM_INLINE_FEEDBACK:
+            last_micro = rs.get("last_micro_feedback")
+            if last_micro:
+                st.markdown(f"✅ {last_micro}")
+                st.success(last_micro)
+                rs["last_micro_feedback"] = None
         return
 
     if not can_submit:
@@ -1633,7 +1655,10 @@ def render_inference_round(
     ]
     top_a, top_b = top_two_rationales(completed_tags)
     micro_text = get_next_micro_feedback(condition, top_a, top_b)
-    rs["last_micro_feedback"] = micro_text
+    if SHOW_PER_ITEM_INLINE_FEEDBACK:
+        rs["last_micro_feedback"] = micro_text
+    else:
+        rs["last_micro_feedback"] = None
     payload["feedback_messages"][round_key].append(micro_text)
     rs[f"{round_key}_index"] = index + 1
 
@@ -1645,86 +1670,16 @@ def render_inference_round(
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     scroll_top_js()
-    st.markdown("### COVNOX: Inference Pattern Analysis")
-
-    steps: List[tuple[float, str]] = [
-        (0.25, "[INFO][COVNOX] Parsing rationale tags (single-select)"),
-        (0.55, "[INFO][COVNOX] Aggregating selection patterns"),
-        (0.80, "[INFO][COVNOX] Computing condition-specific metrics"),
-        (1.00, "[INFO][COVNOX] Finalizing report"),
-    ]
-
-    flag_key = f"mcp_done_{round_key}"
-    st.session_state.setdefault(flag_key, False)
-    inject_covx_toggle(round_no)
-    if not st.session_state[flag_key]:
+    st.session_state.setdefault("mcp_done", {})
+    done = st.session_state["mcp_done"].get(round_no, False)
+    if not done:
         run_mcp_motion(round_no)
-    if flag_key not in st.session_state:
-        st.session_state[flag_key] = False
+        st.stop()
 
-    progress_bar = st.progress(0.0, text=steps[0][1])
+    st.subheader("COVNOX: Inference Pattern Analysis")
+    st.success("✅ 분석이 완료되었습니다. 아래 버튼을 눌러 피드백을 확인하세요.")
 
-    if not st.session_state[flag_key]:
-        for value, message in steps:
-            progress_bar.progress(value, text=message)
-            time.sleep(0.8)
-        st.session_state[flag_key] = True
-        st.rerun()
-
-    progress_bar.progress(1.0, text=steps[-1][1])
-    st.markdown(
-        """
-<div style="max-width:820px;margin:24px auto 12px auto;">
-  <div style="border:2px solid #2E7D32;border-radius:14px;padding:24px;background:#F4FFF4;">
-    <h4 style="margin:0 0 8px 0;text-align:center;color:#2E7D32;">✅ 분석이 완료되었습니다</h4>
-    <p style="margin:0;text-align:center;color:#222;">COVNOX가 응답 패턴을 분석했습니다. 아래 버튼을 눌러 피드백을 확인하세요.</p>
-  </div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-    listener_value = components.html(
-        f"""
-<script>
-(function(){{
-  const targetRound = {round_no};
-  function notifyDone(event){{
-    if (!event || !event.data || event.data.type !== 'covnox_done' || event.data.round !== targetRound) {{
-      return;
-    }}
-    window.removeEventListener('message', notifyDone);
-    const streamlit = window.parent && window.parent.Streamlit;
-    if (streamlit && streamlit.setComponentValue) {{
-      streamlit.setComponentValue('done');
-    }}
-  }}
-  window.addEventListener('message', notifyDone, false);
-}})();
-</script>
-""",
-        height=0,
-        width=0,
-        scrolling=False,
-        key=f"covx-listener-{round_key}-stable",
-    )
-    if listener_value == "done":
-        st.session_state[flag_key] = True
-    if st.session_state.get(flag_key):
-        st.write("")
-        st.markdown(
-            f'<div id="mcp{round_no}-actions" class="mcp-footer">',
-            unsafe_allow_html=True,
-        )
-        if st.button(
-            "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
-        ):
-            st.session_state.analysis_seen[round_key] = True
-            set_phase(next_phase)
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.write("")
-    if st.button(
-        "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
-    ):
+    if st.button("결과 보기", key=f"view-results-{round_no}"):
         st.session_state.analysis_seen[round_key] = True
         set_phase(next_phase)
 
