@@ -1674,12 +1674,20 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     done = st.session_state["mcp_done"].get(round_no, False)
     if not done:
         run_mcp_motion(round_no)
-        st.stop()
+        try:
+            st.rerun()
+        except Exception:
+            st.experimental_rerun()
+        return
 
     st.subheader("COVNOX: Inference Pattern Analysis")
     st.success("✅ 분석이 완료되었습니다. 아래 버튼을 눌러 피드백을 확인하세요.")
 
-    if st.button("결과 보기", key=f"view-results-{round_no}"):
+    if st.button(
+        "결과 보기",
+        key=f"view-results-{round_no}",
+        use_container_width=True,
+    ):
         st.session_state.analysis_seen[round_key] = True
         set_phase(next_phase)
 
