@@ -55,7 +55,6 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 SHOW_PER_ITEM_INLINE_FEEDBACK = False
 SHOW_PER_ITEM_SUMMARY = False
-SHOW_DEBUG_RESULTS = False
 
 
 def get_or_assign_praise_condition() -> str:
@@ -1104,7 +1103,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
 
     mc_values = [
         manipulation_check.get(f"MC_{idx:02d}", "")
-        for idx in range(1, len(MC_ITEMS) + 1)
+        for idx in range(1, 19)
     ]
 
     metadata = json.dumps(
@@ -1776,9 +1775,14 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
 
     if SHOW_PER_ITEM_SUMMARY:
         st.markdown("#### 문항별 간단 피드백")
-        micro_entries = stored_payload.get("micro_entries", [])
-        for question_id, micro_text in micro_entries:
-            st.markdown(f"- **{question_id}** · {micro_text}")
+        micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+            condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+        )
+        for detail in details:
+            micro_text = random.choice(micro_templates)
+            if "{A}" in micro_text:
+                micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+            st.markdown(f"- **{detail['question_id']}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
@@ -1888,7 +1892,28 @@ def render_manipulation_check() -> None:
     st.header("조작 점검 문항")
     st.caption("각 문항에 대해 1(전혀 그렇지 않다) ~ 5(매우 그렇다)로 응답해 주세요. 모든 문항은 필수입니다.")
 
-    answers: Dict[str, Optional[int]] = st.session_state.setdefault("manip_check", {})
+    items = [
+        "피드백이 따듯했다.",
+        "격려/공감을 느꼈다.",
+        "정서적 표현이 충분했다.",
+        "기분이 좋아지도록 도와줬다.",
+        "피드백이 분석적이었다.",
+        "수치•지표에 근거해 설명했다.",
+        "근거 제시가 명확했다.",
+        "수행을 객관적으로 요약해주었다.",
+        "내가 선택한 규칙/전략을 구체적으로 언급했다.",
+        "무엇을 잘 했는지/개선할지가 분명했다.",
+        "과제 맥락에 맞는 피드백이었다.",
+        "피드백이 명령/지시처럼 느껴졌다.",
+        "압박을 주는 표현이 있었다.",
+        "비교/서열화하는 느낌이 있었다.",
+        "이 에이전트가 사람처럼 느껴졌다.",
+        "이 에이전트에게 의도/목표를 가진 것처럼 보였다.",
+        "이 에이전트에게 사회적 존재감을 느꼈다.",
+        "이 에이전트의 말투가 인간적이라고 느껴졌다.",
+    ]
+
+    answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
     scale = [1, 2, 3, 4, 5]
     labels = {
         1: "전혀 그렇지 않다",
@@ -1897,38 +1922,47 @@ def render_manipulation_check() -> None:
         4: "그렇다",
         5: "매우 그렇다",
     }
+    placeholder = "선택해 주세요"
 
-    for idx, question in enumerate(MC_ITEMS, start=1):
+    def format_option(value: Any) -> str:
+        if isinstance(value, int):
+            return f"{value} · {labels[value]}"
+        return placeholder
+
+    for idx, question in enumerate(items, start=1):
         key = f"mc_{idx:02d}"
-        selection = st.radio(
-            f"{idx}. {question}",
-            options=scale,
-            index=None,
-            format_func=lambda value, mapping=labels: f"{value} · {mapping[value]}",
-            horizontal=True,
-            key=f"manip-radio-{idx}",
-        )
-        answers[key] = selection
+        options = [placeholder, *scale]
+        current = answers.get(key)
+        index = options.index(current) if current in scale else 0
+        with st.container():
+            st.markdown(f"**{idx}. {question}**")
+            selection = st.radio(
+                label="",
+                options=options,
+                index=index,
+                format_func=format_option,
+                horizontal=True,
+                key=f"manip-radio-{idx}",
+                label_visibility="collapsed",
+            )
+            if isinstance(selection, int):
+                answers[key] = selection
+            else:
+                answers.pop(key, None)
 
     all_done = all(
-        answers.get(f"mc_{i:02d}") in scale for i in range(1, len(MC_ITEMS) + 1)
+        answers.get(f"mc_{i:02d}") in scale for i in range(1, len(items) + 1)
     )
-    if not all_done:
-        st.warning("모든 문항에 응답해 주세요.")
 
-    if st.button(
-        "제출하기",
-        disabled=not all_done,
-        key="btn-mc-submit",
-        use_container_width=True,
-    ):
+    st.divider()
+    disabled = not all_done
+    if st.button("다음 단계", disabled=disabled, use_container_width=True):
         saved = {
             f"MC_{i:02d}": int(answers[f"mc_{i:02d}"])
-            for i in range(1, len(MC_ITEMS) + 1)
+            for i in range(1, len(items) + 1)
         }
         st.session_state.manip_check_saved = saved
         st.session_state.payload["manipulation_check"] = saved
-        st.session_state["manipulation_check"] = saved
         set_phase("phone_input")
 
 
