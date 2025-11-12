@@ -14,6 +14,20 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import streamlit as st
 
+# [CHANGE] Import centralized constants for shared UI/state configuration.
+from constants import (
+    ACHIVE_DEFAULT_ITEMS,
+    ANTHRO_DEFAULT_ITEMS,
+    DEMOGRAPHIC_AGE_LABEL,
+    DEMOGRAPHIC_AGE_MAX,
+    DEMOGRAPHIC_AGE_MIN,
+    DEMOGRAPHIC_SEX_LABEL,
+    DEMOGRAPHIC_SEX_OPTIONS,
+    LIKERT5_ANCHORS,
+    LIKERT5_LEGEND_HTML,
+    MANIPULATION_CHECK_ITEMS,
+)
+
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
 # --------------------------------------------------------------------------------------
@@ -53,8 +67,10 @@ COMPACT_CSS = """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+# [CHANGE] Default runtime feature toggles for feedback/debug rendering.
 SHOW_PER_ITEM_INLINE_FEEDBACK = False
 SHOW_PER_ITEM_SUMMARY = False
+SHOW_DEBUG_RESULTS = False
 
 
 def get_or_assign_praise_condition() -> str:
@@ -275,6 +291,9 @@ def normalize_condition(value: Optional[str]) -> str:
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# [CHANGE] Limit inference answer exports to the first 10 items for wide format.
+INFERENCE_EXPORT_COUNT = 10
+
 # --------------------------------------------------------------------------------------
 # Data classes and experiment content (ported 1:1 from skywork.py)
 # --------------------------------------------------------------------------------------
@@ -291,11 +310,12 @@ class Question:
     category: str = "inference"
 
 
+# [CHANGE] Default motivation survey scale updated to 5-point Likert.
 @dataclass
 class SurveyQuestion:
     id: str
     text: str
-    scale: int = 7
+    scale: int = 5
     reverse: bool = False
     category: str = "motivation"
 
@@ -1069,42 +1089,52 @@ def save_row(row: List[Any]) -> str:
     return "REMOTE::GOOGLE_SHEET"
 
 
+# [CHANGE] Construct a wide-format export row with per-item responses.
 def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[Any]:
-    consent = payload.get("consent", {})
-    demographic = payload.get("demographic", {})
-    anthro = payload.get("anthro_responses", [])
-    achive = payload.get("achive_responses", [])
-    motivation = payload.get("motivation_responses", [])
-    inference_details = payload.get("inference_details", [])
+    consent = payload.get("consent", {}) or {}
+    demographic = payload.get("demographic", {}) or {}
+    anthro = payload.get("anthro_responses", []) or []
+    achive = payload.get("achive_responses", []) or []
+    motivation = payload.get("motivation_responses", []) or []
+    inference_details = payload.get("inference_details", []) or []
     feedback_condition = payload.get("feedback_condition", "")
-    difficulty = payload.get("difficulty_checks", {})
-    start_iso = payload.get("start_time")
-    end_iso = payload.get("end_time")
+    difficulty = payload.get("difficulty_checks", {}) or {}
+    start_iso = payload.get("start_time") or record.timestamps.get("start")
+    end_iso = payload.get("end_time") or record.timestamps.get("end")
     phone = payload.get("phone", "")
     open_feedback = payload.get("open_feedback", "")
-    manipulation_check = payload.get("manipulation_check", {})
+    manipulation_check = payload.get("manipulation_check", {}) or {}
+
+    def _expand(values: List[Any], total: int) -> List[Any]:
+        buffer: List[Any] = []
+        for idx in range(total):
+            value = values[idx] if idx < len(values) else ""
+            if value is None:
+                value = ""
+            buffer.append(value)
+        return buffer
+
+    anth_columns = _expand(anthro, len(anthro))
+    ach_columns = _expand(achive, len(achive))
+    motivation_columns = _expand(motivation, len(MOTIVATION_QUESTIONS))
+    manip_columns = [
+        manipulation_check.get(item.id, "") for item in MANIPULATION_CHECK_ITEMS
+    ]
+
+    export_details = inference_details[:INFERENCE_EXPORT_COUNT]
+    task_answers = []
+    for detail in export_details:
+        answer = detail.get("selected_option_text") or detail.get("selected_option", "")
+        task_answers.append(answer)
+    task_answers.extend([""] * (INFERENCE_EXPORT_COUNT - len(task_answers)))
 
     score = sum(
-        1 for d in inference_details if d["selected_option"] == d["correct_idx"]
+        1 for d in inference_details if d.get("selected_option") == d.get("correct_idx")
     )
-    duration = sum(float(d["response_time"]) for d in inference_details)
-    accuracy = f"{score / len(inference_details):.3f}" if inference_details else ""
-
-    per_q_fields: List[Any] = []
-    for item in inference_details:
-        per_q_fields.extend(
-            [
-                item["selected_option"],
-                item["correct_idx"],
-                1 if item["selected_option"] == item["correct_idx"] else 0,
-                item["selected_reason_text"],
-            ]
-        )
-
-    mc_values = [
-        manipulation_check.get(f"MC_{idx:02d}", "")
-        for idx in range(1, 19)
-    ]
+    duration = sum(float(d.get("response_time", 0.0)) for d in inference_details)
+    accuracy = (
+        f"{score / len(inference_details):.3f}" if inference_details else ""
+    )
 
     metadata = json.dumps(
         {
@@ -1114,28 +1144,45 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
             "motivation_category_scores": payload.get("motivation_category_scores", {}),
             "open_feedback": open_feedback,
             "manipulation_check": manipulation_check,
+            "full_inference_details": inference_details,
         },
         ensure_ascii=False,
     )
 
+    date_str = ""
+    if start_iso:
+        try:
+            date_str = datetime.fromisoformat(start_iso).strftime("%Y-%m-%d")
+        except ValueError:
+            date_str = start_iso
+
+    difficulty_after_round1 = difficulty.get("after_round1", "")
+    difficulty_final = difficulty.get("final", "")
+
     return [
-        datetime.fromisoformat(start_iso).strftime("%Y-%m-%d") if start_iso else "",
+        date_str,
         consent.get("consent_research", ""),
         consent.get("consent_privacy", ""),
-        demographic.get("gender", ""),
-        demographic.get("age_group", ""),
-        ",".join("" if v is None else str(v) for v in anthro),
-        ",".join("" if v is None else str(v) for v in achive),
+        demographic.get("sex_biological", ""),
+        demographic.get("age_years", ""),
+        demographic.get("education_level", ""),
+        feedback_condition,
+        payload.get("praise_condition", feedback_condition),
+        *[value for value in anth_columns],
+        *[value for value in ach_columns],
         round(duration, 2) if inference_details else "",
         score if inference_details else "",
         accuracy,
-        *per_q_fields,
-        *mc_values,
-        feedback_condition,
-        ",".join(str(v) for v in motivation),
+        *task_answers,
+        *motivation_columns,
+        *manip_columns,
+        difficulty_after_round1,
+        difficulty_final,
+        open_feedback,
         phone,
         start_iso or "",
         end_iso or "",
+        record.participant_id,
         metadata,
     ]
 
@@ -1186,8 +1233,13 @@ def ensure_session_state() -> None:
         }
     if "analysis_seen" not in ss:
         ss.analysis_seen = {"nouns": False, "verbs": False}
-    if "exported" not in ss:
-        ss.exported = False
+    # [CHANGE] Track final save status and retry context in session state.
+    if "saved_once" not in ss:
+        ss.saved_once = False
+    if "save_error" not in ss:
+        ss.save_error = None
+    if "save_destination" not in ss:
+        ss.save_destination = None
     if "motivation_page" not in ss:
         ss.motivation_page = 1
     if "anthro_page" not in ss:
@@ -1254,60 +1306,10 @@ def sidebar_controls() -> None:
             st.rerun()
 
 
-DEFAULT_ANTHRO_ITEMS: List[str] = [
-    "나는 AI 에이전트가 감정을 느낄 수 있다고 생각한다.",
-    "AI가 자신의 의도를 설명할 수 있다면 사람과 비슷하게 느껴진다.",
-    "AI의 반응을 보면 인간적인 성격이 느껴진다.",
-    "AI와 대화하면 정서적으로 교감한다고 느낀다.",
-    "AI는 사회적 상황에 맞춰 공감할 수 있다고 믿는다.",
-    "AI 에이전트가 관계를 형성할 수 있다는 생각이 든다.",
-    "AI의 행동에는 숨겨진 감정 상태가 있다고 본다.",
-    "AI가 나를 이해하고 있다고 느낄 때가 있다.",
-    "AI는 상황에 맞게 배려심 있게 행동할 수 있다.",
-    "AI의 결정에는 인간과 비슷한 의도가 담겨 있다고 생각한다.",
-    "AI가 실수했을 때 미안해한다고 느껴진다.",
-    "AI는 인간과 장기적인 우정을 쌓을 수 있다고 본다.",
-]
-
-DEFAULT_ACHIVE_ITEMS: List[str] = [
-    "나는 어려운 목표를 세우고 달성하는 편이다.",
-    "성취감을 느끼기 위해 새로운 과제를 찾는다.",
-    "실패해도 다시 도전하려는 의지가 강하다.",
-    "많은 노력을 쏟아부은 작업은 끝까지 해내고 싶다.",
-    "높은 기준을 스스로 설정하고 그것을 맞추려 한다.",
-    "결과가 좋지 않아도 학습 경험을 중요하게 생각한다.",
-    "다른 사람보다 더 잘해내기 위해 계획을 세운다.",
-    "작은 성공을 기록하며 동기를 유지하는 편이다.",
-    "어려운 문제일수록 해결하고 싶은 의욕이 생긴다.",
-    "장기적인 보상을 위해 단기적인 불편을 감수한다.",
-    "피드백을 바탕으로 실수를 고치려고 노력한다.",
-    "내가 세운 목표를 달성하는 것이 큰 만족감을 준다.",
-]
-
-MC_ITEMS: List[str] = [
-    "피드백이 따뜻했다.",
-    "격려/공감을 느꼈다.",
-    "정서적 표현이 충분했다.",
-    "기분이 좋아지도록 도와줬다.",
-    "피드백이 분석적이었다.",
-    "수치•지표에 근거해 설명했다.",
-    "근거 제시가 명확했다.",
-    "수행을 객관적으로 요약해주었다.",
-    "내가 선택한 규칙/전략을 구체적으로 언급했다.",
-    "무엇을 잘 했는지/개선할지가 분명했다.",
-    "과제 맥락에 맞는 피드백이었다.",
-    "피드백이 명령/지시처럼 느껴졌다.",
-    "압박을 주는 표현이 있었다.",
-    "비교/서열화하는 느낌이 있었다.",
-    "이 에이전트가 사람처럼 느껴졌다.",
-    "이 에이전트에게 의도/목표를 가진 것처럼 보였다.",
-    "이 에이전트에게 사회적 존재감을 느꼈다.",
-    "이 에이전트의 말투가 인간적이라고 느껴졌다.",
-]
-
+# [CHANGE] Updated resource fallbacks to use centralized constants.
 RESOURCE_FALLBACKS: Dict[str, List[str]] = {
-    "questions_anthro.json": DEFAULT_ANTHRO_ITEMS,
-    "questions_achive.json": DEFAULT_ACHIVE_ITEMS,
+    "questions_anthro.json": ANTHRO_DEFAULT_ITEMS,
+    "questions_achive.json": ACHIVE_DEFAULT_ITEMS,
 }
 
 
@@ -1396,14 +1398,37 @@ def render_demographic() -> None:
     scroll_top_js()
     st.title("인적사항 입력")
     st.write("연구 통계와 조건 배정을 위해 아래 정보를 입력해 주세요.")
-    gender = st.radio(
-        "성별", ["남자", "여자", "기타/응답하지 않음"], key="demographic_gender"
+
+    # [CHANGE] Enforce required biological sex selection without defaults.
+    sex_value, sex_valid = radio_required(
+        DEMOGRAPHIC_SEX_LABEL, DEMOGRAPHIC_SEX_OPTIONS, key="demographic_sex"
     )
-    age_group = st.selectbox(
-        "연령대",
-        ["선택해 주세요", "10대", "20대", "30대", "40대", "50대", "60대 이상"],
-        key="demographic_age",
+
+    # [CHANGE] Replace age dropdown with validated numeric input.
+    age_input = st.text_input(
+        DEMOGRAPHIC_AGE_LABEL,
+        key="demographic_age_years",
+        placeholder="예: 25",
     )
+    age_value: Optional[int] = None
+    age_error: Optional[str] = None
+    age_clean = age_input.strip()
+    age_valid = False
+    if age_clean:
+        if age_clean.isdigit():
+            candidate = int(age_clean)
+            if DEMOGRAPHIC_AGE_MIN <= candidate <= DEMOGRAPHIC_AGE_MAX:
+                age_value = candidate
+                age_valid = True
+            else:
+                age_error = (
+                    f"{DEMOGRAPHIC_AGE_MIN}에서 {DEMOGRAPHIC_AGE_MAX} 사이의 숫자만 입력해 주세요."
+                )
+        else:
+            age_error = "숫자만 입력해 주세요."
+    if age_error:
+        st.error(age_error)
+
     education = st.selectbox(
         "최종 학력",
         [
@@ -1415,16 +1440,19 @@ def render_demographic() -> None:
         ],
         key="demographic_edu",
     )
-    language = st.text_input("주 사용 언어 (선택 사항)", key="demographic_language")
-    if st.button("다음 단계", use_container_width=True):
-        if age_group == "선택해 주세요" or education == "선택해 주세요":
-            st.warning("모든 필수 항목을 입력해 주세요.")
+    education_valid = education != "선택해 주세요"
+
+    can_proceed = bool(sex_valid and age_valid and education_valid)
+    next_disabled = not can_proceed
+
+    if st.button("다음 단계", use_container_width=True, disabled=next_disabled):
+        if not can_proceed:
+            st.warning("모든 필수 항목을 정확히 입력해 주세요.")
             return
         st.session_state.payload["demographic"] = {
-            "gender": gender,
-            "age_group": age_group,
-            "education": education,
-            "language": language.strip(),
+            "sex_biological": sex_value,
+            "age_years": age_value,
+            "education_level": education,
         }
         condition = normalize_condition(get_or_assign_praise_condition())
         st.session_state["praise_condition"] = condition
@@ -1459,6 +1487,7 @@ def render_instructions() -> None:
         set_phase("anthro")
 
 
+# [CHANGE] Support custom option labels for shared paginated Likert renderer.
 def render_paginated_likert(
     questions: List[str],
     key_prefix: str,
@@ -1469,6 +1498,7 @@ def render_paginated_likert(
     prompt_html: str,
     scale_hint_html: str,
     per_page: int,
+    option_labels: Optional[Dict[int, str]] = None,
 ) -> bool:
     total = len(questions)
     total_pages = (total + per_page - 1) // per_page
@@ -1489,11 +1519,17 @@ def render_paginated_likert(
     for idx in range(start_idx, end_idx):
         label = questions[idx]
         current = st.session_state.payload[responses_key][idx]
+        options = list(range(scale_min, scale_max + 1))
+        def _format(val: int) -> str:
+            if option_labels and val in option_labels:
+                return f"{val} · {option_labels[val]}"
+            return f"{val}점"
+
         selected = st.radio(
             f"{idx + 1}. {label}",
-            list(range(scale_min, scale_max + 1)),
-            index=None if current is None else current - scale_min,
-            format_func=lambda val: f"{val}점",
+            options,
+            index=None if current is None else options.index(current),
+            format_func=_format,
             horizontal=True,
             key=f"{key_prefix}_{idx}",
         )
@@ -1531,6 +1567,7 @@ def render_anthro() -> None:
     questions = _load_local_json("questions_anthro.json")
     if not questions:
         return
+    # [CHANGE] Render anthropomorphism scale with unified 5-point labels.
     done = render_paginated_likert(
         questions=questions,
         key_prefix="anthro",
@@ -1547,6 +1584,7 @@ def render_anthro() -> None:
 </div>
 """,
         per_page=10,
+        option_labels=LIKERT5_ANCHORS,
     )
     if done:
         set_phase("achive")
@@ -1743,8 +1781,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     reason_tags = [detail.get("selected_reason_text") for detail in details]
     top_a, top_b = top_two_rationales(reason_tags)
 
-    payload_key = f"final_feedback_payload_{round_key}"
-    stored_payload = st.session_state.get(payload_key)
+    # [CHANGE] Guard feedback generation to prevent duplicate regeneration on reruns.
+    feedback_payloads = st.session_state.setdefault("_feedback_payloads", {})
+    feedback_flags = st.session_state.setdefault("feedback_generated", {})
+    stored_payload = feedback_payloads.get(round_key)
     if stored_payload is None:
         summary_templates = FEEDBACK_TEMPLATES.get(
             condition, FEEDBACK_TEMPLATES["emotional_surface"]
@@ -1763,11 +1803,9 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
                 micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
             micro_entries.append((detail["question_id"], micro_text))
 
-        stored_payload = {
-            "summary_text": summary_text,
-            "micro_entries": micro_entries,
-        }
-        st.session_state[payload_key] = stored_payload
+        stored_payload = {"summary_text": summary_text, "micro_entries": micro_entries}
+        feedback_payloads[round_key] = stored_payload
+        feedback_flags[round_key] = True
     else:
         summary_text = stored_payload.get("summary_text", "")
 
@@ -1787,7 +1825,8 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
     ):
-        st.session_state.pop(payload_key, None)
+        feedback_payloads.pop(round_key, None)
+        feedback_flags[round_key] = True
         set_phase(next_phase)
 
 
@@ -1819,15 +1858,9 @@ def render_motivation() -> None:
     if not st.session_state.payload["motivation_responses"]:
         st.session_state.payload["motivation_responses"] = [None] * total
 
+    # [CHANGE] Display updated 5-point Likert legend and enforce no default selections.
     st.title("학습 동기 설문")
-    st.markdown(
-        "<div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>"
-        "<span><b>1점</b> : 전혀 그렇지 않다</span><span>—</span>"
-        "<span><b>4점</b> : 보통이다</span><span>—</span>"
-        "<span><b>7점</b> : 매우 그렇다</span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
     st.markdown(
         f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 {start_idx + 1}–{end_idx} / {total} (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True,
@@ -1836,11 +1869,17 @@ def render_motivation() -> None:
     for idx in range(start_idx, end_idx):
         question = MOTIVATION_QUESTIONS[idx]
         current = st.session_state.payload["motivation_responses"][idx]
+        options = list(range(1, question.scale + 1))
+
+        def _format(val: int) -> str:
+            anchor = LIKERT5_ANCHORS.get(val)
+            return f"{val} · {anchor}" if anchor else f"{val}점"
+
         selected = st.radio(
             f"{idx + 1}. {question.text}",
-            list(range(1, question.scale + 1)),
-            index=None if current is None else current - 1,
-            format_func=lambda val: f"{val}점",
+            options,
+            index=None if current is None else options.index(current),
+            format_func=_format,
             horizontal=True,
             key=f"motivation_{question.id}",
         )
@@ -1890,77 +1929,47 @@ def render_motivation() -> None:
 def render_manipulation_check() -> None:
     scroll_top_js()
     st.header("조작 점검 문항")
-    st.caption("각 문항에 대해 1(전혀 그렇지 않다) ~ 5(매우 그렇다)로 응답해 주세요. 모든 문항은 필수입니다.")
+    st.caption("각 문항은 1(전혀 그렇지 않다) ~ 5(매우 그렇다) 사이에서 선택해 주세요. 모든 문항은 필수입니다.")
+    st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
 
-    items = [
-        "피드백이 따듯했다.",
-        "격려/공감을 느꼈다.",
-        "정서적 표현이 충분했다.",
-        "기분이 좋아지도록 도와줬다.",
-        "피드백이 분석적이었다.",
-        "수치•지표에 근거해 설명했다.",
-        "근거 제시가 명확했다.",
-        "수행을 객관적으로 요약해주었다.",
-        "내가 선택한 규칙/전략을 구체적으로 언급했다.",
-        "무엇을 잘 했는지/개선할지가 분명했다.",
-        "과제 맥락에 맞는 피드백이었다.",
-        "피드백이 명령/지시처럼 느껴졌다.",
-        "압박을 주는 표현이 있었다.",
-        "비교/서열화하는 느낌이 있었다.",
-        "이 에이전트가 사람처럼 느껴졌다.",
-        "이 에이전트에게 의도/목표를 가진 것처럼 보였다.",
-        "이 에이전트에게 사회적 존재감을 느꼈다.",
-        "이 에이전트의 말투가 인간적이라고 느껴졌다.",
-    ]
+    total_items = len(MANIPULATION_CHECK_ITEMS)
+    st.markdown(
+        f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 1–{total_items} / {total_items}</div>",
+        unsafe_allow_html=True,
+    )
 
     answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
-    scale = [1, 2, 3, 4, 5]
-    labels = {
-        1: "전혀 그렇지 않다",
-        2: "그렇지 않다",
-        3: "보통이다",
-        4: "그렇다",
-        5: "매우 그렇다",
-    }
-    placeholder = "선택해 주세요"
+    options = list(LIKERT5_ANCHORS.keys())
 
-    def format_option(value: Any) -> str:
-        if isinstance(value, int):
-            return f"{value} · {labels[value]}"
-        return placeholder
+    def _format(value: int) -> str:
+        anchor = LIKERT5_ANCHORS.get(value)
+        return f"{value} · {anchor}" if anchor else f"{value}점"
 
-    for idx, question in enumerate(items, start=1):
-        key = f"mc_{idx:02d}"
-        options = [placeholder, *scale]
-        current = answers.get(key)
-        index = options.index(current) if current in scale else 0
-        with st.container():
-            st.markdown(f"**{idx}. {question}**")
-            selection = st.radio(
-                label="",
-                options=options,
-                index=index,
-                format_func=format_option,
-                horizontal=True,
-                key=f"manip-radio-{idx}",
-                label_visibility="collapsed",
-            )
-            if isinstance(selection, int):
-                answers[key] = selection
-            else:
-                answers.pop(key, None)
+    for idx, item in enumerate(MANIPULATION_CHECK_ITEMS, start=1):
+        current = answers.get(item.id)
+        selection = st.radio(
+            f"{idx}. {item.text}",
+            options,
+            index=None if current is None else options.index(current),
+            format_func=_format,
+            horizontal=True,
+            key=f"manip_radio_{item.id}",
+        )
+        if selection is None:
+            answers.pop(item.id, None)
+        else:
+            answers[item.id] = selection
 
-    all_done = all(
-        answers.get(f"mc_{i:02d}") in scale for i in range(1, len(items) + 1)
+    all_done = len(answers) == total_items and all(
+        ans in options for ans in answers.values()
     )
 
     st.divider()
-    disabled = not all_done
-    if st.button("다음 단계", disabled=disabled, use_container_width=True):
-        saved = {
-            f"MC_{i:02d}": int(answers[f"mc_{i:02d}"])
-            for i in range(1, len(items) + 1)
-        }
+    if st.button("다음 단계", disabled=not all_done, use_container_width=True):
+        if not all_done:
+            st.warning("모든 문항에 응답해 주세요.")
+            return
+        saved = {item.id: int(answers[item.id]) for item in MANIPULATION_CHECK_ITEMS}
         st.session_state.manip_check_saved = saved
         st.session_state.payload["manipulation_check"] = saved
         set_phase("phone_input")
@@ -1993,6 +2002,7 @@ def render_phone_capture() -> None:
         set_phase("summary")
 
 
+# [CHANGE] Final debrief screen with guarded single-save semantics and retry flow.
 def render_summary() -> None:
     scroll_top_js()
     manager: ExperimentManager = st.session_state.manager
@@ -2044,29 +2054,47 @@ def render_summary() -> None:
             )
         st.session_state.record = record
         payload["end_time"] = record.timestamps["end"]
-    record: ExperimentData = st.session_state.record
 
+    record = st.session_state.record
     condition = normalize_condition(payload.get("feedback_condition", record.condition))
     payload["feedback_condition"] = condition
+    payload["praise_condition"] = condition
     record.condition = condition
 
-    if not st.session_state.exported:
-        row = build_export_row(payload, record)
+    row = build_export_row(payload, record)
+    if not st.session_state.saved_once and st.session_state.save_error is None:
         try:
-            save_row(row)
-            st.session_state.exported = True
+            destination = save_row(row)
+            st.session_state.saved_once = True
+            st.session_state.save_destination = destination
         except Exception as exc:  # pragma: no cover
-            st.error("응답 저장 중 문제가 발생했습니다. 연구진에게 문의해 주세요.")
-            if SHOW_DEBUG_RESULTS:
-                st.exception(exc)
+            st.session_state.save_error = str(exc)
 
-    st.header("연구 참여가 완료되었습니다.")
-    st.write(
-        "참여해 주셔서 감사합니다. 본 연구는 AI가 제공하는 피드백 유형이 학습 동기와 경험에 "
-        "미치는 영향을 조사하기 위한 것이었습니다. 추가 문의가 있으시면 안내된 연락처로 문의해 주세요."
+    st.title("연구 참여가 완료되었습니다.")
+    st.markdown(
+        "본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 탐색하기 위한 IRB 승인 연구입니다. "
+        "모든 응답은 익명으로 처리되며 연구 목적 외에 사용되지 않습니다."
     )
+    st.markdown("참여와 협조에 진심으로 감사드립니다.")
 
-    if SHOW_DEBUG_RESULTS:
+    if st.session_state.saved_once:
+        st.success("응답이 안전하게 저장되었습니다. 창을 닫으셔도 무방합니다.")
+    elif st.session_state.save_error:
+        st.error("응답 저장 중 오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.")
+        if st.button("다시 시도", use_container_width=True):
+            st.session_state.save_error = None
+            st.rerun()
+    else:
+        st.info("응답을 안전하게 저장하는 중입니다. 잠시만 기다려 주세요.")
+
+    submit_key = "final_submit_confirmed"
+    if st.button("종료/제출", use_container_width=True, disabled=not st.session_state.saved_once):
+        st.session_state[submit_key] = True
+
+    if st.session_state.get(submit_key):
+        st.success("제출 절차가 완료되었습니다. 지금 창을 닫으셔도 좋습니다.")
+
+    if globals().get("SHOW_DEBUG_RESULTS", False):
         st.markdown(
             f"""
 - 참가자 ID: **{record.participant_id}**
