@@ -23,10 +23,20 @@ from constants import (
     DEMOGRAPHIC_AGE_MIN,
     DEMOGRAPHIC_SEX_LABEL,
     DEMOGRAPHIC_SEX_OPTIONS,
-    LIKERT5_ANCHORS,
     LIKERT5_LEGEND_HTML,
+    LIKERT5_NUMERIC_OPTIONS,
+    MANIPULATION_CHECK_EXPECTED_COUNT,
     MANIPULATION_CHECK_ITEMS,
 )
+from persistence import (
+    build_sheet_row,
+    build_storage_record,
+    google_ready,
+    save_to_gcs,
+    save_to_sheets,
+    write_local_csv,
+)
+from utils.ui_helpers import all_answered, render_likert_numeric
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
@@ -1048,145 +1058,6 @@ def run_mcp_motion(round_no: int, seconds: float = 2.5) -> None:
     st.session_state["mcp_done"][round_no] = True
 
 
-# --------------------------------------------------------------------------------------
-# Storage helpers (Google Sheet + local CSV fallback)
-# --------------------------------------------------------------------------------------
-
-
-def google_ready() -> bool:
-    """Return True when remote Google Sheet credentials are available.
-
-    We check both Streamlit secrets and GOOGLE_APPLICATION_CREDENTIALS_JSON for flexibility.
-    """
-    try:
-        has_secrets = bool(getattr(st.secrets, "google_sheet", {}) or {})
-    except Exception:
-        has_secrets = False
-    has_env = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
-    return has_secrets or has_env
-
-
-def save_row(row: List[Any]) -> str:
-    """Persist a response row remotely when possible, otherwise locally.
-
-    Honors DRY_RUN mode and falls back to a /tmp CSV that works on Streamlit Cloud.
-    """
-    dry_run = st.session_state.get("DRY_RUN", False)
-    if dry_run or not google_ready():
-        import csv
-        from pathlib import Path
-
-        path = Path("/tmp/ai_praise_resp.csv")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", newline="", encoding="utf-8") as file_obj:
-            csv.writer(file_obj).writerow(row)
-        return f"LOCAL::{path}"
-    from utils.google_sheet import append_row_to_sheet  # noqa: PLC0415
-
-    ws_conf = getattr(st.secrets, "google_sheet", {}) or {}
-    worksheet = ws_conf.get("worksheet", "resp")
-    append_row_to_sheet(row, worksheet=worksheet)
-    return "REMOTE::GOOGLE_SHEET"
-
-
-# [CHANGE] Construct a wide-format export row with per-item responses.
-def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[Any]:
-    consent = payload.get("consent", {}) or {}
-    demographic = payload.get("demographic", {}) or {}
-    anthro = payload.get("anthro_responses", []) or []
-    achive = payload.get("achive_responses", []) or []
-    motivation = payload.get("motivation_responses", []) or []
-    inference_details = payload.get("inference_details", []) or []
-    feedback_condition = payload.get("feedback_condition", "")
-    difficulty = payload.get("difficulty_checks", {}) or {}
-    start_iso = payload.get("start_time") or record.timestamps.get("start")
-    end_iso = payload.get("end_time") or record.timestamps.get("end")
-    phone = payload.get("phone", "")
-    open_feedback = payload.get("open_feedback", "")
-    manipulation_check = payload.get("manipulation_check", {}) or {}
-
-    def _expand(values: List[Any], total: int) -> List[Any]:
-        buffer: List[Any] = []
-        for idx in range(total):
-            value = values[idx] if idx < len(values) else ""
-            if value is None:
-                value = ""
-            buffer.append(value)
-        return buffer
-
-    anth_columns = _expand(anthro, len(anthro))
-    ach_columns = _expand(achive, len(achive))
-    motivation_columns = _expand(motivation, len(MOTIVATION_QUESTIONS))
-    manip_columns = [
-        manipulation_check.get(item.id, "") for item in MANIPULATION_CHECK_ITEMS
-    ]
-
-    export_details = inference_details[:INFERENCE_EXPORT_COUNT]
-    task_answers = []
-    for detail in export_details:
-        answer = detail.get("selected_option_text") or detail.get("selected_option", "")
-        task_answers.append(answer)
-    task_answers.extend([""] * (INFERENCE_EXPORT_COUNT - len(task_answers)))
-
-    score = sum(
-        1 for d in inference_details if d.get("selected_option") == d.get("correct_idx")
-    )
-    duration = sum(float(d.get("response_time", 0.0)) for d in inference_details)
-    accuracy = (
-        f"{score / len(inference_details):.3f}" if inference_details else ""
-    )
-
-    metadata = json.dumps(
-        {
-            "participant_id": record.participant_id,
-            "condition": record.condition,
-            "difficulty": difficulty,
-            "motivation_category_scores": payload.get("motivation_category_scores", {}),
-            "open_feedback": open_feedback,
-            "manipulation_check": manipulation_check,
-            "full_inference_details": inference_details,
-        },
-        ensure_ascii=False,
-    )
-
-    date_str = ""
-    if start_iso:
-        try:
-            date_str = datetime.fromisoformat(start_iso).strftime("%Y-%m-%d")
-        except ValueError:
-            date_str = start_iso
-
-    difficulty_after_round1 = difficulty.get("after_round1", "")
-    difficulty_final = difficulty.get("final", "")
-
-    return [
-        date_str,
-        consent.get("consent_research", ""),
-        consent.get("consent_privacy", ""),
-        demographic.get("sex_biological", ""),
-        demographic.get("age_years", ""),
-        demographic.get("education_level", ""),
-        feedback_condition,
-        payload.get("praise_condition", feedback_condition),
-        *[value for value in anth_columns],
-        *[value for value in ach_columns],
-        round(duration, 2) if inference_details else "",
-        score if inference_details else "",
-        accuracy,
-        *task_answers,
-        *motivation_columns,
-        *manip_columns,
-        difficulty_after_round1,
-        difficulty_final,
-        open_feedback,
-        phone,
-        start_iso or "",
-        end_iso or "",
-        record.participant_id,
-        metadata,
-    ]
-
-
 def export_session_json(payload: Dict[str, Any]) -> None:
     with st.expander("📦 세션 데이터 확인 (JSON)", expanded=False):
         st.code(json.dumps(payload, ensure_ascii=False, indent=2), language="json")
@@ -1279,6 +1150,12 @@ def set_phase(next_phase: str) -> None:
         "phone_input",
         "summary",
     }
+    if next_phase.startswith("feedback_"):
+        phase_id = next_phase.replace("feedback_", "")
+        guard_key = f"praise_generated_{phase_id}"
+        payload_key = f"_feedback_payload_{phase_id}"
+        st.session_state.pop(guard_key, None)
+        st.session_state.pop(payload_key, None)
     st.session_state.phase = next_phase if next_phase in allowed else "summary"
     scroll_top_js()
     st.rerun()
@@ -1487,7 +1364,7 @@ def render_instructions() -> None:
         set_phase("anthro")
 
 
-# [CHANGE] Support custom option labels for shared paginated Likert renderer.
+# [CHANGE] Render paginated Likert blocks with numeric-only options.
 def render_paginated_likert(
     questions: List[str],
     key_prefix: str,
@@ -1498,7 +1375,6 @@ def render_paginated_likert(
     prompt_html: str,
     scale_hint_html: str,
     per_page: int,
-    option_labels: Optional[Dict[int, str]] = None,
 ) -> bool:
     total = len(questions)
     total_pages = (total + per_page - 1) // per_page
@@ -1518,20 +1394,12 @@ def render_paginated_likert(
 
     for idx in range(start_idx, end_idx):
         label = questions[idx]
-        current = st.session_state.payload[responses_key][idx]
         options = list(range(scale_min, scale_max + 1))
-        def _format(val: int) -> str:
-            if option_labels and val in option_labels:
-                return f"{val} · {option_labels[val]}"
-            return f"{val}점"
-
-        selected = st.radio(
-            f"{idx + 1}. {label}",
-            options,
-            index=None if current is None else options.index(current),
-            format_func=_format,
-            horizontal=True,
-            key=f"{key_prefix}_{idx}",
+        selected = render_likert_numeric(
+            item_id=f"{key_prefix}_{idx}",
+            label=f"{idx + 1}. {label}",
+            options=options,
+            key_prefix=f"{key_prefix}_opt",
         )
         st.session_state.payload[responses_key][idx] = selected
 
@@ -1576,15 +1444,8 @@ def render_anthro() -> None:
         page_state_key="anthro_page",
         responses_key="anthro_responses",
         prompt_html="<h2 style='text-align:center;font-weight:bold;'>AI 에이전트에 대한 인식 설문</h2>",
-        scale_hint_html="""
-<div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
-  <span><b>1점</b> : 전혀 그렇지 않다</span><span>—</span>
-  <span><b>3점</b> : 보통이다</span><span>—</span>
-  <span><b>5점</b> : 매우 그렇다</span>
-</div>
-""",
+        scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
-        option_labels=LIKERT5_ANCHORS,
     )
     if done:
         set_phase("achive")
@@ -1782,10 +1643,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     top_a, top_b = top_two_rationales(reason_tags)
 
     # [CHANGE] Guard feedback generation to prevent duplicate regeneration on reruns.
-    feedback_payloads = st.session_state.setdefault("_feedback_payloads", {})
-    feedback_flags = st.session_state.setdefault("feedback_generated", {})
-    stored_payload = feedback_payloads.get(round_key)
-    if stored_payload is None:
+    guard_key = f"praise_generated_{round_key}"
+    payload_key = f"_feedback_payload_{round_key}"
+    stored_payload = st.session_state.get(payload_key)
+    if not st.session_state.get(guard_key, False):
         summary_templates = FEEDBACK_TEMPLATES.get(
             condition, FEEDBACK_TEMPLATES["emotional_surface"]
         )
@@ -1804,29 +1665,21 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
             micro_entries.append((detail["question_id"], micro_text))
 
         stored_payload = {"summary_text": summary_text, "micro_entries": micro_entries}
-        feedback_payloads[round_key] = stored_payload
-        feedback_flags[round_key] = True
+        st.session_state[payload_key] = stored_payload
+        st.session_state[guard_key] = True
     else:
-        summary_text = stored_payload.get("summary_text", "")
+        summary_text = (stored_payload or {}).get("summary_text", "")
 
     typewriter_markdown(summary_text, speed=0.01)
 
-    if SHOW_PER_ITEM_SUMMARY:
+    if SHOW_PER_ITEM_SUMMARY and stored_payload:
         st.markdown("#### 문항별 간단 피드백")
-        micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
-            condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
-        )
-        for detail in details:
-            micro_text = random.choice(micro_templates)
-            if "{A}" in micro_text:
-                micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
-            st.markdown(f"- **{detail['question_id']}** · {micro_text}")
+        for question_id, micro_text in stored_payload.get("micro_entries", []):
+            st.markdown(f"- **{question_id}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
     ):
-        feedback_payloads.pop(round_key, None)
-        feedback_flags[round_key] = True
         set_phase(next_phase)
 
 
@@ -1868,20 +1721,11 @@ def render_motivation() -> None:
 
     for idx in range(start_idx, end_idx):
         question = MOTIVATION_QUESTIONS[idx]
-        current = st.session_state.payload["motivation_responses"][idx]
-        options = list(range(1, question.scale + 1))
-
-        def _format(val: int) -> str:
-            anchor = LIKERT5_ANCHORS.get(val)
-            return f"{val} · {anchor}" if anchor else f"{val}점"
-
-        selected = st.radio(
-            f"{idx + 1}. {question.text}",
-            options,
-            index=None if current is None else options.index(current),
-            format_func=_format,
-            horizontal=True,
-            key=f"motivation_{question.id}",
+        selected = render_likert_numeric(
+            item_id=question.id,
+            label=f"{idx + 1}. {question.text}",
+            options=list(range(1, question.scale + 1)),
+            key_prefix="motivation",
         )
         st.session_state.payload["motivation_responses"][idx] = selected
 
@@ -1939,32 +1783,33 @@ def render_manipulation_check() -> None:
     )
 
     answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
-    options = list(LIKERT5_ANCHORS.keys())
-
-    def _format(value: int) -> str:
-        anchor = LIKERT5_ANCHORS.get(value)
-        return f"{value} · {anchor}" if anchor else f"{value}점"
+    options = LIKERT5_NUMERIC_OPTIONS
 
     for idx, item in enumerate(MANIPULATION_CHECK_ITEMS, start=1):
-        current = answers.get(item.id)
-        selection = st.radio(
-            f"{idx}. {item.text}",
-            options,
-            index=None if current is None else options.index(current),
-            format_func=_format,
-            horizontal=True,
-            key=f"manip_radio_{item.id}",
+        selection = render_likert_numeric(
+            item_id=item.id,
+            label=f"{idx}. {item.text}",
+            options=options,
+            key_prefix="manip",
         )
         if selection is None:
             answers.pop(item.id, None)
         else:
             answers[item.id] = selection
 
-    all_done = len(answers) == total_items and all(
-        ans in options for ans in answers.values()
+    all_done = all_answered(
+        answers,
+        MANIPULATION_CHECK_EXPECTED_COUNT,
+        valid_options=options,
     )
 
     st.divider()
+    if not all_done:
+        st.markdown(
+            "<div style='text-align:center;color:#ef4444;font-weight:600;'>필수 응답입니다.</div>",
+            unsafe_allow_html=True,
+        )
+
     if st.button("다음 단계", disabled=not all_done, use_container_width=True):
         if not all_done:
             st.warning("모든 문항에 응답해 주세요.")
@@ -2061,12 +1906,48 @@ def render_summary() -> None:
     payload["praise_condition"] = condition
     record.condition = condition
 
-    row = build_export_row(payload, record)
+    storage_record = build_storage_record(payload, record)
+    sheet_row = build_sheet_row(storage_record)
     if not st.session_state.saved_once and st.session_state.save_error is None:
         try:
-            destination = save_row(row)
-            st.session_state.saved_once = True
-            st.session_state.save_destination = destination
+            destinations: List[str] = []
+            warn_registry: Dict[str, bool] = st.session_state.setdefault(
+                "_resource_fallback_warned", {}
+            )
+            if not st.session_state.DRY_RUN:
+                gcs_ok, gcs_msg = save_to_gcs(storage_record)
+                if gcs_ok and gcs_msg:
+                    destinations.append(gcs_msg)
+                elif gcs_msg:
+                    key = f"gcs::{gcs_msg}"
+                    if not warn_registry.get(key):
+                        st.warning(f"GCS 업로드를 건너뜁니다: {gcs_msg}")
+                        warn_registry[key] = True
+
+                if google_ready():
+                    try:
+                        sheet_settings = getattr(st.secrets, "google_sheet", {}) or {}
+                    except Exception:
+                        sheet_settings = {}
+                    worksheet_name = sheet_settings.get("worksheet", "resp")
+                    sheet_msg = save_to_sheets(sheet_row, worksheet=worksheet_name)
+                    destinations.append(sheet_msg)
+                else:
+                    key = "sheets::local_fallback"
+                    if not warn_registry.get(key):
+                        st.warning("Google Sheets 인증이 없어 로컬 CSV로 저장합니다.")
+                        warn_registry[key] = True
+                    destinations.append(write_local_csv(sheet_row))
+            else:
+                key = "storage::dry_run"
+                if not warn_registry.get(key):
+                    st.info("DRY_RUN 모드이므로 응답을 로컬 CSV에만 기록합니다.")
+                    warn_registry[key] = True
+                destinations.append(write_local_csv(sheet_row))
+
+            if destinations:
+                st.session_state.saved_once = True
+                st.session_state.save_destination = ", ".join(destinations)
         except Exception as exc:  # pragma: no cover
             st.session_state.save_error = str(exc)
 
