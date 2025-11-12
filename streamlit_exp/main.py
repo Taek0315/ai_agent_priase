@@ -5,6 +5,7 @@ import json
 import os
 import random
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +55,14 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 def get_or_assign_praise_condition() -> str:
     """
+    Returns exactly one of:
+      'emotional_specific', 'computational_specific',
+      'emotional_surface', 'computational_surface'
+    Assign once per participant and persist in st.session_state.
+    Never display this string to the participant.
+    """
+    if "praise_condition" not in st.session_state:
+        st.session_state["praise_condition"] = random.choice(
     Returns one of:
       'emotional_specific', 'computational_specific',
       'emotional_surface', 'computational_surface'
@@ -69,6 +78,129 @@ def get_or_assign_praise_condition() -> str:
                 "computational_surface",
             ]
         )
+    return st.session_state["praise_condition"]
+
+
+FEEDBACK_TEXTS: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 훌륭한 학습자를 만난 것 같아서 기쁨과 뿌듯함을 느끼고 있습니다. 특히 {A}를 적절하게 사용하셨는데 쉽지 않은 과제임에도 놀라운 언어적 능력과 추론 능력보여주신 점이 인상 깊었습니다. 저와 함께 학습을 진행한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n도전적인 문항에서도 성실하고 깊이 있는 사고가 관찰되었습니다. 특히 {A}와 {B} 사용이 안정적으로 드러났습니다. 계속 함께한다면 큰 성장이 기대됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n응답 전반에서 세심한 판단과 일관성이 확인되었습니다. {A}, {B} 활용이 인상적이었습니다. 훌륭한 학습자의 면모가 보입니다.",
+    ],
+    "computational_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항을 분석한 결과, 사전 분포 대비 92.3 퍼센타일의 추론 효율 지수를 기록하셨습니다. 이는 응답 시점별 근거 밀도의 분산이 0.14 이내로 수렴한 결과로 해석됩니다. 특히 {A}의 사용 빈도는 라플라스 근사 모델 기준 ΔAIC = −5.28 수준에서 최적 예측변수로 선택되었습니다. 문항당 평균 근거 수는 1.4개로, 비정규성이나 과잉 산포 없이 최적의 정보량을 유지하였습니다. 전체적으로 안정적이고 통계적으로 유의한 추론 패턴을 형성하신 것으로 판단됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n다변량 분석에서 {A}·{B}가 핵심 예측변수로 반복 선택되었고, 응답 시점별 근거 밀도 분산은 0.14 이내로 수렴했습니다. 통계적으로 유의한 안정 패턴입니다.",
+        "추론 과제의 분석이 완료되었습니다.\n사전 분포 대비 상위 퍼센타일을 유지했고 ΔAIC 기준에서도 {A}/{B}의 설명력이 확인되었습니다. 문항당 평균 근거 1.4개로 정보량이 최적화되었습니다.",
+    ],
+    "emotional_surface": [
+        "추론 과제의 분석이 완료되었습니다.\n문항을 풀어주셔서 감사합니다. 문항 응답을 잘 해서 추론 능력이 높아서 기쁨과 뿌듯함을 느끼고 있습니다. 문제 풀이를 잘해서 인상 깊었습니다. 저와 함께 한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n끝까지 성실히 임해주신 점이 인상적이었습니다. 앞으로의 학습에서도 좋은 흐름이 이어질 것으로 기대합니다.",
+        "추론 과제의 분석이 완료되었습니다.\n집중해서 응답해 주셨고 꾸준한 태도가 돋보였습니다. 계속 응원하겠습니다.",
+    ],
+    "computational_surface": [
+        "추론과제 분석이 완료되었습니다.\n응답을 분석한 결과 통계적으로 의미있게 높은 퍼센타일에 위치하고 있습니다. 다변량 분석 모델에 따라 최적 예측 변수가 확인되었고 이를 통해 안정적이고 통계적으로 유의한 능력이 확인 됩니다.",
+        "추론과제 분석이 완료되었습니다.\n모델 기준으로 핵심 예측 변수가 확인되며 전반적으로 유의수준을 만족하는 안정 패턴입니다.",
+        "추론과제 분석이 완료되었습니다.\n상위 퍼센타일 구간에서 일관성이 유지되었고 추론 경향이 신뢰 가능합니다.",
+    ],
+}
+
+MICRO_FEEDBACK: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "깊이 있는 추론 흐름입니다. {A}/{B} 사용이 돋보였습니다.",
+        "세심한 근거 제시가 안정적이에요. {A}/{B} 활용 좋아요.",
+        "일관된 판단입니다. {A}/{B}가 핵심으로 작동합니다.",
+        "문항마다 {A}/{B} 근거가 정확히 짚어집니다.",
+        "복잡한 상황에도 {A}/{B}를 흔들림 없이 적용하셨습니다.",
+        "추론 경로가 분명합니다. {A}/{B} 판단이 돋보여요.",
+        "치밀한 사고가 느껴집니다. {A}/{B} 연결이 매끄럽습니다.",
+        "세부 규칙을 잘 활용했습니다. {A}/{B} 선택이 정교합니다.",
+        "깊은 이해가 전제된 응답입니다. {A}/{B}가 안정적으로 쓰였습니다.",
+        "논리 흐름이 탄탄합니다. {A}/{B} 조합이 균형 잡혀 있어요.",
+        "설명 가능한 근거가 반복됩니다. {A}/{B}가 중심에 있습니다.",
+        "추론 감각이 날카롭습니다. {A}/{B} 활용이 매우 인상적입니다.",
+    ],
+    "computational_specific": [
+        "근거 {A}/{B}가 반복적으로 선택되어 안정적입니다.",
+        "비분산 영역에서 수렴합니다. {A}/{B} 기여 큽니다.",
+        "정보량이 최적화되어 있습니다. {A}/{B} 설명력 양호.",
+        "지표가 상위 분포입니다. {A}/{B} 변수의 기여도가 큽니다.",
+        "응답 효율성이 높습니다. {A}/{B} 선택이 통계적으로 유효합니다.",
+        "정규화 잔차가 안정적입니다. {A}/{B}가 수렴을 이끌었어요.",
+        "추론 벡터가 균형 잡혔습니다. {A}/{B} 조합이 핵심입니다.",
+        "평균 제곱 오차가 낮습니다. {A}/{B} 근거가 정확했습니다.",
+        "예측 오차가 감소했습니다. {A}/{B}가 장기적으로 유효합니다.",
+        "통계 지표가 일정하게 유지됩니다. {A}/{B} 패턴이 견고합니다.",
+        "분산이 급격히 줄었습니다. {A}/{B}가 신뢰도를 높였습니다.",
+        "데이터 적합도가 향상되었습니다. {A}/{B}가 설명력의 중심입니다.",
+    ],
+    "emotional_surface": [
+        "성실한 시도가 돋보입니다. 계속 좋아지고 있어요!",
+        "집중력이 안정적입니다. 흐름이 좋습니다.",
+        "차분한 판단이 인상적입니다. 다음도 기대돼요.",
+        "꾸준한 응답 태도가 정말 멋집니다!",
+        "침착하게 풀어주셔서 안정감이 느껴집니다.",
+        "매 문항에 진심을 담아주셔서 고맙습니다.",
+        "열정이 응답 곳곳에서 느껴집니다. 계속 화이팅!",
+        "천천히 끝까지 가는 모습이 인상 깊었어요.",
+        "당황하지 않고 풀어낸 점이 참 좋았습니다.",
+        "노력의 흔적이 또렷합니다. 앞으로도 함께해요!",
+        "성실함 덕분에 좋은 흐름이 나왔습니다.",
+        "집중을 오래 유지하셔서 놀라웠습니다.",
+    ],
+    "computational_surface": [
+        "안정적인 상위 구간입니다. 패턴 일관성이 좋습니다.",
+        "모델 기준으로 신뢰 구간 내에 있습니다.",
+        "변동성 낮고 예측 가능성이 높습니다.",
+        "분석 지표가 일정하게 유지됩니다. 안정적인 패턴이에요.",
+        "예측 오차가 작습니다. 전체 추세가 안정적입니다.",
+        "응답 값이 모델 추정과 잘 맞아떨어집니다.",
+        "상위 구간에서 지속적으로 머물고 있습니다.",
+        "변동폭이 작아 신뢰 구간 내에 있습니다.",
+        "통계적 일관성이 높아 설득력이 있습니다.",
+        "지표 변동이 미미해 안정감이 느껴집니다.",
+        "모델 적합도가 양호하게 유지됩니다.",
+        "데이터 분포가 깨끗합니다. 신뢰도가 높습니다.",
+    ],
+}
+
+
+def get_next_micro_feedback(cond: str, a: str, b: str) -> str:
+    key = f"_used_micro_{cond}"
+    used: set[int] = st.session_state.setdefault(key, set())
+    pool = MICRO_FEEDBACK.get(cond, MICRO_FEEDBACK["emotional_surface"])
+    for idx, line in enumerate(pool):
+        if idx not in used:
+            used.add(idx)
+            st.session_state[key] = used
+            return line.replace("{A}", a).replace("{B}", b)
+    st.session_state[key] = set()
+    return get_next_micro_feedback(cond, a, b)
+
+
+def typewriter_markdown(md: str, speed: float = 0.01) -> None:
+    try:
+        with st.chat_message("assistant"):
+            holder = st.empty()
+            buffer = ""
+            for ch in md:
+                buffer += ch
+                holder.markdown(buffer.replace("\n", "  \n"))
+                time.sleep(speed)
+    except Exception:
+        container = st.container()
+        holder = container.empty()
+        buffer = ""
+        for ch in md:
+            buffer += ch
+            holder.markdown(buffer.replace("\n", "  \n"))
+            time.sleep(speed)
+
+
+def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
+    counts = Counter([t for t in all_reason_tags if t])
+    if not counts:
+        return ("시제 -na", "시제 -tu")
+    most = [k for k, _ in counts.most_common(2)]
     return st.session_state[key]
 
 
@@ -140,6 +272,16 @@ def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
     while len(most) < 2:
         most.append("시제 -tu" if "시제 -na" in most else "시제 -na")
     return most[0], most[1]
+
+
+def normalize_condition(value: Optional[str]) -> str:
+    mapping = {
+        "emotional_superficial": "emotional_surface",
+        "computational_superficial": "computational_surface",
+    }
+    if not value:
+        return "emotional_surface"
+    return mapping.get(value, value)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -622,7 +764,7 @@ class DataAnalyzer:
     def get_motivation_scores(self) -> Dict[str, Dict[str, float]]:
         scores: Dict[str, Dict[str, List[float]]] = {}
         for d in self.data:
-            key = d.condition
+            key = normalize_condition(d.condition)
             scores.setdefault(
                 key,
                 {
@@ -1241,6 +1383,8 @@ def render_demographic() -> None:
             "education": education,
             "language": language.strip(),
         }
+        condition = normalize_condition(get_or_assign_praise_condition())
+        st.session_state["praise_condition"] = condition
         condition = get_or_assign_praise_condition()
         participant_id = st.session_state.manager.create_participant(
             st.session_state.payload["demographic"],
@@ -1424,6 +1568,7 @@ def render_inference_round(
         set_phase(next_phase)
         return
     question = questions[index]
+    st.title(f"추론 과제 12문항 중 {index + 1}번째")
     st.title(f"추론 과제 {len(questions)}문항 중 {index + 1}번째")
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
@@ -1456,6 +1601,7 @@ def render_inference_round(
     if not submit_btn:
         last_micro = rs.get("last_micro_feedback")
         if last_micro:
+            st.markdown(f"✅ {last_micro}")
             st.success(last_micro)
             rs["last_micro_feedback"] = None
         return
@@ -1469,7 +1615,7 @@ def render_inference_round(
     manager: ExperimentManager = st.session_state.manager
     selected_option_idx = answer_labels.index(selected_answer_label)
     selected_tag_idx = rationale_tags.index(selected_tag)
-    feedback = manager.process_inference_response(
+    manager.process_inference_response(
         question_id=question.id,
         selected_option=selected_option_idx,
         selected_reason=selected_tag,
@@ -1490,10 +1636,18 @@ def render_inference_round(
         "correct_reason_idx": int(question.reason_idx),
         "response_time": response_time,
         "timestamp": datetime.utcnow().isoformat(),
-        "feedback": feedback,
     }
     payload.setdefault("inference_details", []).append(detail)
-    payload["feedback_messages"][round_key].append(feedback)
+    condition = normalize_condition(get_or_assign_praise_condition())
+    completed_tags = [
+        d.get("selected_reason_text")
+        for d in payload["inference_details"]
+        if d["round"] == round_key
+    ]
+    top_a, top_b = top_two_rationales(completed_tags)
+    micro_text = get_next_micro_feedback(condition, top_a, top_b)
+    rs["last_micro_feedback"] = micro_text
+    payload["feedback_messages"][round_key].append(micro_text)
     rs[f"{round_key}_index"] = index + 1
 
     condition = get_or_assign_praise_condition()
@@ -1529,6 +1683,10 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     ]
 
     flag_key = f"mcp_done_{round_key}"
+    st.session_state.setdefault(flag_key, False)
+    inject_covx_toggle(round_no)
+    if not st.session_state[flag_key]:
+        run_mcp_motion(round_no)
     if flag_key not in st.session_state:
         st.session_state[flag_key] = False
 
@@ -1553,6 +1711,44 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 """,
         unsafe_allow_html=True,
     )
+    listener_value = components.html(
+        f"""
+<script>
+(function(){{
+  const targetRound = {round_no};
+  function notifyDone(event){{
+    if (!event || !event.data || event.data.type !== 'covnox_done' || event.data.round !== targetRound) {{
+      return;
+    }}
+    window.removeEventListener('message', notifyDone);
+    const streamlit = window.parent && window.parent.Streamlit;
+    if (streamlit && streamlit.setComponentValue) {{
+      streamlit.setComponentValue('done');
+    }}
+  }}
+  window.addEventListener('message', notifyDone, false);
+}})();
+</script>
+""",
+        height=0,
+        width=0,
+        scrolling=False,
+        key=f"covx-listener-{round_key}-stable",
+    )
+    if listener_value == "done":
+        st.session_state[flag_key] = True
+    if st.session_state.get(flag_key):
+        st.write("")
+        st.markdown(
+            f'<div id="mcp{round_no}-actions" class="mcp-footer">',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
+        ):
+            st.session_state.analysis_seen[round_key] = True
+            set_phase(next_phase)
+        st.markdown("</div>", unsafe_allow_html=True)
     st.write("")
     if st.button(
         "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
@@ -1561,13 +1757,20 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
         set_phase(next_phase)
 
 
-def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -> None:
+def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
     details = [
         d
         for d in st.session_state.payload["inference_details"]
         if d["round"] == round_key
     ]
+    condition = normalize_condition(get_or_assign_praise_condition())
+    st.title("AI 분석이 완료 되었습니다")
+    st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
+    reason_tags = [d.get("selected_reason_text") for d in details]
+    top_a, top_b = top_two_rationales(reason_tags)
+    summary_templates = FEEDBACK_TEXTS.get(
+        condition, FEEDBACK_TEXTS["emotional_surface"]
     condition = get_or_assign_praise_condition()
     st.title("AI 분석이 완료 되었습니다")
     st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
@@ -1580,6 +1783,7 @@ def render_feedback(round_key: str, reason_labels: List[str], next_phase: str) -
     summary_text = random.choice(summary_templates)
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+    typewriter_markdown(summary_text, speed=0.01)
     typewriter(summary_text)
 
     st.markdown("#### 문항별 간단 피드백")
@@ -1730,7 +1934,9 @@ def render_summary() -> None:
         try:
             record = manager.complete_experiment()
         except ValueError:
-            condition = payload.get("feedback_condition", "emotional_specific")
+            condition = normalize_condition(
+                payload.get("feedback_condition", get_or_assign_praise_condition())
+            )
             record = ExperimentData(
                 participant_id=payload.get("participant_id")
                 or f"manual_{int(time.time())}",
@@ -1773,7 +1979,6 @@ def render_summary() -> None:
     record: ExperimentData = st.session_state.record
 
     st.title("연구 참여가 완료되었습니다")
-    st.success("참여해 주셔서 감사합니다! 응답은 자동 저장되었습니다.")
     st.markdown(
         f"""
 - 참가자 ID: **{record.participant_id}**
@@ -1781,22 +1986,29 @@ def render_summary() -> None:
 """
     )
 
+    condition = normalize_condition(payload.get("feedback_condition", record.condition))
+    payload["feedback_condition"] = condition
+    record.condition = condition
     condition = get_or_assign_praise_condition()
     all_reason_tags = [
         detail.get("selected_reason_text")
         for detail in payload.get("inference_details", [])
     ]
     overall_a, overall_b = top_two_rationales(all_reason_tags)
+    summary_templates = FEEDBACK_TEXTS.get(
+        condition, FEEDBACK_TEXTS["emotional_surface"]
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
     summary_text = random.choice(summary_templates)
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
+    typewriter_markdown(summary_text, speed=0.01)
     typewriter(summary_text)
 
     analyzer = DataAnalyzer([record])
-    motivation_scores = analyzer.get_motivation_scores().get(record.condition, {})
+    condition_for_scores = normalize_condition(record.condition)
+    motivation_scores = analyzer.get_motivation_scores().get(condition_for_scores, {})
     if motivation_scores:
         st.subheader("동기 카테고리 평균 점수")
         df = pd.DataFrame(
