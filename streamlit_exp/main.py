@@ -9,11 +9,11 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from collections import Counter
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & compact styling (kept from original scaffold)
@@ -50,12 +50,6 @@ html, body { overflow-x: hidden !important; }
 </style>
 """
 
-COMPACT_CSS += """
-<style>
-div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
-.mcp-footer { margin-top: 0.6rem !important; }
-</style>
-"""
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 
@@ -69,6 +63,14 @@ def get_or_assign_praise_condition() -> str:
     """
     if "praise_condition" not in st.session_state:
         st.session_state["praise_condition"] = random.choice(
+    Returns one of:
+      'emotional_specific', 'computational_specific',
+      'emotional_surface', 'computational_surface'
+    Assigned exactly once per participant and persisted in st.session_state.
+    """
+    key = "praise_condition"
+    if key not in st.session_state:
+        st.session_state[key] = random.choice(
             [
                 "emotional_specific",
                 "computational_specific",
@@ -199,6 +201,74 @@ def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
     if not counts:
         return ("시제 -na", "시제 -tu")
     most = [k for k, _ in counts.most_common(2)]
+    return st.session_state[key]
+
+
+FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주셔서 감사합니다. 각 문항의 응답을 보면 깊이 고민하며 추론하신 것이 느껴졌습니다. 특히 {A}와 {B}를 적절히 사용하신 점이 인상 깊었습니다. 함께 학습한다면 정말 즐겁고 뜻깊을 것 같아 기대가 됩니다. 😊",
+        "수고 많으셨습니다. 세밀한 사고의 흔적이 문항 전반에서 관찰됩니다. 특히 {A}, {B} 활용이 돋보였습니다. 학습자로서의 잠재력이 또렷하게 보입니다. 👍",
+        "도전적인 문항에도 흔들림 없이 응답하셨습니다. {A}와 {B}에 근거한 선택이 안정적으로 반복되며 높은 성장을 기대하게 합니다. 🙌",
+    ],
+    "computational_specific": [
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항 기준 사전 분포 대비 **92.3 퍼센타일**의 추론 효율 지수를 보였습니다. 응답 시점별 근거 밀도의 분산은 0.14 이내로 수렴했고, 특히 {A}와 {B}는 라플라스 근사 모델에서 ΔAIC<0로 선택된 핵심 예측변수였습니다. 전반적으로 통계적으로 유의한 추론 패턴입니다. 📈",
+        "분석 결과, 문항당 평균 근거 수는 1.4개로 과잉 산포 없이 정보량이 최적화되었습니다. {A}, {B}는 예측 기여도가 높았습니다. 안정적인 판단 흐름이 확인됩니다. ✅",
+        "다변량 분석에서 {A}·{B}가 핵심 설명변수로 반복 선택되었습니다. 변동성은 낮고 일관성은 높아 효율적인 추론 전략으로 평가됩니다. 🔬",
+    ],
+    "emotional_surface": [
+        "추론 과제의 분석이 완료되었습니다.\n문항을 끝까지 풀어주셔서 감사합니다. 전체적으로 문제 풀이가 인상 깊었고, 추론 능력이 잘 드러났습니다. 함께 계속해 나가면 더 좋은 결과가 있을 거라 기대합니다. 🙂",
+        "전반적으로 성실한 응답이 돋보였습니다. 꾸준히 시도하고 마무리하신 점이 좋았습니다. 계속 응원하겠습니다! 🌟",
+        "집중해서 풀어주신 점이 인상적이었습니다. 앞으로의 학습도 기대됩니다. 화이팅입니다! 💪",
+    ],
+    "computational_surface": [
+        "추론 과제의 분석이 완료되었습니다.\n응답은 통계적으로 의미 있는 상위 구간에 위치합니다. 모델 기준으로 핵심 예측 변수가 확인되며 안정적이고 유의한 능력이 관찰됩니다. 📊",
+        "전체적으로 유의수준을 만족하는 패턴입니다. 안정적인 결과 범위에 있으며 예측력도 적절합니다. ✔️",
+        "분석 결과는 일관된 상위 퍼센타일 구간에 머뭅니다. 신뢰 가능한 추론 경향이 관찰됩니다. ✅",
+    ],
+}
+
+MICRO_FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
+    "emotional_specific": [
+        "깊이 있는 추론 흐름입니다. {A}/{B} 사용이 돋보였습니다. 🙂",
+        "세밀한 근거 연결이 인상적이었습니다. {A}/{B} 활용이 안정적입니다. 😊",
+        "추론 과정이 탄탄합니다. {A}/{B} 선택이 빛났습니다. 🙌",
+    ],
+    "computational_specific": [
+        "근거 {A}/{B}가 반복적으로 선택되었습니다(안정적). 📈",
+        "{A}/{B} 패턴이 통계적으로 일관됩니다. 효율적인 전략입니다. 🔬",
+        "{A}/{B} 조합이 예측 기여도가 컸습니다. 우수한 흐름입니다. ✅",
+    ],
+    "emotional_surface": [
+        "성실한 시도가 돋보입니다. 계속 좋아지고 있어요! 🌟",
+        "집중력이 느껴지는 응답입니다. 꾸준히 힘내세요! 🙂",
+        "마지막까지 완주하신 점이 인상 깊습니다. 응원합니다! 💪",
+    ],
+    "computational_surface": [
+        "안정적인 상위 구간입니다. 패턴 일관성이 좋습니다. ✔️",
+        "응답 분산이 낮고 균형 있습니다. 계속 유지하세요! 📊",
+        "일관된 선택 경향이 확인되었습니다. 신뢰도가 높습니다. ✅",
+    ],
+}
+
+
+def typewriter(text: str, speed: float = 0.01) -> None:
+    holder = st.empty()
+    output = ""
+    for ch in text:
+        output += ch
+        holder.markdown(output.replace("\n", "  \n"))
+        time.sleep(speed)
+
+
+def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
+    """
+    Returns the two most frequent rationale labels (ties broken deterministically).
+    If fewer than 2 exist, pad with safe fallbacks like '시제 -na', '시제 -tu'.
+    """
+    counts = Counter([tag for tag in all_reason_tags if tag])
+    if not counts:
+        return ("시제 -na", "시제 -tu")
+    most = [label for label, _ in counts.most_common(2)]
     while len(most) < 2:
         most.append("시제 -tu" if "시제 -na" in most else "시제 -na")
     return most[0], most[1]
@@ -903,78 +973,6 @@ def scroll_top_js(nonce: Optional[int] = None) -> None:
     st.markdown(script, unsafe_allow_html=True)
 
 
-def run_mcp_motion(round_no: int) -> None:
-    logs = [
-        "[INFO][COVNOX] Initializing… booting inference-pattern engine",
-        "[INFO][COVNOX] Loading rule set: possessive(-mi), plural(-t), object(-ka), tense(-na/-tu/-ki), connector(ama)",
-        "[INFO][COVNOX] Collecting responses… building 12-item choice hash",
-        "[OK][COVNOX] Response hash map constructed",
-        "[INFO][COVNOX] Running grammatical marker detection",
-        "[OK][COVNOX] Marker usage log: -mi/-t/-ka/-na/-tu/-ki/ama",
-        "[INFO][COVNOX] Parsing rationale tags (single-select)",
-        "[OK][COVNOX] Rationale normalization complete",
-        "[INFO][COVNOX] Computing rule-match consistency",
-        "[OK][COVNOX] Consistency matrix updated",
-        "[INFO][COVNOX] Checking tense/object conflicts",
-        "[OK][COVNOX] No critical conflicts · reasoning path stable",
-        "[INFO][COVNOX] Analyzing response time (persistence index)",
-        "[OK][COVNOX] Persistence index calculated",
-        "[INFO][COVNOX] Synthesizing overall inference profile",
-        "[OK][COVNOX] Profile composed · selecting feedback template",
-        "[INFO][COVNOX] Natural language phrasing optimization",
-        "[OK][COVNOX] Fluency/consistency checks passed",
-        "[✔][COVNOX] Analysis complete. Rendering results…",
-    ]
-    html = """
-    <style>
-      html,body{margin:0;padding:0;background:#0b0f1a;color:#e6edf3;}
-      .mcp-overlay{position:fixed;inset:0;z-index:9999;background:#0b0f1a;
-        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:12vh;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;}
-      .covnox-title{margin:0;text-align:center;font-weight:800;font-size:clamp(26px,5.2vw,46px);}
-      .covnox-sub{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size:clamp(12px,2.4vw,16px);opacity:.9;margin:14px 0 20px 0;text-align:center;}
-      .mcp-bar{width:min(820px,86vw);height:8px;background:#1b2330;border-radius:999px;overflow:hidden;}
-      .mcp-fill{height:100%;width:0%;background:#2f81f7;transition:width .38s linear;}
-    </style>
-    <div class="mcp-overlay" id="mcp-overlay">
-      <h1 class="covnox-title">🧩 COVNOX: Inference Pattern Analysis</h1>
-      <div class="covnox-sub" id="mcp-log">Initializing…</div>
-      <div class="mcp-bar"><div class="mcp-fill" id="mcp-fill"></div></div>
-    </div>
-    <script>
-    (function(){
-      var msgs = __LOGS__;
-      var round = __ROUND__;
-      var logEl = document.getElementById('mcp-log');
-      var fill  = document.getElementById('mcp-fill');
-      var overlay = document.getElementById('mcp-overlay');
-      var i=0, t=0, total=8000, step=400;
-      function tick(){
-        var now=new Date(); var ts=now.toTimeString().split(' ')[0];
-        logEl.textContent = "["+ts+"] " + msgs[i % msgs.length];
-        i++; t += step;
-        fill.style.width = Math.min(100, Math.round((t/total)*100)) + "%";
-        if (t >= total){
-          clearInterval(timer);
-          setTimeout(function(){
-            try { window.parent && window.parent.postMessage({type:'covnox_done', round: round}, '*'); } catch(_){}
-            if(overlay&&overlay.parentNode) overlay.parentNode.removeChild(overlay);
-          }, 200);
-        }
-      }
-      tick();
-      var timer = setInterval(tick, step);
-    })();
-    </script>
-    """.replace(
-        "__LOGS__", json.dumps(logs, ensure_ascii=False)
-    ).replace(
-        "__ROUND__", str(round_no)
-    )
-    components.html(html, height=640, scrolling=False)
-
-
 def radio_required(
     label: str, options: List[str], key: str
 ) -> tuple[Optional[str], bool]:
@@ -1167,7 +1165,7 @@ def ensure_session_state() -> None:
             "nouns_index": 0,
             "verbs_index": 0,
             "question_start": None,
-            "last_feedback": None,
+            "last_micro_feedback": None,
         }
     if "analysis_seen" not in ss:
         ss.analysis_seen = {"nouns": False, "verbs": False}
@@ -1387,6 +1385,7 @@ def render_demographic() -> None:
         }
         condition = normalize_condition(get_or_assign_praise_condition())
         st.session_state["praise_condition"] = condition
+        condition = get_or_assign_praise_condition()
         participant_id = st.session_state.manager.create_participant(
             st.session_state.payload["demographic"],
             assigned_condition=condition,
@@ -1570,6 +1569,7 @@ def render_inference_round(
         return
     question = questions[index]
     st.title(f"추론 과제 12문항 중 {index + 1}번째")
+    st.title(f"추론 과제 {len(questions)}문항 중 {index + 1}번째")
     st.markdown(f"**설명:** {question.gloss}")
     st.code(question.stem, language="text")
     st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
@@ -1602,6 +1602,7 @@ def render_inference_round(
         last_micro = rs.get("last_micro_feedback")
         if last_micro:
             st.markdown(f"✅ {last_micro}")
+            st.success(last_micro)
             rs["last_micro_feedback"] = None
         return
 
@@ -1648,6 +1649,22 @@ def render_inference_round(
     rs["last_micro_feedback"] = micro_text
     payload["feedback_messages"][round_key].append(micro_text)
     rs[f"{round_key}_index"] = index + 1
+
+    condition = get_or_assign_praise_condition()
+    completed_tags = [
+        d.get("selected_reason_text")
+        for d in payload["inference_details"]
+        if d["round"] == round_key
+    ]
+    top_a, top_b = top_two_rationales(completed_tags)
+    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    micro_text = random.choice(micro_templates)
+    if "{A}" in micro_text:
+        micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+    rs["last_micro_feedback"] = micro_text
+
     if rs[f"{round_key}_index"] >= len(questions):
         set_phase(next_phase)
     else:
@@ -1656,19 +1673,39 @@ def render_inference_round(
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     scroll_top_js()
+    st.markdown("### COVNOX: Inference Pattern Analysis")
+
+    steps: List[tuple[float, str]] = [
+        (0.25, "[INFO][COVNOX] Parsing rationale tags (single-select)"),
+        (0.55, "[INFO][COVNOX] Aggregating selection patterns"),
+        (0.80, "[INFO][COVNOX] Computing condition-specific metrics"),
+        (1.00, "[INFO][COVNOX] Finalizing report"),
+    ]
+
     flag_key = f"mcp_done_{round_key}"
     st.session_state.setdefault(flag_key, False)
     inject_covx_toggle(round_no)
     if not st.session_state[flag_key]:
         run_mcp_motion(round_no)
+    if flag_key not in st.session_state:
+        st.session_state[flag_key] = False
+
+    progress_bar = st.progress(0.0, text=steps[0][1])
+
+    if not st.session_state[flag_key]:
+        for value, message in steps:
+            progress_bar.progress(value, text=message)
+            time.sleep(0.8)
+        st.session_state[flag_key] = True
+        st.rerun()
+
+    progress_bar.progress(1.0, text=steps[-1][1])
     st.markdown(
-        f"""
-<div id="mcp{round_no}-done-banner" style="max-width:820px;margin:48px auto;">
-  <div style="border:2px solid #2E7D32;border-radius:14px;padding:28px;background:#F4FFF4;">
-    <h2 style="text-align:center;color:#2E7D32;margin:0 0 8px 0;">✅ 분석이 완료되었습니다</h2>
-    <p style="font-size:16px;line-height:1.7;color:#222;text-align:center;margin:0;">
-      COVNOX가 응답 패턴을 분석했습니다. 아래 버튼을 눌러 피드백을 확인하세요.
-    </p>
+        """
+<div style="max-width:820px;margin:24px auto 12px auto;">
+  <div style="border:2px solid #2E7D32;border-radius:14px;padding:24px;background:#F4FFF4;">
+    <h4 style="margin:0 0 8px 0;text-align:center;color:#2E7D32;">✅ 분석이 완료되었습니다</h4>
+    <p style="margin:0;text-align:center;color:#222;">COVNOX가 응답 패턴을 분석했습니다. 아래 버튼을 눌러 피드백을 확인하세요.</p>
   </div>
 </div>
 """,
@@ -1712,6 +1749,12 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
             st.session_state.analysis_seen[round_key] = True
             set_phase(next_phase)
         st.markdown("</div>", unsafe_allow_html=True)
+    st.write("")
+    if st.button(
+        "결과 보기", use_container_width=True, key=f"{round_key}_analysis_next"
+    ):
+        st.session_state.analysis_seen[round_key] = True
+        set_phase(next_phase)
 
 
 def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
@@ -1728,11 +1771,30 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     top_a, top_b = top_two_rationales(reason_tags)
     summary_templates = FEEDBACK_TEXTS.get(
         condition, FEEDBACK_TEXTS["emotional_surface"]
+    condition = get_or_assign_praise_condition()
+    st.title("AI 분석이 완료 되었습니다")
+    st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
+
+    reason_tags = [d.get("selected_reason_text") for d in details]
+    top_a, top_b = top_two_rationales(reason_tags)
+    summary_templates = FEEDBACK_TEMPLATES.get(
+        condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
     summary_text = random.choice(summary_templates)
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
     typewriter_markdown(summary_text, speed=0.01)
+    typewriter(summary_text)
+
+    st.markdown("#### 문항별 간단 피드백")
+    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    for detail in details:
+        micro_text = random.choice(micro_templates)
+        if "{A}" in micro_text:
+            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+        st.markdown(f"- **{detail['question_id']}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
@@ -1927,6 +1989,7 @@ def render_summary() -> None:
     condition = normalize_condition(payload.get("feedback_condition", record.condition))
     payload["feedback_condition"] = condition
     record.condition = condition
+    condition = get_or_assign_praise_condition()
     all_reason_tags = [
         detail.get("selected_reason_text")
         for detail in payload.get("inference_details", [])
@@ -1934,11 +1997,14 @@ def render_summary() -> None:
     overall_a, overall_b = top_two_rationales(all_reason_tags)
     summary_templates = FEEDBACK_TEXTS.get(
         condition, FEEDBACK_TEXTS["emotional_surface"]
+    summary_templates = FEEDBACK_TEMPLATES.get(
+        condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
     summary_text = random.choice(summary_templates)
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
     typewriter_markdown(summary_text, speed=0.01)
+    typewriter(summary_text)
 
     analyzer = DataAnalyzer([record])
     condition_for_scores = normalize_condition(record.condition)
