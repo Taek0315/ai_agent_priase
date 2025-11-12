@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from textwrap import dedent
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -16,47 +17,42 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # --------------------------------------------------------------------------------------
-# Streamlit page config & compact styling (kept from original scaffold)
+# Streamlit page config & global styling
 # --------------------------------------------------------------------------------------
 
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
-COMPACT_CSS = """
-<style>
-#MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
-:root{
-  --block-container-padding-top: 0rem !important;
-  --block-container-padding: 0rem 1rem 1.25rem !important;
-}
-html, body,
-.stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stAppViewContainer"] > .main,
-section.main {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-[data-testid="stAppViewContainer"] > .main > div,
-.main .block-container,
-section.main > div.block-container {
-  padding-top: 0 !important;
-  padding-bottom: 20px !important;
-}
-h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
-h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
-p, .stMarkdown p   { margin-top: 0 !important; }
-.anthro-title { margin-top: 0 !important; }
-html, body { overflow-x: hidden !important; }
-</style>
-"""
+GLOBAL_CSS = dedent(
+    """
+    <style>
+    :root { --fs-base: 16px; --lh-base: 1.65; }
+    #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
+    html, body,
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stAppViewContainer"] > .main,
+    section.main {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+    [data-testid="stAppViewContainer"] > .main > div,
+    .main .block-container,
+    section.main > div.block-container {
+      padding-top: 0 !important;
+      padding-bottom: 20px !important;
+    }
+    h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
+    h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+    p, .stMarkdown p   { margin-top: 0 !important; }
+    .anthro-title { margin-top: 0 !important; }
+    html, body { overflow-x: hidden !important; }
+    div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
+    .mcp-footer { margin-top: 0.6rem !important; }
+    </style>
+    """
+)
 
-COMPACT_CSS += """
-<style>
-div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
-.mcp-footer { margin-top: 0.6rem !important; }
-</style>
-"""
-st.markdown(COMPACT_CSS, unsafe_allow_html=True)
+st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
 
