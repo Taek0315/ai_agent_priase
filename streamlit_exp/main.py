@@ -9,12 +9,11 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from textwrap import dedent
-from collections import Counter
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
@@ -22,48 +21,37 @@ import streamlit as st
 
 st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
 
-GLOBAL_CSS = dedent(
-    """
-    <style>
-    :root { --fs-base: 16px; --lh-base: 1.65; }
+COMPACT_CSS = """
+<style>
+  :root { --fs-base: 16px; --lh-base: 1.65; }
+  #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
+  html, body, [data-testid="stAppViewContainer"] {
+    font-size: var(--fs-base);
+    line-height: var(--lh-base);
+    overflow-x: hidden !important;
+  }
+  .stApp,
+  [data-testid="stAppViewContainer"],
+  [data-testid="stAppViewContainer"] > .main,
+  section.main {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  [data-testid="stAppViewContainer"] > .main > div,
+  .main .block-container,
+  section.main > div.block-container {
+    padding-top: 0 !important;
+    padding-bottom: 20px !important;
+  }
+  h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
+  h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+  p, .stMarkdown p   { margin-top: 0 !important; }
+  .anthro-title { margin-top: 0 !important; }
+  div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
+  .mcp-footer { margin-top: 0.6rem !important; }
+</style>
+"""
 
-    /* Hide Streamlit chrome */
-    #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
-
-    /* Base typography & spacing */
-    html, body, [data-testid="stAppViewContainer"] {
-      font-size: var(--fs-base);
-      line-height: var(--lh-base);
-      overflow-x: hidden !important;
-    }
-
-    .stApp,
-    [data-testid="stAppViewContainer"],
-    [data-testid="stAppViewContainer"] > .main,
-    section.main {
-      margin-top: 0 !important;
-      padding-top: 0 !important;
-    }
-
-    [data-testid="stAppViewContainer"] > .main > div,
-    .main .block-container,
-    section.main > div.block-container {
-      padding-top: 0 !important;
-      padding-bottom: 20px !important;
-    }
-
-    h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
-    h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
-    p, .stMarkdown p   { margin-top: 0 !important; }
-    .anthro-title { margin-top: 0 !important; }
-
-    div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
-    .mcp-footer { margin-top: 0.6rem !important; }
-    </style>
-    """
-)
-
-st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 
@@ -75,13 +63,6 @@ def get_or_assign_praise_condition() -> str:
     Assign once per participant and persist in st.session_state.
     Never display this string to the participant.
     """
-    if "praise_condition" not in st.session_state:
-        st.session_state["praise_condition"] = random.choice(
-    Returns one of:
-      'emotional_specific', 'computational_specific',
-      'emotional_surface', 'computational_surface'
-    Assigned exactly once per participant and persisted in st.session_state.
-    """
     key = "praise_condition"
     if key not in st.session_state:
         st.session_state[key] = random.choice(
@@ -92,7 +73,7 @@ def get_or_assign_praise_condition() -> str:
                 "computational_surface",
             ]
         )
-    return st.session_state["praise_condition"]
+    return st.session_state[key]
 
 
 FEEDBACK_TEXTS: Dict[str, List[str]] = {
@@ -208,14 +189,6 @@ def typewriter_markdown(md: str, speed: float = 0.01) -> None:
             buffer += ch
             holder.markdown(buffer.replace("\n", "  \n"))
             time.sleep(speed)
-
-
-def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
-    counts = Counter([t for t in all_reason_tags if t])
-    if not counts:
-        return ("시제 -na", "시제 -tu")
-    most = [k for k, _ in counts.most_common(2)]
-    return st.session_state[key]
 
 
 FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
@@ -1664,21 +1637,6 @@ def render_inference_round(
     payload["feedback_messages"][round_key].append(micro_text)
     rs[f"{round_key}_index"] = index + 1
 
-    condition = get_or_assign_praise_condition()
-    completed_tags = [
-        d.get("selected_reason_text")
-        for d in payload["inference_details"]
-        if d["round"] == round_key
-    ]
-    top_a, top_b = top_two_rationales(completed_tags)
-    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
-        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
-    )
-    micro_text = random.choice(micro_templates)
-    if "{A}" in micro_text:
-        micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
-    rs["last_micro_feedback"] = micro_text
-
     if rs[f"{round_key}_index"] >= len(questions):
         set_phase(next_phase)
     else:
@@ -1774,23 +1732,18 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
     details = [
-        d
-        for d in st.session_state.payload["inference_details"]
-        if d["round"] == round_key
+        detail
+        for detail in st.session_state.payload["inference_details"]
+        if detail["round"] == round_key
     ]
     condition = normalize_condition(get_or_assign_praise_condition())
-    st.title("AI 분석이 완료 되었습니다")
-    st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
-    reason_tags = [d.get("selected_reason_text") for d in details]
-    top_a, top_b = top_two_rationales(reason_tags)
-    summary_templates = FEEDBACK_TEXTS.get(
-        condition, FEEDBACK_TEXTS["emotional_surface"]
-    condition = get_or_assign_praise_condition()
+
     st.title("AI 분석이 완료 되었습니다")
     st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
 
-    reason_tags = [d.get("selected_reason_text") for d in details]
+    reason_tags = [detail.get("selected_reason_text") for detail in details]
     top_a, top_b = top_two_rationales(reason_tags)
+
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
@@ -1798,7 +1751,6 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
     typewriter_markdown(summary_text, speed=0.01)
-    typewriter(summary_text)
 
     st.markdown("#### 문항별 간단 피드백")
     micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
@@ -2003,14 +1955,12 @@ def render_summary() -> None:
     condition = normalize_condition(payload.get("feedback_condition", record.condition))
     payload["feedback_condition"] = condition
     record.condition = condition
-    condition = get_or_assign_praise_condition()
+
     all_reason_tags = [
         detail.get("selected_reason_text")
         for detail in payload.get("inference_details", [])
     ]
     overall_a, overall_b = top_two_rationales(all_reason_tags)
-    summary_templates = FEEDBACK_TEXTS.get(
-        condition, FEEDBACK_TEXTS["emotional_surface"]
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
@@ -2018,7 +1968,6 @@ def render_summary() -> None:
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
     typewriter_markdown(summary_text, speed=0.01)
-    typewriter(summary_text)
 
     analyzer = DataAnalyzer([record])
     condition_for_scores = normalize_condition(record.condition)
