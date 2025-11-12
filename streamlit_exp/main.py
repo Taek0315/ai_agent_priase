@@ -54,6 +54,8 @@ COMPACT_CSS = """
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 SHOW_PER_ITEM_INLINE_FEEDBACK = False
+SHOW_PER_ITEM_SUMMARY = False
+SHOW_DEBUG_RESULTS = False
 
 
 def get_or_assign_praise_condition() -> str:
@@ -1081,6 +1083,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
     end_iso = payload.get("end_time")
     phone = payload.get("phone", "")
     open_feedback = payload.get("open_feedback", "")
+    manipulation_check = payload.get("manipulation_check", {})
 
     score = sum(
         1 for d in inference_details if d["selected_option"] == d["correct_idx"]
@@ -1099,6 +1102,11 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
             ]
         )
 
+    mc_values = [
+        manipulation_check.get(f"MC_{idx:02d}", "")
+        for idx in range(1, len(MC_ITEMS) + 1)
+    ]
+
     metadata = json.dumps(
         {
             "participant_id": record.participant_id,
@@ -1106,6 +1114,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
             "difficulty": difficulty,
             "motivation_category_scores": payload.get("motivation_category_scores", {}),
             "open_feedback": open_feedback,
+            "manipulation_check": manipulation_check,
         },
         ensure_ascii=False,
     )
@@ -1122,6 +1131,7 @@ def build_export_row(payload: Dict[str, Any], record: ExperimentData) -> List[An
         score if inference_details else "",
         accuracy,
         *per_q_fields,
+        *mc_values,
         feedback_condition,
         ",".join(str(v) for v in motivation),
         phone,
@@ -1160,6 +1170,7 @@ def ensure_session_state() -> None:
             "feedback_messages": {"nouns": [], "verbs": []},
             "feedback_condition": "",
             "open_feedback": "",
+            "manipulation_check": {},
             "start_time": None,
             "end_time": None,
             "phone": "",
@@ -1190,6 +1201,10 @@ def ensure_session_state() -> None:
         ss.record = None
     if "_resource_fallback_warned" not in ss:
         ss._resource_fallback_warned = {}
+    if "manip_check" not in ss:
+        ss.manip_check = {}
+    if "manip_check_saved" not in ss:
+        ss.manip_check_saved = {}
 
 
 def set_phase(next_phase: str) -> None:
@@ -1209,6 +1224,7 @@ def set_phase(next_phase: str) -> None:
         "feedback_verbs",
         "motivation",
         "post_task_reflection",
+        "manipulation_check",
         "phone_input",
         "summary",
     }
@@ -1267,6 +1283,27 @@ DEFAULT_ACHIVE_ITEMS: List[str] = [
     "장기적인 보상을 위해 단기적인 불편을 감수한다.",
     "피드백을 바탕으로 실수를 고치려고 노력한다.",
     "내가 세운 목표를 달성하는 것이 큰 만족감을 준다.",
+]
+
+MC_ITEMS: List[str] = [
+    "피드백이 따뜻했다.",
+    "격려/공감을 느꼈다.",
+    "정서적 표현이 충분했다.",
+    "기분이 좋아지도록 도와줬다.",
+    "피드백이 분석적이었다.",
+    "수치•지표에 근거해 설명했다.",
+    "근거 제시가 명확했다.",
+    "수행을 객관적으로 요약해주었다.",
+    "내가 선택한 규칙/전략을 구체적으로 언급했다.",
+    "무엇을 잘 했는지/개선할지가 분명했다.",
+    "과제 맥락에 맞는 피드백이었다.",
+    "피드백이 명령/지시처럼 느껴졌다.",
+    "압박을 주는 표현이 있었다.",
+    "비교/서열화하는 느낌이 있었다.",
+    "이 에이전트가 사람처럼 느껴졌다.",
+    "이 에이전트에게 의도/목표를 가진 것처럼 보였다.",
+    "이 에이전트에게 사회적 존재감을 느꼈다.",
+    "이 에이전트의 말투가 인간적이라고 느껴졌다.",
 ]
 
 RESOURCE_FALLBACKS: Dict[str, List[str]] = {
@@ -1707,27 +1744,46 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     reason_tags = [detail.get("selected_reason_text") for detail in details]
     top_a, top_b = top_two_rationales(reason_tags)
 
-    summary_templates = FEEDBACK_TEMPLATES.get(
-        condition, FEEDBACK_TEMPLATES["emotional_surface"]
-    )
-    summary_text = random.choice(summary_templates)
-    if "{A}" in summary_text:
-        summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+    payload_key = f"final_feedback_payload_{round_key}"
+    stored_payload = st.session_state.get(payload_key)
+    if stored_payload is None:
+        summary_templates = FEEDBACK_TEMPLATES.get(
+            condition, FEEDBACK_TEMPLATES["emotional_surface"]
+        )
+        summary_text = random.choice(summary_templates)
+        if "{A}" in summary_text:
+            summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+
+        micro_entries: List[tuple[str, str]] = []
+        micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+            condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+        )
+        for detail in details:
+            micro_text = random.choice(micro_templates)
+            if "{A}" in micro_text:
+                micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+            micro_entries.append((detail["question_id"], micro_text))
+
+        stored_payload = {
+            "summary_text": summary_text,
+            "micro_entries": micro_entries,
+        }
+        st.session_state[payload_key] = stored_payload
+    else:
+        summary_text = stored_payload.get("summary_text", "")
+
     typewriter_markdown(summary_text, speed=0.01)
 
-    st.markdown("#### 문항별 간단 피드백")
-    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
-        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
-    )
-    for detail in details:
-        micro_text = random.choice(micro_templates)
-        if "{A}" in micro_text:
-            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
-        st.markdown(f"- **{detail['question_id']}** · {micro_text}")
+    if SHOW_PER_ITEM_SUMMARY:
+        st.markdown("#### 문항별 간단 피드백")
+        micro_entries = stored_payload.get("micro_entries", [])
+        for question_id, micro_text in micro_entries:
+            st.markdown(f"- **{question_id}** · {micro_text}")
 
     if st.button(
         "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
     ):
+        st.session_state.pop(payload_key, None)
         set_phase(next_phase)
 
 
@@ -1827,6 +1883,55 @@ def render_motivation() -> None:
                     set_phase("post_task_reflection")
 
 
+def render_manipulation_check() -> None:
+    scroll_top_js()
+    st.header("조작 점검 문항")
+    st.caption("각 문항에 대해 1(전혀 그렇지 않다) ~ 5(매우 그렇다)로 응답해 주세요. 모든 문항은 필수입니다.")
+
+    answers: Dict[str, Optional[int]] = st.session_state.setdefault("manip_check", {})
+    scale = [1, 2, 3, 4, 5]
+    labels = {
+        1: "전혀 그렇지 않다",
+        2: "그렇지 않다",
+        3: "보통이다",
+        4: "그렇다",
+        5: "매우 그렇다",
+    }
+
+    for idx, question in enumerate(MC_ITEMS, start=1):
+        key = f"mc_{idx:02d}"
+        selection = st.radio(
+            f"{idx}. {question}",
+            options=scale,
+            index=None,
+            format_func=lambda value, mapping=labels: f"{value} · {mapping[value]}",
+            horizontal=True,
+            key=f"manip-radio-{idx}",
+        )
+        answers[key] = selection
+
+    all_done = all(
+        answers.get(f"mc_{i:02d}") in scale for i in range(1, len(MC_ITEMS) + 1)
+    )
+    if not all_done:
+        st.warning("모든 문항에 응답해 주세요.")
+
+    if st.button(
+        "제출하기",
+        disabled=not all_done,
+        key="btn-mc-submit",
+        use_container_width=True,
+    ):
+        saved = {
+            f"MC_{i:02d}": int(answers[f"mc_{i:02d}"])
+            for i in range(1, len(MC_ITEMS) + 1)
+        }
+        st.session_state.manip_check_saved = saved
+        st.session_state.payload["manipulation_check"] = saved
+        st.session_state["manipulation_check"] = saved
+        set_phase("phone_input")
+
+
 def render_post_task_reflection() -> None:
     scroll_top_js()
     st.title("마무리 질문")
@@ -1839,7 +1944,7 @@ def render_post_task_reflection() -> None:
     feedback_text = st.text_area("연구 참여 소감", key="open_feedback_area")
     st.session_state.payload["open_feedback"] = feedback_text.strip()
     if st.button("연락처 입력으로 이동", use_container_width=True):
-        set_phase("phone_input")
+        set_phase("manipulation_check")
 
 
 def render_phone_capture() -> None:
@@ -1907,75 +2012,66 @@ def render_summary() -> None:
         payload["end_time"] = record.timestamps["end"]
     record: ExperimentData = st.session_state.record
 
-    st.title("연구 참여가 완료되었습니다")
-    st.markdown(
-        f"""
-- 참가자 ID: **{record.participant_id}**
-- 총 소요 시간: **{record.completion_time:.1f}초**
-"""
-    )
-
     condition = normalize_condition(payload.get("feedback_condition", record.condition))
     payload["feedback_condition"] = condition
     record.condition = condition
 
-    all_reason_tags = [
-        detail.get("selected_reason_text")
-        for detail in payload.get("inference_details", [])
-    ]
-    overall_a, overall_b = top_two_rationales(all_reason_tags)
-    summary_templates = FEEDBACK_TEMPLATES.get(
-        condition, FEEDBACK_TEMPLATES["emotional_surface"]
-    )
-    summary_text = random.choice(summary_templates)
-    if "{A}" in summary_text:
-        summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
-    typewriter_markdown(summary_text, speed=0.01)
-
-    analyzer = DataAnalyzer([record])
-    condition_for_scores = normalize_condition(record.condition)
-    motivation_scores = analyzer.get_motivation_scores().get(condition_for_scores, {})
-    if motivation_scores:
-        st.subheader("동기 카테고리 평균 점수")
-        df = pd.DataFrame(
-            [
-                {"카테고리": cat, "평균 점수": round(score, 2)}
-                for cat, score in motivation_scores.items()
-            ]
-        )
-        st.bar_chart(df.set_index("카테고리"))
-    else:
-        st.info("설문 데이터가 충분하지 않아 동기 점수를 계산할 수 없습니다.")
-
     if not st.session_state.exported:
         row = build_export_row(payload, record)
         try:
-            dest = save_row(row)
-            if dest.startswith("REMOTE::"):
-                st.success("Responses saved to Google Sheet.")
-            else:
-                st.success(
-                    f"Saved locally (remote not set or DRY_RUN on): {dest.split('::', 1)[1]}"
-                )
+            save_row(row)
             st.session_state.exported = True
-        except Exception as _exc:  # pragma: no cover
-            st.error("Saving failed. Retrying local fallback…")
-            try:
-                dest = save_row(row)
-                st.success(f"Local save success: {dest.split('::', 1)[1]}")
-                st.session_state.exported = True
-            except Exception as exc2:  # pragma: no cover
-                st.exception(exc2)
+        except Exception as exc:  # pragma: no cover
+            st.error("응답 저장 중 문제가 발생했습니다. 연구진에게 문의해 주세요.")
+            if SHOW_DEBUG_RESULTS:
+                st.exception(exc)
 
-    st.subheader("세션 로그")
-    export_session_json(payload)
-    st.markdown(
-        """
-#### 마지막 안내
-- 본 연구에서 제공된 AI 피드백은 사전에 준비된 예시 문장입니다.  
-- 브라우저 탭은 자동으로 닫히지 않으니 직접 종료해 주세요.
-"""
+    st.header("연구 참여가 완료되었습니다.")
+    st.write(
+        "참여해 주셔서 감사합니다. 본 연구는 AI가 제공하는 피드백 유형이 학습 동기와 경험에 "
+        "미치는 영향을 조사하기 위한 것이었습니다. 추가 문의가 있으시면 안내된 연락처로 문의해 주세요."
     )
+
+    if SHOW_DEBUG_RESULTS:
+        st.markdown(
+            f"""
+- 참가자 ID: **{record.participant_id}**
+- 총 소요 시간: **{record.completion_time:.1f}초**
+"""
+        )
+
+        all_reason_tags = [
+            detail.get("selected_reason_text")
+            for detail in payload.get("inference_details", [])
+        ]
+        overall_a, overall_b = top_two_rationales(all_reason_tags)
+        summary_templates = FEEDBACK_TEMPLATES.get(
+            condition, FEEDBACK_TEMPLATES["emotional_surface"]
+        )
+        summary_text = random.choice(summary_templates)
+        if "{A}" in summary_text:
+            summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
+        typewriter_markdown(summary_text, speed=0.01)
+
+        analyzer = DataAnalyzer([record])
+        condition_for_scores = normalize_condition(record.condition)
+        motivation_scores = analyzer.get_motivation_scores().get(
+            condition_for_scores, {}
+        )
+        if motivation_scores:
+            st.subheader("동기 카테고리 평균 점수")
+            df = pd.DataFrame(
+                [
+                    {"카테고리": cat, "평균 점수": round(score, 2)}
+                    for cat, score in motivation_scores.items()
+                ]
+            )
+            st.bar_chart(df.set_index("카테고리"))
+        else:
+            st.info("설문 데이터가 충분하지 않아 동기 점수를 계산할 수 없습니다.")
+
+        st.subheader("세션 로그")
+        export_session_json(payload)
 
 
 # --------------------------------------------------------------------------------------
@@ -2020,6 +2116,8 @@ elif phase == "motivation":
     render_motivation()
 elif phase == "post_task_reflection":
     render_post_task_reflection()
+elif phase == "manipulation_check":
+    render_manipulation_check()
 elif phase == "phone_input":
     render_phone_capture()
 else:
