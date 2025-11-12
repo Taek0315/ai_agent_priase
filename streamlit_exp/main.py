@@ -26,8 +26,17 @@ GLOBAL_CSS = dedent(
     """
     <style>
     :root { --fs-base: 16px; --lh-base: 1.65; }
+
+    /* Hide Streamlit chrome */
     #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
-    html, body,
+
+    /* Base typography & spacing */
+    html, body, [data-testid="stAppViewContainer"] {
+      font-size: var(--fs-base);
+      line-height: var(--lh-base);
+      overflow-x: hidden !important;
+    }
+
     .stApp,
     [data-testid="stAppViewContainer"],
     [data-testid="stAppViewContainer"] > .main,
@@ -35,17 +44,19 @@ GLOBAL_CSS = dedent(
       margin-top: 0 !important;
       padding-top: 0 !important;
     }
+
     [data-testid="stAppViewContainer"] > .main > div,
     .main .block-container,
     section.main > div.block-container {
       padding-top: 0 !important;
       padding-bottom: 20px !important;
     }
+
     h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
     h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
     p, .stMarkdown p   { margin-top: 0 !important; }
     .anthro-title { margin-top: 0 !important; }
-    html, body { overflow-x: hidden !important; }
+
     div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
     .mcp-footer { margin-top: 0.6rem !important; }
     </style>
