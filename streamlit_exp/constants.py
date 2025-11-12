@@ -19,12 +19,14 @@ LIKERT5_ANCHORS: Dict[int, str] = {
 LIKERT5_LEGEND_HTML: str = """
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
   <span><b>1</b> : 전혀 그렇지 않다</span><span>—</span>
-  <span><b>2</b> : 그렇지 않다</span><span>—</span>
   <span><b>3</b> : 보통이다</span><span>—</span>
-  <span><b>4</b> : 그렇다</span><span>—</span>
   <span><b>5</b> : 매우 그렇다</span>
 </div>
 """.strip()
+
+
+# [CHANGE] Canonical numeric options for 5-point Likert radios.
+LIKERT5_NUMERIC_OPTIONS: List[int] = [1, 2, 3, 4, 5]
 
 
 # [CHANGE] Demographic form labels and constraints.
@@ -80,4 +82,20 @@ MANIPULATION_CHECK_ITEMS: List[ManipulationCheckItem] = [
     ManipulationCheckItem("mc_03", "정서적 표현이 충분했다."),
     ManipulationCheckItem("mc_04", "기분이 좋아지도록 도와줬다."),
     ManipulationCheckItem("mc_05", "피드백이 분석적이었다."),
+    ManipulationCheckItem("mc_06", "구체적인 근거 설명이 포함되었다."),
+    ManipulationCheckItem("mc_07", "데이터나 지표가 언급되었다."),
+    ManipulationCheckItem("mc_08", "논리적인 근거가 분명했다."),
+    ManipulationCheckItem("mc_09", "친근한 표현이 많았다."),
+    ManipulationCheckItem("mc_10", "정량적인 평가 항목이 제시되었다."),
+    ManipulationCheckItem("mc_11", "기술적인 용어가 사용되었다."),
+    ManipulationCheckItem("mc_12", "나의 노력을 인정하는 말이 있었다."),
+    ManipulationCheckItem("mc_13", "감정을 고려한 표현이었다."),
+    ManipulationCheckItem("mc_14", "객관적인 수치나 통계가 포함되었다."),
+    ManipulationCheckItem("mc_15", "칭찬이 진심으로 느껴졌다."),
+    ManipulationCheckItem("mc_16", "피드백의 어조가 중립적이었다."),
+    ManipulationCheckItem("mc_17", "전략이나 방법에 대한 구체적 지침이 있었다."),
+    ManipulationCheckItem("mc_18", "응답의 강점이 명확히 지적되었다."),
 ]
+
+# [CHANGE] Expected item count for manipulation check validation.
+MANIPULATION_CHECK_EXPECTED_COUNT: int = len(MANIPULATION_CHECK_ITEMS)
