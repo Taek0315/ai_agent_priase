@@ -87,6 +87,163 @@ COMPACT_CSS = """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+FEEDBACK_UI_CSS = """
+<style>
+  .feedback-page {
+    width: 100%;
+    min-height: calc(100vh - 140px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 24px;
+    padding: 32px 16px 48px;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 60%);
+  }
+  .feedback-hero {
+    width: 100%;
+    max-width: 640px;
+    background: radial-gradient(circle at 10% 20%, rgba(99,102,241,0.95) 0%, rgba(79,70,229,0.97) 40%, rgba(55,48,163,0.95) 100%);
+    color: #EEF2FF;
+    border-radius: 28px;
+    padding: 40px 32px;
+    box-shadow: 0 25px 55px -30px rgba(79, 70, 229, 0.7);
+    position: relative;
+    text-align: center;
+    overflow: hidden;
+  }
+  .feedback-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 15%, rgba(244, 244, 255, 0.3), transparent 45%);
+    pointer-events: none;
+  }
+  .feedback-icon-wrap {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    box-shadow: 0 18px 35px -20px rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+  }
+  .feedback-hero-title {
+    font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    margin: 0;
+  }
+  .feedback-hero-subtitle {
+    margin: 14px auto 0;
+    font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+    color: rgba(255, 255, 255, 0.88);
+    max-width: 420px;
+    line-height: 1.6;
+  }
+  .feedback-meta {
+    margin-top: 18px;
+    font-size: 0.95rem;
+    opacity: 0.85;
+    letter-spacing: 0.4px;
+  }
+  .feedback-card {
+    width: 100%;
+    max-width: 640px;
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 28px 32px 32px;
+    box-shadow: 0 24px 55px -40px rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+  .feedback-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #312e81;
+    margin: 0;
+  }
+  .feedback-card-body {
+    margin-top: 20px;
+    background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+    border-radius: 18px;
+    border-left: 5px solid #6366f1;
+    padding: 20px 24px;
+    font-size: 1.05rem;
+    line-height: 1.75;
+    color: #1f2937;
+    box-shadow: inset 0 1px 0 rgba(99, 102, 241, 0.08);
+    transition: all 0.3s ease;
+  }
+  .feedback-card-body[data-empty="true"] {
+    color: #6b7280;
+    font-style: italic;
+  }
+  .feedback-card-body strong {
+    color: #312e81;
+  }
+  .feedback-card-body::selection {
+    background: rgba(99, 102, 241, 0.2);
+  }
+  .feedback-actions {
+    width: 100%;
+    max-width: 640px;
+  }
+  .feedback-actions .stButton > button {
+    width: 100%;
+    border-radius: 14px;
+    padding: 16px 24px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: #4f46e5;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 18px 30px -22px rgba(79, 70, 229, 0.75);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .feedback-actions .stButton > button:hover {
+    transform: translateY(-1px);
+    background: #4338ca;
+    box-shadow: 0 20px 40px -20px rgba(79, 70, 229, 0.85);
+  }
+  .feedback-actions .stButton > button:active {
+    transform: translateY(0);
+  }
+  @media (max-width: 720px) {
+    .feedback-page {
+      padding: 24px 14px 36px;
+      gap: 20px;
+      min-height: auto;
+    }
+    .feedback-hero {
+      border-radius: 22px;
+      padding: 32px 24px;
+    }
+    .feedback-icon-wrap {
+      width: 68px;
+      height: 68px;
+      font-size: 32px;
+    }
+    .feedback-card {
+      border-radius: 20px;
+      padding: 24px 20px 28px;
+    }
+    .feedback-card-body {
+      padding: 18px 20px;
+      font-size: 1rem;
+    }
+    .feedback-actions .stButton > button {
+      font-size: 1.05rem;
+      padding: 14px 20px;
+    }
+  }
+</style>
+""".strip()
+
 # [CHANGE] Legend snippet for 6-point Likert (Achive scale only).
 LIKERT6_LEGEND_HTML = """
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
@@ -219,8 +376,29 @@ def get_next_micro_feedback(cond: str, a: str, b: str) -> str:
     return get_next_micro_feedback(cond, a, b)
 
 
-def typewriter_markdown(md: str, speed: float = 0.01) -> None:
+def typewriter_markdown(
+    md: str,
+    speed: float = 0.01,
+    *,
+    container: Optional["st.delta_generator.DeltaGenerator"] = None,
+    wrapper_class: Optional[str] = None,
+) -> None:
     try:
+        if container is not None:
+            holder = container.empty()
+            buffer = ""
+            for ch in md:
+                buffer += ch
+                rendered = buffer.replace("\n", "<br />")
+                if wrapper_class:
+                    holder.markdown(
+                        f'<div class="{wrapper_class}">{rendered}</div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    holder.markdown(rendered.replace("<br />", "  \n"))
+                time.sleep(speed)
+            return
         with st.chat_message("assistant"):
             holder = st.empty()
             buffer = ""
@@ -229,12 +407,19 @@ def typewriter_markdown(md: str, speed: float = 0.01) -> None:
                 holder.markdown(buffer.replace("\n", "  \n"))
                 time.sleep(speed)
     except Exception:
-        container = st.container()
-        holder = container.empty()
+        fallback_container = container if container is not None else st.container()
+        holder = fallback_container.empty()
         buffer = ""
         for ch in md:
             buffer += ch
-            holder.markdown(buffer.replace("\n", "  \n"))
+            rendered = buffer.replace("\n", "<br />")
+            if wrapper_class:
+                holder.markdown(
+                    f'<div class="{wrapper_class}">{rendered}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                holder.markdown(rendered.replace("<br />", "  \n"))
             time.sleep(speed)
 
 
@@ -1704,8 +1889,7 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 
 def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
-    st.title("AI 분석이 완료 되었습니다")
-    st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
+    st.markdown(FEEDBACK_UI_CSS, unsafe_allow_html=True)
 
     feedback_payload = get_feedback_once(
         round_key,
@@ -1715,25 +1899,70 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     )
     summary_text = feedback_payload.get("summary_text", "")
 
-    shown_flag = f"feedback_shown_{round_key}"
-    if not st.session_state.get(shown_flag):
-        if summary_text:
-            typewriter_markdown(summary_text, speed=0.01)
-        st.session_state[shown_flag] = True
-    else:
-        if summary_text:
-            with st.chat_message("assistant"):
-                st.markdown(summary_text.replace("\n", "  \n"))
+    hero_subtitle_map = {
+        "nouns": "명사구 라운드 분석 리포트",
+        "verbs": "동사 시제·상 라운드 분석 리포트",
+    }
+    hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
 
-    if SHOW_PER_ITEM_SUMMARY and feedback_payload:
-        st.markdown("#### 문항별 간단 피드백")
-        for question_id, micro_text in feedback_payload.get("micro_entries", []):
-            st.markdown(f"- **{question_id}** · {micro_text}")
+    with st.container():
+        st.markdown('<div class="feedback-page">', unsafe_allow_html=True)
+        st.markdown(
+            f"""
+<div class="feedback-hero">
+  <div class="feedback-icon-wrap">🧠</div>
+  <h1 class="feedback-hero-title">분석 완료! 훌륭합니다!</h1>
+  <p class="feedback-hero-subtitle">{hero_subtitle}</p>
+  <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석했습니다.</div>
+</div>
+<div class="feedback-card">
+  <div class="feedback-card-title">AI 튜터의 코멘트</div>
+""",
+            unsafe_allow_html=True,
+        )
 
-    if st.button(
-        "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
-    ):
-        set_phase(next_phase)
+        shown_flag = f"feedback_shown_{round_key}"
+        comment_placeholder = st.empty()
+        if summary_text:
+            if not st.session_state.get(shown_flag):
+                typewriter_markdown(
+                    summary_text,
+                    speed=0.01,
+                    container=comment_placeholder,
+                    wrapper_class="feedback-card-body",
+                )
+                st.session_state[shown_flag] = True
+            else:
+                comment_placeholder.markdown(
+                    f'<div class="feedback-card-body">{summary_text.replace("\\n", "<br />")}</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            comment_placeholder.markdown(
+                '<div class="feedback-card-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        if SHOW_PER_ITEM_SUMMARY and feedback_payload:
+            st.markdown(
+                '<div class="feedback-card"><div class="feedback-card-title">문항별 간단 피드백</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown('<div class="feedback-card-body">', unsafe_allow_html=True)
+            for question_id, micro_text in feedback_payload.get("micro_entries", []):
+                st.markdown(f"- **{question_id}** · {micro_text}")
+            st.markdown("</div></div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="feedback-actions">', unsafe_allow_html=True)
+        if st.button(
+            "다음 단계", use_container_width=True, key=f"{round_key}_feedback_next"
+        ):
+            set_phase(next_phase)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_difficulty_check() -> None:
@@ -1888,11 +2117,9 @@ def render_post_task_reflection() -> None:
         st.session_state.payload["difficulty_checks"]["final"] = int(slider)
     else:
         st.session_state.payload["difficulty_checks"].pop("final", None)
-    st.write(
-        "연구 과정에서 느낀 점이나 연구진에게 전하고 싶은 메시지를 남겨주세요. (선택 사항)"
+    st.session_state.payload["open_feedback"] = st.session_state.payload.get(
+        "open_feedback", ""
     )
-    feedback_text = st.text_area("연구 참여 소감", key="open_feedback_area")
-    st.session_state.payload["open_feedback"] = feedback_text.strip()
     if st.button("연락처 입력으로 이동", use_container_width=True):
         if slider <= 0:
             st.warning("난이도 상향 의향을 1~10 사이에서 선택해 주세요.")
