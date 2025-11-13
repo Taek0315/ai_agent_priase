@@ -1684,7 +1684,16 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
         st.session_state.get("payload", {}),
     )
     summary_text = feedback_payload.get("summary_text", "")
-    typewriter_markdown(summary_text, speed=0.01)
+
+    shown_flag = f"feedback_shown_{round_key}"
+    if not st.session_state.get(shown_flag):
+        if summary_text:
+            typewriter_markdown(summary_text, speed=0.01)
+        st.session_state[shown_flag] = True
+    else:
+        if summary_text:
+            with st.chat_message("assistant"):
+                st.markdown(summary_text.replace("\n", "  \n"))
 
     if SHOW_PER_ITEM_SUMMARY and feedback_payload:
         st.markdown("#### 문항별 간단 피드백")
