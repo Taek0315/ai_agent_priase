@@ -1,13 +1,13 @@
 # [CHANGE] ASCII-safe persistence helpers for Google Sheets and GCS.
 from __future__ import annotations
 
-import csv
 import json
 import os
+import random
+import time
 import unicodedata
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import streamlit as st
 
@@ -61,12 +61,21 @@ COLS: List[str] = [
 
 def google_ready() -> bool:
     """Return True when remote Google Sheet credentials are available."""
+    config = _sheet_config()
+    sheet_identifier = (
+        config.get("spreadsheet_id")
+        or config.get("id")
+        or config.get("url")
+        or os.getenv("GOOGLE_SHEET_ID")
+        or os.getenv("GOOGLE_SHEET_URL")
+    )
+    has_sheet = bool(sheet_identifier)
     try:
-        has_secrets = bool(getattr(st.secrets, "google_sheet", {}) or {})
+        has_secrets = bool(st.secrets["gcp_service_account"])
     except Exception:
         has_secrets = False
     has_env = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
-    return has_secrets or has_env
+    return has_sheet and (has_secrets or has_env)
 
 
 def normalize_for_storage(value: Any) -> Any:
@@ -226,43 +235,57 @@ def build_sheet_row(storage_record: Dict[str, Any]) -> List[Any]:
     return [storage_record.get(column, "") for column in COLS]
 
 
-def save_to_sheets(row: List[Any], worksheet: str = "resp") -> str:
+def save_to_sheets(row: List[Any], worksheet: Optional[str] = None) -> str:
     """Append the given row to Google Sheets with a stable header."""
     if not google_ready():
         raise RuntimeError("Google Sheets credentials not configured.")
+    if len(row) != len(COLS):
+        raise ValueError(
+            f"Sheet row length {len(row)} does not match expected {len(COLS)} columns."
+        )
 
     import gspread
     from gspread.utils import rowcol_to_a1
 
     sheet = get_google_sheet()
-    try:
-        ws = sheet.worksheet(worksheet)
-    except gspread.exceptions.WorksheetNotFound:
-        ws = sheet.add_worksheet(title=worksheet, rows=2, cols=len(COLS))
-    ws.resize(rows=max(ws.row_count, 2), cols=max(ws.col_count, len(COLS)))
-
-    header_range = f"A1:{rowcol_to_a1(1, len(COLS))}"
-    if ws.row_values(1) != COLS:
-        ws.update(header_range, [COLS])
-
-    ws.append_rows(
-        [row],
-        value_input_option="RAW",
-        insert_data_option="INSERT_ROWS",
+    config = _sheet_config()
+    target_worksheet = (
+        worksheet
+        or config.get("worksheet_name")
+        or config.get("worksheet")
+        or "responses"
     )
-    return f"sheet://{worksheet}"
+    try:
+        ws = sheet.worksheet(target_worksheet)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = sheet.add_worksheet(title=target_worksheet, rows=2, cols=len(COLS))
 
+    ws.resize(rows=max(ws.row_count, 2), cols=max(ws.col_count, len(COLS)))
+    header_range = f"A1:{rowcol_to_a1(1, len(COLS))}"
 
-def write_local_csv(row: List[Any], path: Path = Path("/tmp/ai_praise_resp.csv")) -> str:
-    """Persist the row to a local CSV fallback (for DRY_RUN/local dev)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = path.exists()
-    with path.open("a", newline="", encoding="utf-8") as file_obj:
-        writer = csv.writer(file_obj)
-        if not file_exists or path.stat().st_size == 0:
-            writer.writerow(COLS)
-        writer.writerow(row)
-    return f"LOCAL::{path}"
+    attempts = 4
+    delay = 1.0
+    for attempt in range(1, attempts + 1):
+        try:
+            existing_header = ws.row_values(1)
+            if existing_header != COLS:
+                ws.update(header_range, [COLS])
+
+            ws.append_rows(
+                [row],
+                value_input_option="RAW",
+                insert_data_option="INSERT_ROWS",
+            )
+            return f"sheet://{target_worksheet}"
+        except gspread.exceptions.APIError as exc:
+            if attempt == attempts:
+                raise
+            sleep_for = delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
+            time.sleep(sleep_for)
+        except gspread.exceptions.GSpreadException:
+            raise
+
+    raise RuntimeError("Failed to append row to Google Sheets.")
 
 
 def _storage_client():
@@ -295,9 +318,9 @@ def _storage_client():
 
 def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
     """Upload normalized record JSON to GCS if configured."""
-    bucket_name = os.getenv("GCS_BUCKET")
+    bucket_name = get_gcs_bucket_name()
     if not bucket_name:
-        return False, "GCS_BUCKET not configured"
+        return False, "GCS bucket not configured"
 
     try:
         client = _storage_client()
@@ -318,3 +341,28 @@ def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
     except Exception as exc:  # pragma: no cover - runtime dependent
         return False, f"GCS upload failed: {exc}"
     return True, f"gs://{bucket_name}/{blob_name}"
+
+
+def _sheet_config() -> Dict[str, Any]:
+    try:
+        config = dict(st.secrets["sheets"])
+        if config:
+            return config
+    except Exception:
+        pass
+    try:
+        legacy = dict(getattr(st.secrets, "google_sheet", {}) or {})
+    except Exception:
+        legacy = {}
+    return legacy
+
+
+def get_gcs_bucket_name() -> Optional[str]:
+    try:
+        bucket = st.secrets["gcs"]["bucket"]
+        if bucket:
+            return str(bucket)
+    except Exception:
+        pass
+    env_bucket = os.getenv("GCS_BUCKET")
+    return env_bucket or None

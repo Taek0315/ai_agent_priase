@@ -1,11 +1,28 @@
 # [CHANGE] Shared UI helpers for numeric-only Likert rendering.
 from __future__ import annotations
 
+import hashlib
+import re
 from typing import Dict, Iterable, List, Optional
 
 import streamlit as st
 
 from constants import LIKERT5_NUMERIC_OPTIONS
+
+
+_KEY_SANITIZER = re.compile(r"[^0-9a-zA-Z_]+")
+
+
+def _sanitize_key(raw: str) -> str:
+    cleaned = _KEY_SANITIZER.sub("_", raw).strip("_")
+    if not cleaned:
+        cleaned = "likert"
+    if cleaned[0].isdigit():
+        cleaned = f"_{cleaned}"
+    if len(cleaned) > 100:
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
+        cleaned = f"{cleaned[:91]}_{digest}"
+    return cleaned
 
 
 def render_likert_numeric(
@@ -22,43 +39,18 @@ def render_likert_numeric(
     Returns the selected integer (1..5 by default) or None when unanswered.
     """
     option_list: List[int] = list(options) if options is not None else LIKERT5_NUMERIC_OPTIONS
-    widget_key = f"{key_prefix}_{item_id}"
-    current = st.session_state.get(widget_key)
-    index = option_list.index(current) if current in option_list else None
-
-    try:
-        selection = st.radio(
-            label,
-            option_list,
-            index=index,
-            format_func=lambda value: f"{value}",
-            horizontal=horizontal,
-            key=widget_key,
-        )
-    except TypeError:
-        placeholder = "선택하세요"
-        display = [placeholder, *option_list]
-        fallback_index = display.index(current) if current in option_list else 0
-        choice = st.radio(
-            label,
-            display,
-            index=fallback_index,
-            format_func=lambda value: f"{value}",
-            horizontal=horizontal,
-            key=f"{widget_key}_fallback",
-        )
-        if choice == placeholder:
-            st.session_state.pop(widget_key, None)
-            return None
-        selection = int(choice)
-        st.session_state[widget_key] = selection
-        return selection
-
-    if selection is None:
-        st.session_state.pop(widget_key, None)
-        return None
-    st.session_state[widget_key] = int(selection)
-    return int(selection)
+    safe_key = _sanitize_key(f"{key_prefix}_{item_id}")
+    selection = st.radio(
+        label,
+        option_list,
+        index=None,
+        format_func=lambda value: f"{value}",
+        horizontal=horizontal,
+        key=safe_key,
+    )
+    if selection in option_list:
+        return int(selection)
+    return None
 
 
 def all_answered(
