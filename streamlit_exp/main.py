@@ -91,48 +91,42 @@ FEEDBACK_UI_CSS = """
 <style>
     .feedback-page {
       width: 100%;
-      padding: clamp(28px, 5vw, 48px) clamp(16px, 4vw, 48px) clamp(48px, 7vw, 72px);
+      padding: clamp(24px, 4vw, 32px) clamp(16px, 4vw, 48px) clamp(48px, 7vw, 72px);
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      gap: clamp(20px, 4vw, 32px);
-      background:
-        radial-gradient(circle at 20% -10%, rgba(126, 58, 242, 0.25), transparent 45%),
-        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 40%),
-        linear-gradient(180deg, #0f172a 0%, #111827 48%, #0b1220 100%);
+      gap: clamp(18px, 4vw, 28px);
+      background-color: #0b1220;
+      background-image:
+        radial-gradient(circle at 20% -10%, rgba(126, 58, 242, 0.18), transparent 45%),
+        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.12), transparent 40%);
       position: relative;
       isolation: isolate;
     }
-  .feedback-page::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 0%, rgba(199, 210, 254, 0.08), transparent 65%);
-    pointer-events: none;
-    z-index: -1;
-  }
-  .feedback-hero-container,
-  .feedback-comment-card,
-  .feedback-actions {
-    width: 100%;
-    max-width: 720px;
-  }
-  .feedback-hero-container {
-    display: flex;
-    justify-content: center;
-  }
-  .feedback-hero-card {
-    width: 100%;
-    padding: clamp(28px, 5vw, 44px);
-    border-radius: 30px;
-    background: linear-gradient(135deg, rgba(114, 78, 249, 0.98), rgba(79, 70, 229, 0.96) 55%, rgba(67, 56, 202, 0.94));
-    color: #f5f3ff;
-    box-shadow: 0 30px 65px -28px rgba(79, 70, 229, 0.85);
-    position: relative;
-    overflow: hidden;
-  }
+    .feedback-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(199, 210, 254, 0.08), transparent 65%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .feedback-card,
+    .feedback-actions {
+      width: 100%;
+      max-width: 720px;
+    }
+    .feedback-hero-card {
+      padding: clamp(28px, 5vw, 44px);
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(114, 78, 249, 0.98), rgba(79, 70, 229, 0.96) 55%, rgba(67, 56, 202, 0.94));
+      color: #f5f3ff;
+      box-shadow: 0 30px 65px -28px rgba(79, 70, 229, 0.85);
+      position: relative;
+      overflow: hidden;
+    }
   .feedback-hero-card::after {
     content: "";
     position: absolute;
@@ -206,15 +200,18 @@ FEEDBACK_UI_CSS = """
     content: "📡";
     font-size: 1.1rem;
   }
-  .feedback-comment-card {
-    background: rgba(248, 250, 255, 0.96);
-    border-radius: 26px;
-    padding: clamp(24px, 5vw, 36px);
-    box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    backdrop-filter: blur(8px);
-    position: relative;
-  }
+    .feedback-comment-card {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vw, 16px);
+      background: rgba(248, 250, 255, 0.95);
+      border-radius: 26px;
+      padding: clamp(22px, 4.5vw, 30px);
+      box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      backdrop-filter: blur(8px);
+      position: relative;
+    }
   .feedback-comment-card::before {
     content: "";
     position: absolute;
@@ -223,15 +220,21 @@ FEEDBACK_UI_CSS = """
     border: 1px solid rgba(124, 58, 237, 0.18);
     pointer-events: none;
   }
-  .feedback-comment-title {
-    font-size: 1.28rem;
-    font-weight: 700;
-    color: #3730a3;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    margin: 0;
-  }
+    .feedback-comment-title {
+      font-size: 1.28rem;
+      font-weight: 700;
+      color: #3730a3;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0;
+    }
+    .feedback-comment-subtitle {
+      margin: 0;
+      font-size: 1.05rem;
+      color: #475569;
+      line-height: 1.6;
+    }
   .feedback-comment-icon {
     display: inline-flex;
     align-items: center;
@@ -244,51 +247,58 @@ FEEDBACK_UI_CSS = """
     font-size: 1.3rem;
     box-shadow: 0 16px 30px -20px rgba(249, 115, 22, 0.6);
   }
-  .feedback-comment-body {
-    margin-top: clamp(18px, 3vw, 26px);
-    padding: clamp(20px, 4vw, 28px);
-    font-size: clamp(1.05rem, 2vw, 1.18rem);
-    line-height: 1.8;
-    color: #1f2937;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 231, 255, 0.92));
-    border-radius: 22px;
-    border-left: 6px solid #7c3aed;
-    box-shadow: inset 0 1px 0 rgba(124, 58, 237, 0.18);
-    min-height: 110px;
-    transition: transform 0.4s ease, box-shadow 0.4s ease;
-  }
-  .feedback-comment-body strong {
-    color: #4338ca;
-  }
-  .feedback-comment-body[data-empty="true"] {
-    color: #6b7280;
-    font-style: italic;
-    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.85));
-    border-left-color: rgba(124, 58, 237, 0.35);
-  }
+    .feedback-comment-body {
+      margin: 0;
+      font-size: clamp(1.07rem, 2vw, 1.22rem);
+      line-height: 1.8;
+      color: #1f2937;
+      min-height: 110px;
+    }
+    .feedback-comment-body strong {
+      color: #4338ca;
+    }
+    .feedback-comment-body[data-empty="true"] {
+      color: #6b7280;
+      font-style: italic;
+    }
   .feedback-comment-body::selection {
     background: rgba(124, 58, 237, 0.16);
   }
-  .feedback-micro-card {
-    background: rgba(15, 23, 42, 0.55);
-    color: #e0e7ff;
-    border: 1px solid rgba(99, 102, 241, 0.35);
-  }
-  .feedback-micro-card::before {
-    border-color: rgba(96, 165, 250, 0.3);
-  }
-  .feedback-micro-card .feedback-comment-title {
-    color: #e0e7ff;
-  }
-  .feedback-micro-card .feedback-comment-icon {
-    background: linear-gradient(135deg, #38bdf8, #6366f1);
-    box-shadow: 0 16px 32px -22px rgba(59, 130, 246, 0.55);
-  }
-  .feedback-micro-card .feedback-comment-body {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(30, 64, 175, 0.8));
-    color: #e2e8f0;
-    border-left-color: rgba(129, 140, 248, 0.7);
-  }
+    .feedback-praise-card {
+      position: relative;
+      border-radius: 26px;
+      padding: clamp(26px, 5vw, 36px);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 231, 255, 0.94));
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+    }
+    .feedback-praise-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(124, 58, 237, 0.18);
+      pointer-events: none;
+    }
+    .feedback-micro-card {
+      background: rgba(15, 23, 42, 0.55);
+      color: #e0e7ff;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+    }
+    .feedback-micro-card::before {
+      border-color: rgba(96, 165, 250, 0.3);
+    }
+    .feedback-micro-card .feedback-comment-title {
+      color: #e0e7ff;
+    }
+    .feedback-micro-card .feedback-comment-icon {
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      box-shadow: 0 16px 32px -22px rgba(59, 130, 246, 0.55);
+    }
+    .feedback-micro-card .feedback-comment-body {
+      color: #e2e8f0;
+    }
   .feedback-actions {
     margin-top: clamp(4px, 1vw, 12px);
   }
@@ -313,10 +323,10 @@ FEEDBACK_UI_CSS = """
     transform: translateY(0);
     opacity: 1;
   }
-  @media (max-width: 720px) {
+    @media (max-width: 720px) {
       .feedback-page {
-        padding: 24px 14px 48px;
-        gap: 18px;
+        padding: 22px 14px 42px;
+        gap: 16px;
       }
     .feedback-hero-card {
       border-radius: 26px;
@@ -330,13 +340,14 @@ FEEDBACK_UI_CSS = """
       height: 68px;
       font-size: 34px;
     }
-    .feedback-comment-card {
-      border-radius: 22px;
-    }
-    .feedback-comment-body {
-      font-size: 1.05rem;
-      border-left-width: 5px;
-    }
+      .feedback-comment-card,
+      .feedback-praise-card {
+        border-radius: 22px;
+        padding: 22px;
+      }
+      .feedback-comment-body {
+        font-size: 1.05rem;
+      }
   }
 </style>
 """.strip()
@@ -2003,11 +2014,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
 
     with st.container():
-        st.markdown('<div class="feedback-page">', unsafe_allow_html=True)
         st.markdown(
             f"""
-<div class="feedback-hero-container">
-  <div class="feedback-hero-card">
+<div class="feedback-page">
+  <div class="feedback-card feedback-hero-card">
     <div class="feedback-hero-badge"><span>🤖</span> AI 튜터 칭찬</div>
     <div class="feedback-hero-body">
       <div class="feedback-icon-wrap">🧠</div>
@@ -2018,51 +2028,45 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     </div>
     <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 성장을 칭찬하고 있습니다.</div>
   </div>
-</div>
+  <div class="feedback-card feedback-comment-card">
+    <div class="feedback-comment-title">
+      <span class="feedback-comment-icon">✨</span>
+      AI 튜터의 코멘트
+    </div>
+    <p class="feedback-comment-subtitle">AI 튜터가 분석 결과를 정리했어요. 아래 칭찬을 확인해 주세요.</p>
+  </div>
+  <div class="feedback-card feedback-praise-card">
 """,
             unsafe_allow_html=True,
         )
 
         shown_flag = f"feedback_shown_{round_key}"
-        comment_section = st.container()
-        with comment_section:
-            st.markdown(
-                """
-<div class="feedback-comment-card">
-  <div class="feedback-comment-title">
-    <span class="feedback-comment-icon">✨</span>
-    AI 튜터의 코멘트
-  </div>
-""",
+        praise_placeholder = st.empty()
+        if summary_text:
+            if not st.session_state.get(shown_flag):
+                typewriter_markdown(
+                    summary_text,
+                    speed=0.01,
+                    container=praise_placeholder,
+                    wrapper_class="feedback-comment-body",
+                )
+                st.session_state[shown_flag] = True
+            else:
+                praise_placeholder.markdown(
+                    f'<div class="feedback-comment-body">{summary_text.replace("\\n", "<br />")}</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            praise_placeholder.markdown(
+                '<div class="feedback-comment-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
                 unsafe_allow_html=True,
             )
 
-            comment_placeholder = st.empty()
-            if summary_text:
-                if not st.session_state.get(shown_flag):
-                    typewriter_markdown(
-                        summary_text,
-                        speed=0.01,
-                        container=comment_placeholder,
-                        wrapper_class="feedback-comment-body",
-                    )
-                    st.session_state[shown_flag] = True
-                else:
-                    comment_placeholder.markdown(
-                        f'<div class="feedback-comment-body">{summary_text.replace("\\n", "<br />")}</div>',
-                        unsafe_allow_html=True,
-                    )
-            else:
-                comment_placeholder.markdown(
-                    '<div class="feedback-comment-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
-                    unsafe_allow_html=True,
-                )
-
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
         if SHOW_PER_ITEM_SUMMARY and feedback_payload:
             st.markdown(
-                '<div class="feedback-comment-card feedback-micro-card"><div class="feedback-comment-title"><span class="feedback-comment-icon">💡</span> 문항별 간단 피드백</div>',
+                '<div class="feedback-card feedback-comment-card feedback-micro-card"><div class="feedback-comment-title"><span class="feedback-comment-icon">💡</span> 문항별 간단 피드백</div>',
                 unsafe_allow_html=True,
             )
             st.markdown('<div class="feedback-comment-body">', unsafe_allow_html=True)
