@@ -264,15 +264,29 @@ FEEDBACK_UI_CSS = """
   .feedback-comment-body::selection {
     background: rgba(124, 58, 237, 0.16);
   }
-    .feedback-praise-card {
-      position: relative;
-      border-radius: 26px;
-      padding: clamp(26px, 5vw, 36px);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 231, 255, 0.94));
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(8px);
-    }
+      .feedback-praise-card {
+        position: relative;
+        border-radius: 26px;
+        padding: clamp(26px, 5vw, 36px);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 231, 255, 0.94));
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(8px);
+        color: #1f2937;
+        font-size: clamp(1.08rem, 2.2vw, 1.3rem);
+        line-height: 1.8;
+        word-break: keep-all;
+      }
+      .feedback-praise-card p {
+        margin: 0;
+      }
+      .feedback-praise-card strong {
+        color: #4338ca;
+      }
+      .feedback-praise-card[data-empty="true"] {
+        color: #64748b;
+        font-style: italic;
+      }
     .feedback-praise-card::before {
       content: "";
       position: absolute;
@@ -2016,53 +2030,50 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     with st.container():
         st.markdown(
             f"""
-<div class="feedback-page">
-  <div class="feedback-card feedback-hero-card">
-    <div class="feedback-hero-badge"><span>🤖</span> AI 튜터 칭찬</div>
-    <div class="feedback-hero-body">
-      <div class="feedback-icon-wrap">🧠</div>
-      <div class="feedback-hero-text">
-        <h1 class="feedback-hero-title">분석 완료! 훌륭합니다!</h1>
-        <p class="feedback-hero-subtitle">{hero_subtitle}</p>
+  <div class="feedback-page">
+    <div class="feedback-card feedback-hero-card">
+      <div class="feedback-hero-badge"><span>🤖</span> AI 튜터 칭찬</div>
+      <div class="feedback-hero-body">
+        <div class="feedback-icon-wrap">🧠</div>
+        <div class="feedback-hero-text">
+          <h1 class="feedback-hero-title">분석 완료! 훌륭합니다!</h1>
+          <p class="feedback-hero-subtitle">{hero_subtitle}</p>
+        </div>
       </div>
+      <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 성장을 칭찬하고 있습니다.</div>
     </div>
-    <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 성장을 칭찬하고 있습니다.</div>
-  </div>
-  <div class="feedback-card feedback-comment-card">
-    <div class="feedback-comment-title">
-      <span class="feedback-comment-icon">✨</span>
-      AI 튜터의 코멘트
+    <div class="feedback-card feedback-comment-card">
+      <div class="feedback-comment-title">
+        <span class="feedback-comment-icon">✨</span>
+        AI 튜터의 코멘트
+      </div>
+      <p class="feedback-comment-subtitle">AI 튜터가 분석 결과를 정리했어요. 아래 칭찬을 확인해 주세요.</p>
     </div>
-    <p class="feedback-comment-subtitle">AI 튜터가 분석 결과를 정리했어요. 아래 칭찬을 확인해 주세요.</p>
-  </div>
-  <div class="feedback-card feedback-praise-card">
-""",
+  """,
             unsafe_allow_html=True,
         )
 
         shown_flag = f"feedback_shown_{round_key}"
-        praise_placeholder = st.empty()
+        praise_card_container = st.container()
         if summary_text:
             if not st.session_state.get(shown_flag):
                 typewriter_markdown(
                     summary_text,
                     speed=0.01,
-                    container=praise_placeholder,
-                    wrapper_class="feedback-comment-body",
+                    container=praise_card_container,
+                    wrapper_class="feedback-card feedback-praise-card",
                 )
                 st.session_state[shown_flag] = True
             else:
-                praise_placeholder.markdown(
-                    f'<div class="feedback-comment-body">{summary_text.replace("\\n", "<br />")}</div>',
+                praise_card_container.markdown(
+                    f'<div class="feedback-card feedback-praise-card">{summary_text.replace("\\n", "<br />")}</div>',
                     unsafe_allow_html=True,
                 )
         else:
-            praise_placeholder.markdown(
-                '<div class="feedback-comment-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
+            praise_card_container.markdown(
+                '<div class="feedback-card feedback-praise-card" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
                 unsafe_allow_html=True,
             )
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
         if SHOW_PER_ITEM_SUMMARY and feedback_payload:
             st.markdown(
