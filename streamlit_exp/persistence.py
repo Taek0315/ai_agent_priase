@@ -3,19 +3,14 @@ from __future__ import annotations
 
 import json
 import os
-import random
-import time
-import unicodedata
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+import uuid
+from typing import Any, Dict, List, Optional, Tuple
 
 from constants import MANIPULATION_CHECK_ITEMS
-from utils.google_sheet import get_google_sheet
+from utils.google_sheet import append_row_to_sheet
 from utils.persistence import get_cfg, now_utc_iso
 
-TASK_EXPORT_COUNT = 10
-ANTH_COUNT = 30
-ACHIVE_COUNT = 26
-MOTIVATION_COUNT = 26
+SCHEMA_VERSION = "2025-11-13.v1"
 
 SANITIZE_MAP: Dict[str, str] = {
     "동의함": "agree",
@@ -29,32 +24,79 @@ SANITIZE_MAP: Dict[str, str] = {
     "선택해 주세요": "",
 }
 
-COLS: List[str] = [
+SHEET_COLUMNS: List[str] = [
+    "saved_at",
     "participant_id",
-    "consent_research",
-    "consent_privacy",
-    "sex_biological",
-    "age_years",
-    "education_level",
     "condition",
-    "specificity",
+    "condition_specificity",
     "phase_order",
-    "started_at",
-    "finished_at",
-    "task_duration_sec",
-    "task_score_total",
-    "task_accuracy_pct",
-    *[f"task_ans_{idx:02d}" for idx in range(1, TASK_EXPORT_COUNT + 1)],
-    *[f"anth_{idx:02d}" for idx in range(1, ANTH_COUNT + 1)],
-    *[f"ach_{idx:02d}" for idx in range(1, ACHIVE_COUNT + 1)],
-    *[f"lm_{idx:02d}" for idx in range(1, MOTIVATION_COUNT + 1)],
-    *[item.id for item in MANIPULATION_CHECK_ITEMS],
-    "difficulty_after_round1",
-    "difficulty_final",
-    "open_feedback",
-    "phone",
+    "start_time",
+    "end_time",
+    "completion_seconds",
+    "task_duration_seconds",
+    "total_inference_questions",
+    "inference_correct_count",
+    "inference_accuracy_pct",
+    "consent_json",
+    "consent_flags_json",
+    "demographic_json",
+    "anthro_responses_json",
+    "achive_responses_json",
+    "difficulty_checks_json",
+    "motivation_responses_json",
+    "motivation_scores_json",
+    "manipulation_check_json",
+    "inference_summary_json",
+    "inference_details_json",
+    "inference_responses_json",
+    "feedback_messages_json",
+    "open_feedback_text",
+    "phone_number",
+    "phone_number_raw",
     "praise_condition",
+    "feedback_condition",
+    "anthro_count",
+    "achive_count",
+    "motivation_count",
+    "storage_record_json",
+    "schema_version",
 ]
+
+JSON_COLUMN_KEYS = {
+    "consent_json",
+    "consent_flags_json",
+    "demographic_json",
+    "anthro_responses_json",
+    "achive_responses_json",
+    "difficulty_checks_json",
+    "motivation_responses_json",
+    "motivation_scores_json",
+    "manipulation_check_json",
+    "inference_summary_json",
+    "inference_details_json",
+    "inference_responses_json",
+    "feedback_messages_json",
+    "storage_record_json",
+}
+
+JSON_VALUE_KEYS: Dict[str, Optional[str]] = {
+    "consent_json": "consent",
+    "consent_flags_json": "consent_flags",
+    "demographic_json": "demographic",
+    "anthro_responses_json": "anthro_responses",
+    "achive_responses_json": "achive_responses",
+    "difficulty_checks_json": "difficulty_checks",
+    "motivation_responses_json": "motivation_responses",
+    "motivation_scores_json": "motivation_scores",
+    "manipulation_check_json": "manipulation_check",
+    "inference_summary_json": "inference_summary",
+    "inference_details_json": "inference_details",
+    "inference_responses_json": "inference_responses",
+    "feedback_messages_json": "feedback_messages",
+    "storage_record_json": None,
+}
+
+AFFIRMATIVE_VALUES = {"agree", "yes", "y", "true", "1"}
 
 
 def google_ready() -> bool:
@@ -69,49 +111,65 @@ def google_ready() -> bool:
         or os.getenv("GOOGLE_SHEET_ID")
         or os.getenv("GOOGLE_SHEET_URL")
     )
-    has_sheet = bool(sheet_identifier)
-    has_service_account = bool((config.get("service_account") or {}).get("client_email"))
-    has_env = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
-    return has_sheet and (has_service_account or has_env)
+    if not sheet_identifier:
+        return False
+
+    service_account = config.get("service_account") or {}
+    has_secret_credentials = bool(service_account)
+    env_credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    env_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    return bool(has_secret_credentials or env_credentials_json or env_credentials_path)
 
 
-def normalize_for_storage(value: Any) -> Any:
-    """Coerce survey values into ASCII-safe primitives for persistence."""
+def _ensure_jsonable(data: Any) -> Any:
+    """
+    Ensure the provided data structure can be serialized to JSON.
+    Non-serializable values are converted to strings while preserving the structure.
+    """
+    try:
+        json.dumps(data, ensure_ascii=False)
+        return data
+    except (TypeError, ValueError):
+        return json.loads(json.dumps(data, ensure_ascii=False, default=str))
+
+
+def _json_or_blank(value: Any) -> str:
+    if value is None or value == "":
+        return ""
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return json.dumps(_ensure_jsonable(value), ensure_ascii=False)
+
+
+def _is_affirmative(value: Any) -> bool:
     if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip()
+    normalized = SANITIZE_MAP.get(text, text)
+    return normalized.lower() in AFFIRMATIVE_VALUES
+
+
+def _format_float(value: Any, precision: int = 3) -> Any:
+    if value in (None, "", [], {}):
+        return ""
+    try:
+        return round(float(value), precision)
+    except (TypeError, ValueError):
+        return value
+
+
+def _format_int(value: Any) -> Any:
+    if value in (None, "", [], {}):
         return ""
     if isinstance(value, bool):
         return int(value)
-    if isinstance(value, (int, float)):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         return value
-    if isinstance(value, str):
-        trimmed = value.strip()
-        if not trimmed:
-            return ""
-        mapped = SANITIZE_MAP.get(trimmed, trimmed)
-        cleaned = mapped.replace(",", "; ").replace("\n", " ").replace("\r", " ").replace("\t", " ")
-        cleaned = " ".join(cleaned.split())
-        try:
-            cleaned.encode("ascii")
-            return cleaned
-        except UnicodeEncodeError:
-            translit = (
-                unicodedata.normalize("NFKD", cleaned)
-                .encode("ascii", "ignore")
-                .decode("ascii")
-            )
-            if translit:
-                return translit
-            return cleaned.encode("unicode_escape").decode("ascii")
-    return str(value)
-
-
-def _expand(values: Iterable[Any], total: int) -> List[Any]:
-    seq = list(values) if isinstance(values, list) else list(values or [])
-    buffer: List[Any] = []
-    for idx in range(total):
-        raw = seq[idx] if idx < len(seq) else ""
-        buffer.append(normalize_for_storage("" if raw is None else raw))
-    return buffer
 
 
 def _task_specificity(condition: str) -> str:
@@ -124,164 +182,247 @@ def _task_specificity(condition: str) -> str:
 
 
 def _safe_phone(phone: str) -> str:
-    stripped = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
-    return normalize_for_storage(stripped)
+    return "".join(ch for ch in (phone or "") if ch.isdigit() or ch == "+")
 
 
 def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]:
-    """Prepare a normalized dict ready for Sheet row + JSON export."""
-    consent = payload.get("consent", {}) or {}
-    demographic = payload.get("demographic", {}) or {}
-    anthro = payload.get("anthro_responses", []) or []
-    achive = payload.get("achive_responses", []) or []
-    motivation = payload.get("motivation_responses", []) or []
-    manipulation = payload.get("manipulation_check", {}) or {}
-    inference_details = payload.get("inference_details", []) or []
+    """Build a JSON-serializable record that captures all participant responses."""
+    consent = dict(payload.get("consent", {}) or {})
+    demographic = dict(payload.get("demographic", {}) or {})
+    anthro_responses = list(payload.get("anthro_responses", []) or [])
+    achive_responses = list(payload.get("achive_responses", []) or [])
+    motivation_responses = list(payload.get("motivation_responses", []) or [])
+    motivation_scores = dict(payload.get("motivation_category_scores", {}) or {})
+    difficulty_checks = dict(payload.get("difficulty_checks", {}) or {})
+    manipulation_check = dict(payload.get("manipulation_check", {}) or {})
+    inference_details = list(payload.get("inference_details", []) or [])
+    feedback_messages = dict(payload.get("feedback_messages", {}) or {})
+    open_feedback = (payload.get("open_feedback") or "").strip()
+    phone_raw = payload.get("phone") or ""
+    record_timestamps = getattr(record, "timestamps", {}) if record else {}
 
-    start_iso = payload.get("start_time") or (record.timestamps.get("start") if getattr(record, "timestamps", None) else None)
-    end_iso = payload.get("end_time") or (record.timestamps.get("end") if getattr(record, "timestamps", None) else None)
+    start_iso = payload.get("start_time") or record_timestamps.get("start")
+    end_iso = payload.get("end_time") or record_timestamps.get("end")
+    saved_at = now_utc_iso()
 
-    condition = payload.get("praise_condition") or payload.get("feedback_condition") or getattr(record, "condition", "")
-    condition = normalize_for_storage(condition)
-    specificity = _task_specificity(str(condition))
-    phase_order = "nouns_then_verbs"
-
-    task_answers: List[Any] = []
-    for detail in inference_details[:TASK_EXPORT_COUNT]:
-        selected = detail.get("selected_option")
-        if isinstance(selected, int):
-            task_answers.append(normalize_for_storage(selected + 1))
-        else:
-            task_answers.append("")
-    while len(task_answers) < TASK_EXPORT_COUNT:
-        task_answers.append("")
-
-    total_questions = len(inference_details) if inference_details else 0
-    score = sum(
-        1
-        for detail in inference_details
-        if detail.get("selected_option") == detail.get("correct_idx")
+    condition_value = (
+        payload.get("praise_condition")
+        or payload.get("feedback_condition")
+        or getattr(record, "condition", "")
+        or ""
     )
-    duration = sum(float(detail.get("response_time") or 0.0) for detail in inference_details)
-    accuracy = round(score / total_questions, 3) if total_questions else ""
+    specificity = _task_specificity(str(condition_value))
+    phase_order = payload.get("phase_order") or "nouns_then_verbs"
 
-    manip_values = [
-        normalize_for_storage(manipulation.get(item.id, ""))
-        for item in MANIPULATION_CHECK_ITEMS
-    ]
+    total_questions = len(inference_details)
+    correct_count = 0
+    total_response_time = 0.0
+    per_round: Dict[str, Dict[str, Any]] = {}
+    for detail in inference_details:
+        round_key = str(detail.get("round") or "unknown")
+        summary = per_round.setdefault(
+            round_key,
+            {"round": round_key, "questions": 0, "correct": 0, "total_time": 0.0},
+        )
+        summary["questions"] += 1
+        if detail.get("selected_option") == detail.get("correct_idx"):
+            correct_count += 1
+            summary["correct"] += 1
+        try:
+            response_time = float(detail.get("response_time") or 0.0)
+        except (TypeError, ValueError):
+            response_time = 0.0
+        summary["total_time"] += response_time
+        total_response_time += response_time
 
-    storage: Dict[str, Any] = {
-        "participant_id": normalize_for_storage(
-            payload.get("participant_id") or getattr(record, "participant_id", "")
-        ),
-        "consent_research": normalize_for_storage(consent.get("consent_research")),
-        "consent_privacy": normalize_for_storage(consent.get("consent_privacy")),
-        "sex_biological": normalize_for_storage(demographic.get("sex_biological")),
-        "age_years": normalize_for_storage(demographic.get("age_years")),
-        "education_level": normalize_for_storage(demographic.get("education_level")),
-        "condition": condition,
-        "specificity": normalize_for_storage(specificity),
-        "phase_order": normalize_for_storage(phase_order),
-        "started_at": normalize_for_storage(start_iso),
-        "finished_at": normalize_for_storage(end_iso or now_utc_iso()),
-        "task_duration_sec": round(duration, 2) if duration else "",
-        "task_score_total": score if total_questions else "",
-        "task_accuracy_pct": accuracy,
+    for summary in per_round.values():
+        questions = summary["questions"]
+        if questions:
+            summary["accuracy_pct"] = round(summary["correct"] / questions, 4)
+            summary["avg_response_time"] = round(summary["total_time"] / questions, 3)
+        else:
+            summary["accuracy_pct"] = None
+            summary["avg_response_time"] = None
+
+    per_round_summary = sorted(
+        per_round.values(),
+        key=lambda entry: entry.get("round", ""),
+    )
+
+    accuracy_pct = round(correct_count / total_questions, 4) if total_questions else None
+    completion_seconds = getattr(record, "completion_time", None)
+    if completion_seconds is None and total_response_time:
+        completion_seconds = round(total_response_time, 3)
+
+    payload_snapshot = _ensure_jsonable(payload)
+    experiment_record = _ensure_jsonable(
+        {
+            "participant_id": getattr(record, "participant_id", None),
+            "condition": getattr(record, "condition", None),
+            "demographic": getattr(record, "demographic", {}),
+            "inference_responses": getattr(record, "inference_responses", []),
+            "survey_responses": getattr(record, "survey_responses", []),
+            "feedback_messages": getattr(record, "feedback_messages", []),
+            "timestamps": record_timestamps,
+            "completion_time": getattr(record, "completion_time", None),
+        }
+        if record
+        else {}
+    )
+
+    consent_flags = {
+        "research": _is_affirmative(consent.get("consent_research")),
+        "privacy": _is_affirmative(consent.get("consent_privacy")),
     }
 
-    storage.update(
-        {f"task_ans_{idx:02d}": value for idx, value in enumerate(task_answers, start=1)}
-    )
-    storage.update(
-        {
-            f"anth_{idx:02d}": value
-            for idx, value in enumerate(_expand(anthro, ANTH_COUNT), start=1)
-        }
-    )
-    storage.update(
-        {
-            f"ach_{idx:02d}": value
-            for idx, value in enumerate(_expand(achive, ACHIVE_COUNT), start=1)
-        }
-    )
-    storage.update(
-        {
-            f"lm_{idx:02d}": value
-            for idx, value in enumerate(_expand(motivation, MOTIVATION_COUNT), start=1)
-        }
-    )
-    storage.update({item.id: manip_values[idx] for idx, item in enumerate(MANIPULATION_CHECK_ITEMS)})
+    storage_record: Dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "saved_at": saved_at,
+        "participant_id": payload.get("participant_id")
+        or getattr(record, "participant_id", "")
+        or "",
+        "condition": condition_value,
+        "condition_specificity": specificity,
+        "phase_order": phase_order,
+        "start_time": start_iso,
+        "end_time": end_iso or saved_at,
+        "completion_seconds": completion_seconds,
+        "task_duration_seconds": round(total_response_time, 3)
+        if total_response_time
+        else None,
+        "total_inference_questions": total_questions,
+        "inference_correct_count": correct_count,
+        "inference_accuracy_pct": accuracy_pct,
+        "consent": consent,
+        "consent_flags": consent_flags,
+        "demographic": demographic,
+        "anthro_responses": anthro_responses,
+        "achive_responses": achive_responses,
+        "difficulty_checks": difficulty_checks,
+        "motivation_responses": motivation_responses,
+        "motivation_scores": motivation_scores,
+        "manipulation_check": manipulation_check,
+        "inference_summary": {
+            "total_questions": total_questions,
+            "correct_count": correct_count,
+            "accuracy_pct": accuracy_pct,
+            "total_response_time": round(total_response_time, 3)
+            if total_response_time
+            else 0.0,
+            "per_round": per_round_summary,
+            "average_response_time": (
+                round(total_response_time / total_questions, 3)
+                if total_questions
+                else None
+            ),
+        },
+        "inference_details": inference_details,
+        "inference_responses": getattr(record, "inference_responses", []),
+        "feedback_messages": feedback_messages,
+        "open_feedback": open_feedback,
+        "difficulty_checks_count": len(difficulty_checks),
+        "phone_number": _safe_phone(phone_raw),
+        "phone_number_raw": phone_raw,
+        "contact_provided": bool(_safe_phone(phone_raw)),
+        "praise_condition": payload.get("praise_condition")
+        or getattr(record, "condition", "")
+        or "",
+        "feedback_condition": payload.get("feedback_condition")
+        or getattr(record, "condition", "")
+        or "",
+        "anthro_count": len([v for v in anthro_responses if v is not None]),
+        "achive_count": len([v for v in achive_responses if v is not None]),
+        "motivation_count": len([v for v in motivation_responses if v is not None]),
+        "payload_snapshot": payload_snapshot,
+        "experiment_record": experiment_record,
+    }
 
-    storage["difficulty_after_round1"] = normalize_for_storage(
-        payload.get("difficulty_checks", {}).get("after_round1")
-    )
-    storage["difficulty_final"] = normalize_for_storage(
-        payload.get("difficulty_checks", {}).get("final")
-    )
-    storage["open_feedback"] = normalize_for_storage(payload.get("open_feedback", ""))
-    storage["phone"] = _safe_phone(payload.get("phone", ""))
-    storage["praise_condition"] = normalize_for_storage(
-        payload.get("praise_condition") or getattr(record, "condition", "")
-    )
+    # Include manipulation items explicitly even if omitted from responses.
+    storage_record["manipulation_check"] = {
+        item.id: manipulation_check.get(item.id)
+        for item in MANIPULATION_CHECK_ITEMS
+    }
 
-    return storage
+    return storage_record
 
 
 def build_sheet_row(storage_record: Dict[str, Any]) -> List[Any]:
-    """Return list aligned with COLS for Google Sheets append operations."""
-    return [storage_record.get(column, "") for column in COLS]
+    """Convert the storage record into a stable Google Sheets row."""
+    if not isinstance(storage_record, dict):
+        raise ValueError("storage_record must be a dict.")
+
+    record_copy = dict(storage_record)
+    saved_at = record_copy.get("saved_at") or now_utc_iso()
+    record_copy.setdefault("saved_at", saved_at)
+    schema_version = record_copy.get("schema_version") or SCHEMA_VERSION
+    record_copy["schema_version"] = schema_version
+
+    row_map: Dict[str, Any] = {
+        "saved_at": saved_at,
+        "participant_id": record_copy.get("participant_id", ""),
+        "condition": record_copy.get("condition", ""),
+        "condition_specificity": record_copy.get("condition_specificity", ""),
+        "phase_order": record_copy.get("phase_order", ""),
+        "start_time": record_copy.get("start_time", ""),
+        "end_time": record_copy.get("end_time", ""),
+        "completion_seconds": _format_float(record_copy.get("completion_seconds")),
+        "task_duration_seconds": _format_float(
+            record_copy.get("task_duration_seconds")
+        ),
+        "total_inference_questions": _format_int(
+            record_copy.get("total_inference_questions")
+        ),
+        "inference_correct_count": _format_int(
+            record_copy.get("inference_correct_count")
+        ),
+        "inference_accuracy_pct": _format_float(
+            record_copy.get("inference_accuracy_pct"), precision=4
+        ),
+        "open_feedback_text": record_copy.get("open_feedback", ""),
+        "phone_number": record_copy.get("phone_number", ""),
+        "phone_number_raw": record_copy.get("phone_number_raw", ""),
+        "praise_condition": record_copy.get("praise_condition", ""),
+        "feedback_condition": record_copy.get("feedback_condition", ""),
+        "anthro_count": _format_int(record_copy.get("anthro_count")),
+        "achive_count": _format_int(record_copy.get("achive_count")),
+        "motivation_count": _format_int(record_copy.get("motivation_count")),
+        "schema_version": schema_version,
+    }
+
+    for column, source_key in JSON_VALUE_KEYS.items():
+        if column == "storage_record_json":
+            continue
+        value = record_copy if source_key is None else record_copy.get(source_key)
+        row_map[column] = _json_or_blank(value)
+
+    row_map["storage_record_json"] = _json_or_blank(record_copy)
+
+    return [row_map.get(column, "") for column in SHEET_COLUMNS]
 
 
 def save_to_sheets(row: List[Any], worksheet: Optional[str] = None) -> str:
     """Append the given row to Google Sheets with a stable header."""
     if not google_ready():
         raise RuntimeError("Google Sheets credentials not configured.")
-    if len(row) != len(COLS):
+    if len(row) != len(SHEET_COLUMNS):
         raise ValueError(
-            f"Sheet row length {len(row)} does not match expected {len(COLS)} columns."
+            f"Sheet row length {len(row)} does not match expected {len(SHEET_COLUMNS)} columns."
         )
 
-    import gspread
-    from gspread.utils import rowcol_to_a1
+    try:
+        config = get_cfg()
+    except RuntimeError:
+        config = {}
 
-    sheet = get_google_sheet()
-    config = get_cfg()
-    target_worksheet = (
+    worksheet_name = (
         worksheet
         or config.get("worksheet_name")
+        or os.getenv("GOOGLE_SHEET_WORKSHEET")
+        or os.getenv("GOOGLE_SHEET_WORKSHEET_NAME")
         or "responses"
     )
-    try:
-        ws = sheet.worksheet(target_worksheet)
-    except gspread.exceptions.WorksheetNotFound:
-        ws = sheet.add_worksheet(title=target_worksheet, rows=2, cols=len(COLS))
-
-    ws.resize(rows=max(ws.row_count, 2), cols=max(ws.col_count, len(COLS)))
-    header_range = f"A1:{rowcol_to_a1(1, len(COLS))}"
-
-    attempts = 4
-    delay = 1.0
-    for attempt in range(1, attempts + 1):
-        try:
-            existing_header = ws.row_values(1)
-            if existing_header != COLS:
-                ws.update(header_range, [COLS])
-
-            ws.append_rows(
-                [row],
-                value_input_option="RAW",
-                insert_data_option="INSERT_ROWS",
-            )
-            return f"sheet://{target_worksheet}"
-        except gspread.exceptions.APIError as exc:
-            if attempt == attempts:
-                raise
-            sleep_for = delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
-            time.sleep(sleep_for)
-        except gspread.exceptions.GSpreadException:
-            raise
-
-    raise RuntimeError("Failed to append row to Google Sheets.")
+    append_row_to_sheet(row, worksheet=worksheet_name, header=SHEET_COLUMNS)
+    return f"sheets:{worksheet_name}"
 
 
 def _storage_client():
@@ -323,27 +464,25 @@ def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
     except Exception as exc:  # pragma: no cover - runtime dependent
         return False, f"GCS client unavailable: {exc}"
 
-    participant_id = storage_record.get("participant_id") or "unknown"
-    finished_at = storage_record.get("finished_at") or now_utc_iso()
-    safe_timestamp = finished_at.replace(":", "-")
-    blob_name = f"participants/{participant_id}_{safe_timestamp}.json"
+    participant_id = str(storage_record.get("participant_id") or "unknown").replace("/", "_")
+    finished_at = (
+        storage_record.get("end_time")
+        or storage_record.get("finished_at")
+        or storage_record.get("saved_at")
+        or now_utc_iso()
+    )
+    safe_timestamp = str(finished_at).replace(":", "-")
+    blob_name = f"participants/{participant_id}_{safe_timestamp}_{uuid.uuid4().hex[:8]}.json"
     try:
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
         blob.upload_from_string(
-            json.dumps(storage_record, ensure_ascii=True),
+            json.dumps(storage_record, ensure_ascii=False, default=str),
             content_type="application/json",
         )
     except Exception as exc:  # pragma: no cover - runtime dependent
         return False, f"GCS upload failed: {exc}"
-    return True, f"gs://{bucket_name}/{blob_name}"
-
-
-def _sheet_config() -> Dict[str, Any]:
-    try:
-        return get_cfg()
-    except RuntimeError:
-        return {}
+    return True, f"gcs:{bucket_name}/{blob_name}"
 
 
 def get_gcs_bucket_name() -> Optional[str]:

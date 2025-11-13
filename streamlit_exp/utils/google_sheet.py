@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import gspread
 from google.oauth2.service_account import Credentials
+from gspread.utils import rowcol_to_a1
 
 from .persistence import get_cfg
 
@@ -58,12 +59,25 @@ def get_google_sheet():
     raise RuntimeError("Missing Google Sheet identifier. Set secrets [sheets] spreadsheet_id or spreadsheet_url.")
 
 
-def append_row_to_sheet(row: List[Any], worksheet: str = "resp") -> None:
+def append_row_to_sheet(
+    row: List[Any], worksheet: str = "resp", header: Optional[List[Any]] = None
+) -> None:
     sh = get_google_sheet()
     try:
         ws = sh.worksheet(worksheet)
     except gspread.exceptions.WorksheetNotFound:
-        ws = sh.sheet1
+        target_cols = len(header) if header else max(1, len(row))
+        target_rows = max(2, len(row) + 1)
+        ws = sh.add_worksheet(title=worksheet, rows=target_rows, cols=target_cols)
+    if header:
+        expected_cols = len(header)
+        if ws.col_count < expected_cols:
+            ws.resize(rows=ws.row_count, cols=expected_cols)
+        existing_header = ws.row_values(1)
+        normalized_existing = existing_header + [""] * (expected_cols - len(existing_header))
+        if normalized_existing[:expected_cols] != list(header):
+            header_range = f"A1:{rowcol_to_a1(1, expected_cols)}"
+            ws.update(header_range, [list(header)])
     ws.append_row(row, value_input_option="RAW")
 
 
