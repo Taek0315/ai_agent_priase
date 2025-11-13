@@ -576,6 +576,170 @@ MCP_OVERLAY_TEMPLATE = """
 """.strip()
 
 
+ANALYSIS_COMPLETE_CSS = """
+<style>
+  .analysis-complete-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(48px, 10vw, 96px) clamp(18px, 6vw, 48px);
+    background: radial-gradient(circle at 20% -10%, rgba(124, 58, 237, 0.12), transparent 55%),
+                radial-gradient(circle at 82% 0%, rgba(37, 99, 235, 0.16), transparent 50%),
+                rgba(7, 12, 26, 0.78);
+    border-radius: 32px;
+    box-sizing: border-box;
+  }
+  .analysis-complete-card {
+    width: min(600px, 100%);
+    padding: clamp(32px, 6vw, 48px);
+    border-radius: 32px;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.92), rgba(99, 102, 241, 0.9), rgba(124, 58, 237, 0.92));
+    color: #f8fafc;
+    box-shadow: 0 36px 70px -32px rgba(79, 70, 229, 0.85), 0 0 0 1px rgba(148, 163, 184, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .analysis-complete-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 10%, rgba(226, 232, 240, 0.28), transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .analysis-complete-card > * {
+    position: relative;
+    z-index: 1;
+  }
+  .analysis-complete-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(148, 197, 255, 0.2);
+    color: #e0f2fe;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  .analysis-complete-body {
+    display: flex;
+    align-items: center;
+    gap: clamp(22px, 5vw, 36px);
+    margin-top: clamp(22px, 4vw, 32px);
+  }
+  .analysis-complete-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(72px, 13vw, 96px);
+    height: clamp(72px, 13vw, 96px);
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(248, 250, 255, 0.22), rgba(226, 232, 240, 0.1));
+    font-size: clamp(38px, 7vw, 50px);
+    box-shadow: 0 24px 48px -28px rgba(96, 165, 250, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(4px);
+  }
+  .analysis-complete-text {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .analysis-complete-title {
+    margin: 0;
+    font-size: clamp(2.1rem, 3.6vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: 0.3px;
+  }
+  .analysis-complete-subtitle {
+    margin: 0;
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: rgba(226, 232, 240, 0.92);
+    line-height: 1.6;
+  }
+  .analysis-complete-meta {
+    margin-top: clamp(24px, 4vw, 32px);
+    padding-top: clamp(18px, 3vw, 24px);
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    font-size: 1rem;
+    color: rgba(226, 232, 255, 0.88);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .analysis-complete-meta::before {
+    content: "📡";
+    font-size: 1.15rem;
+  }
+  .analysis-complete-status {
+    margin-top: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(148, 197, 255, 0.16);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.95rem;
+    color: rgba(226, 232, 255, 0.9);
+    border: 1px solid rgba(191, 219, 254, 0.22);
+  }
+  .analysis-complete-status::before {
+    content: "✅";
+  }
+  .analysis-complete-button {
+    margin-top: clamp(26px, 4vw, 36px);
+  }
+  .analysis-complete-button .stButton > button {
+    width: 100%;
+    border-radius: 16px;
+    padding: 18px 26px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    box-shadow: 0 28px 52px -30px rgba(99, 102, 241, 0.88);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  }
+  .analysis-complete-button .stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 32px 58px -28px rgba(124, 58, 237, 0.92);
+  }
+  .analysis-complete-button .stButton > button:active {
+    transform: translateY(0);
+    opacity: 0.97;
+  }
+  @media (max-width: 680px) {
+    .analysis-complete-wrapper {
+      padding: 36px 14px 54px;
+      border-radius: 26px;
+    }
+    .analysis-complete-card {
+      border-radius: 26px;
+      padding: 28px;
+    }
+    .analysis-complete-body {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .analysis-complete-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 22px;
+      font-size: 34px;
+    }
+    .analysis-complete-button .stButton > button {
+      font-size: 1.08rem;
+    }
+  }
+</style>
+""".strip()
+
+
 # [CHANGE] Legend snippet for 6-point Likert (Achive scale only).
 LIKERT6_LEGEND_HTML = """
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
@@ -2249,14 +2413,49 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.session_state["in_mcp"] = False
     st.session_state["mcp_active_round"] = None
     st.session_state["mcp_active_round_no"] = None
-    st.subheader("COVNOX: Inference Pattern Analysis")
-    st.success("✅ 분석이 완료되었습니다. 아래 버튼을 눌러 피드백을 확인하세요.")
+    st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
-    if st.button(
-        "결과 보기",
-        key=f"view-results-{round_no}",
-        use_container_width=True,
-    ):
+    round_label_map = {
+        "nouns": "명사 라운드",
+        "verbs": "동사 라운드",
+    }
+    round_label = round_label_map.get(round_key, "추론 라운드")
+    subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
+    meta_line = f"추론 리포트 준비 완료 · {round_label} 피드백 확인 대기 중"
+    status_line = "맞춤형 요약과 칭찬 메시지를 전달할 준비가 되었습니다."
+
+    card_open_html = f"""
+<div class="analysis-complete-wrapper">
+  <div class="analysis-complete-card">
+    <div class="analysis-complete-badge">COVNOX 분석 프로토콜 · {round_label}</div>
+    <div class="analysis-complete-body">
+      <div class="analysis-complete-icon">🤖</div>
+      <div class="analysis-complete-text">
+        <h2 class="analysis-complete-title">분석이 완료되었습니다!</h2>
+        <p class="analysis-complete-subtitle">{subtitle}</p>
+      </div>
+    </div>
+    <div class="analysis-complete-meta">{meta_line}</div>
+    <div class="analysis-complete-status">{status_line}</div>
+    <div class="analysis-complete-button">
+"""
+    card_close_html = """
+    </div>
+  </div>
+</div>
+"""
+
+    card_container = st.container()
+    with card_container:
+        st.markdown(card_open_html, unsafe_allow_html=True)
+        view_button_clicked = st.button(
+            "결과 보기",
+            key=f"view-results-{round_no}",
+            use_container_width=True,
+        )
+        st.markdown(card_close_html, unsafe_allow_html=True)
+
+    if view_button_clicked:
         st.session_state.analysis_seen[round_key] = True
         set_phase(next_phase)
 
