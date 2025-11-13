@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
@@ -35,6 +36,7 @@ from persistence import (
     save_to_gcs,
     save_to_sheets,
 )
+from utils.feedback_guard import get_feedback_once
 from utils.ui_helpers import all_answered, render_likert_numeric
 from utils.persistence import now_utc_iso
 
@@ -303,6 +305,61 @@ def normalize_condition(value: Optional[str]) -> str:
     if not value:
         return "emotional_surface"
     return mapping.get(value, value)
+
+
+def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build a deterministic feedback payload for the requested phase.
+    """
+    details = [
+        detail
+        for detail in context.get("inference_details", [])
+        if detail.get("round") == phase_id
+    ]
+    condition_source = (
+        context.get("feedback_condition")
+        or st.session_state.get("praise_condition")
+        or get_or_assign_praise_condition()
+    )
+    condition = normalize_condition(condition_source)
+
+    reason_tags = [
+        detail.get("selected_reason_text")
+        for detail in details
+        if detail.get("selected_reason_text")
+    ]
+    top_a, top_b = top_two_rationales(reason_tags)
+
+    participant_id = context.get("participant_id") or "anon"
+    seed_str = f"{participant_id}::{phase_id}"
+    seed_int = int(hashlib.sha256(seed_str.encode("utf-8")).hexdigest(), 16) % (10**8)
+    rng = random.Random(seed_int)
+
+    summary_templates = FEEDBACK_TEMPLATES.get(
+        condition, FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    summary_text = rng.choice(summary_templates) if summary_templates else ""
+    if "{A}" in summary_text:
+        summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+
+    micro_entries: List[tuple[str, str]] = []
+    micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
+        condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
+    )
+    for detail in details:
+        if not micro_templates:
+            break
+        micro_text = rng.choice(micro_templates)
+        if "{A}" in micro_text:
+            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+        micro_entries.append((detail.get("question_id", ""), micro_text))
+
+    return {
+        "summary_text": summary_text,
+        "micro_entries": micro_entries,
+        "top_rationales": {"primary": top_a, "secondary": top_b},
+        "condition": condition,
+    }
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -1633,54 +1690,21 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 
 def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
-    details = [
-        detail
-        for detail in st.session_state.payload["inference_details"]
-        if detail["round"] == round_key
-    ]
-    condition = normalize_condition(get_or_assign_praise_condition())
-
     st.title("AI 분석이 완료 되었습니다")
     st.markdown("#### 당신의 추론 능력에 대한 피드백 내용")
 
-    reason_tags = [detail.get("selected_reason_text") for detail in details]
-    top_a, top_b = top_two_rationales(reason_tags)
-
-    # [CHANGE] Guard feedback generation to prevent duplicate regeneration on reruns.
-    payload_key = f"_feedback_payload_{round_key}"
-    guard_key = f"praise_generated_{round_key}"
-
-    def _generate_feedback() -> None:
-        summary_templates = FEEDBACK_TEMPLATES.get(
-            condition, FEEDBACK_TEMPLATES["emotional_surface"]
-        )
-        summary_text = random.choice(summary_templates)
-        if "{A}" in summary_text:
-            summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
-
-        micro_entries: List[tuple[str, str]] = []
-        micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
-            condition, MICRO_FEEDBACK_TEMPLATES["emotional_surface"]
-        )
-        for detail in details:
-            micro_text = random.choice(micro_templates)
-            if "{A}" in micro_text:
-                micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
-            micro_entries.append((detail["question_id"], micro_text))
-
-        st.session_state[payload_key] = {
-            "summary_text": summary_text,
-            "micro_entries": micro_entries,
-        }
-
-    run_once(guard_key, _generate_feedback)
-    stored_payload = st.session_state.get(payload_key, {})
-    summary_text = stored_payload.get("summary_text", "")
+    feedback_payload = get_feedback_once(
+        round_key,
+        generate_feedback,
+        round_key,
+        st.session_state.get("payload", {}),
+    )
+    summary_text = feedback_payload.get("summary_text", "")
     typewriter_markdown(summary_text, speed=0.01)
 
-    if SHOW_PER_ITEM_SUMMARY and stored_payload:
+    if SHOW_PER_ITEM_SUMMARY and feedback_payload:
         st.markdown("#### 문항별 간단 피드백")
-        for question_id, micro_text in stored_payload.get("micro_entries", []):
+        for question_id, micro_text in feedback_payload.get("micro_entries", []):
             st.markdown(f"- **{question_id}** · {micro_text}")
 
     if st.button(
