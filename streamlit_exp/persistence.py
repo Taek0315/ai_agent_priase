@@ -6,13 +6,11 @@ import os
 import random
 import time
 import unicodedata
-from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-
-import streamlit as st
 
 from constants import MANIPULATION_CHECK_ITEMS
 from utils.google_sheet import get_google_sheet
+from utils.persistence import get_cfg, now_utc_iso
 
 TASK_EXPORT_COUNT = 10
 ANTH_COUNT = 30
@@ -61,21 +59,20 @@ COLS: List[str] = [
 
 def google_ready() -> bool:
     """Return True when remote Google Sheet credentials are available."""
-    config = _sheet_config()
+    try:
+        config = get_cfg()
+    except RuntimeError:
+        config = {}
     sheet_identifier = (
         config.get("spreadsheet_id")
-        or config.get("id")
-        or config.get("url")
+        or config.get("spreadsheet_url")
         or os.getenv("GOOGLE_SHEET_ID")
         or os.getenv("GOOGLE_SHEET_URL")
     )
     has_sheet = bool(sheet_identifier)
-    try:
-        has_secrets = bool(st.secrets["gcp_service_account"])
-    except Exception:
-        has_secrets = False
+    has_service_account = bool((config.get("service_account") or {}).get("client_email"))
     has_env = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
-    return has_sheet and (has_secrets or has_env)
+    return has_sheet and (has_service_account or has_env)
 
 
 def normalize_for_storage(value: Any) -> Any:
@@ -186,7 +183,7 @@ def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]
         "specificity": normalize_for_storage(specificity),
         "phase_order": normalize_for_storage(phase_order),
         "started_at": normalize_for_storage(start_iso),
-        "finished_at": normalize_for_storage(end_iso or datetime.utcnow().isoformat()),
+        "finished_at": normalize_for_storage(end_iso or now_utc_iso()),
         "task_duration_sec": round(duration, 2) if duration else "",
         "task_score_total": score if total_questions else "",
         "task_accuracy_pct": accuracy,
@@ -248,11 +245,10 @@ def save_to_sheets(row: List[Any], worksheet: Optional[str] = None) -> str:
     from gspread.utils import rowcol_to_a1
 
     sheet = get_google_sheet()
-    config = _sheet_config()
+    config = get_cfg()
     target_worksheet = (
         worksheet
         or config.get("worksheet_name")
-        or config.get("worksheet")
         or "responses"
     )
     try:
@@ -294,11 +290,11 @@ def _storage_client():
     except ImportError as exc:
         raise RuntimeError("google-cloud-storage not installed") from exc
 
-    credentials_info = None
     try:
-        credentials_info = dict(st.secrets["gcp_service_account"])
-    except Exception:
-        credentials_info = None
+        cfg = get_cfg()
+    except RuntimeError:
+        cfg = {}
+    credentials_info = dict(cfg.get("service_account") or {})
 
     env_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
     if env_json:
@@ -328,7 +324,7 @@ def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
         return False, f"GCS client unavailable: {exc}"
 
     participant_id = storage_record.get("participant_id") or "unknown"
-    finished_at = storage_record.get("finished_at") or datetime.utcnow().isoformat()
+    finished_at = storage_record.get("finished_at") or now_utc_iso()
     safe_timestamp = finished_at.replace(":", "-")
     blob_name = f"participants/{participant_id}_{safe_timestamp}.json"
     try:
@@ -345,24 +341,18 @@ def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
 
 def _sheet_config() -> Dict[str, Any]:
     try:
-        config = dict(st.secrets["sheets"])
-        if config:
-            return config
-    except Exception:
-        pass
-    try:
-        legacy = dict(getattr(st.secrets, "google_sheet", {}) or {})
-    except Exception:
-        legacy = {}
-    return legacy
+        return get_cfg()
+    except RuntimeError:
+        return {}
 
 
 def get_gcs_bucket_name() -> Optional[str]:
     try:
-        bucket = st.secrets["gcs"]["bucket"]
-        if bucket:
-            return str(bucket)
-    except Exception:
-        pass
+        cfg = get_cfg()
+    except RuntimeError:
+        cfg = {}
+    bucket = cfg.get("gcs_bucket")
+    if bucket:
+        return str(bucket)
     env_bucket = os.getenv("GCS_BUCKET")
     return env_bucket or None

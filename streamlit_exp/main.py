@@ -36,6 +36,7 @@ from persistence import (
     save_to_sheets,
 )
 from utils.ui_helpers import all_answered, render_likert_numeric
+from utils.persistence import now_utc_iso
 
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
@@ -272,6 +273,12 @@ def typewriter(text: str, speed: float = 0.01) -> None:
         output += ch
         holder.markdown(output.replace("\n", "  \n"))
         time.sleep(speed)
+
+
+def run_once(key: str, fn, *args, **kwargs):
+    if not st.session_state.get(key):
+        fn(*args, **kwargs)
+        st.session_state[key] = True
 
 
 def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
@@ -1260,7 +1267,7 @@ def render_consent() -> None:
                     "consent_research": consent_research,
                     "consent_privacy": consent_privacy,
                 }
-                st.session_state.payload["start_time"] = datetime.utcnow().isoformat()
+                st.session_state.payload["start_time"] = now_utc_iso()
                 set_phase("demographic")
 
 
@@ -1576,7 +1583,7 @@ def render_inference_round(
         "selected_reason_text": selected_tag,
         "correct_reason_idx": int(question.reason_idx),
         "response_time": response_time,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": now_utc_iso(),
     }
     payload.setdefault("inference_details", []).append(detail)
     condition = normalize_condition(get_or_assign_praise_condition())
@@ -1640,10 +1647,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     top_a, top_b = top_two_rationales(reason_tags)
 
     # [CHANGE] Guard feedback generation to prevent duplicate regeneration on reruns.
-    guard_key = f"praise_generated_{round_key}"
     payload_key = f"_feedback_payload_{round_key}"
-    stored_payload = st.session_state.get(payload_key)
-    if not st.session_state.get(guard_key, False):
+    guard_key = f"praise_generated_{round_key}"
+
+    def _generate_feedback() -> None:
         summary_templates = FEEDBACK_TEMPLATES.get(
             condition, FEEDBACK_TEMPLATES["emotional_surface"]
         )
@@ -1661,12 +1668,14 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
                 micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
             micro_entries.append((detail["question_id"], micro_text))
 
-        stored_payload = {"summary_text": summary_text, "micro_entries": micro_entries}
-        st.session_state[payload_key] = stored_payload
-        st.session_state[guard_key] = True
-    else:
-        summary_text = (stored_payload or {}).get("summary_text", "")
+        st.session_state[payload_key] = {
+            "summary_text": summary_text,
+            "micro_entries": micro_entries,
+        }
 
+    run_once(guard_key, _generate_feedback)
+    stored_payload = st.session_state.get(payload_key, {})
+    summary_text = stored_payload.get("summary_text", "")
     typewriter_markdown(summary_text, speed=0.01)
 
     if SHOW_PER_ITEM_SUMMARY and stored_payload:
@@ -1887,7 +1896,7 @@ def render_summary() -> None:
                     {
                         "question_id": q.id,
                         "rating": score,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": now_utc_iso(),
                     }
                     for q, score in zip(
                         MOTIVATION_QUESTIONS, payload.get("motivation_responses", [])
@@ -1898,8 +1907,8 @@ def render_summary() -> None:
                     *payload.get("feedback_messages", {}).get("verbs", []),
                 ],
                 timestamps={
-                    "start": payload.get("start_time") or datetime.utcnow().isoformat(),
-                    "end": datetime.utcnow().isoformat(),
+                    "start": payload.get("start_time") or now_utc_iso(),
+                    "end": now_utc_iso(),
                 },
                 completion_time=sum(
                     d["response_time"] for d in payload.get("inference_details", [])
