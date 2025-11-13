@@ -34,7 +34,6 @@ from persistence import (
     google_ready,
     save_to_gcs,
     save_to_sheets,
-    write_local_csv,
 )
 from utils.ui_helpers import all_answered, render_likert_numeric
 
@@ -1150,12 +1149,6 @@ def set_phase(next_phase: str) -> None:
         "phone_input",
         "summary",
     }
-    if next_phase.startswith("feedback_"):
-        phase_id = next_phase.replace("feedback_", "")
-        guard_key = f"praise_generated_{phase_id}"
-        payload_key = f"_feedback_payload_{phase_id}"
-        st.session_state.pop(guard_key, None)
-        st.session_state.pop(payload_key, None)
     st.session_state.phase = next_phase if next_phase in allowed else "summary"
     scroll_top_js()
     st.rerun()
@@ -1172,8 +1165,8 @@ def sidebar_controls() -> None:
         remote_enabled = ready and not st.session_state.DRY_RUN
         st.caption(f"Remote storage: {'enabled' if remote_enabled else 'disabled'}")
         if not ready and not st.session_state.DRY_RUN:
-            st.info(
-                "Remote storage not configured. We will save to a local CSV fallback."
+            st.warning(
+                "원격 저장을 위해 st.secrets['gcp_service_account']와 st.secrets['sheets']를 설정해 주세요."
             )
         st.write("Current phase:")
         st.write(st.session_state.phase)
@@ -1401,7 +1394,13 @@ def render_paginated_likert(
             options=options,
             key_prefix=f"{key_prefix}_opt",
         )
-        st.session_state.payload[responses_key][idx] = selected
+        value_key = f"{key_prefix}_val_{idx}"
+        if selected is None:
+            st.session_state[value_key] = None
+            st.session_state.payload[responses_key][idx] = None
+        else:
+            st.session_state[value_key] = int(selected)
+            st.session_state.payload[responses_key][idx] = int(selected)
 
     col_prev, col_next = st.columns(2)
     with col_prev:
@@ -1414,8 +1413,8 @@ def render_paginated_likert(
         if page < total_pages:
             if st.button("다음 →", use_container_width=True, key=f"{key_prefix}_next"):
                 if any(
-                    v is None
-                    for v in st.session_state.payload[responses_key][start_idx:end_idx]
+                    st.session_state.get(f"{key_prefix}_val_{idx}") is None
+                    for idx in range(start_idx, end_idx)
                 ):
                     st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
                 else:
@@ -1423,9 +1422,13 @@ def render_paginated_likert(
                     set_phase(st.session_state.phase)
         else:
             if st.button("완료", use_container_width=True, key=f"{key_prefix}_done"):
-                if any(v is None for v in st.session_state.payload[responses_key]):
+                all_values = [
+                    st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(total)
+                ]
+                if any(v is None for v in all_values):
                     st.warning("모든 문항에 응답해 주세요.")
                 else:
+                    st.session_state.payload[responses_key] = [int(v) for v in all_values]
                     return True
     return False
 
@@ -1460,17 +1463,11 @@ def render_achive() -> None:
         questions=questions,
         key_prefix="achive",
         scale_min=1,
-        scale_max=6,
+        scale_max=5,
         page_state_key="achive_page",
         responses_key="achive_responses",
         prompt_html="<h2 style='text-align:center;font-weight:bold;'>성취/접근 성향 설문</h2>",
-        scale_hint_html="""
-<div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
-  <span><b>1</b> : 전혀 그렇지 않다</span><span>—</span>
-  <span><b>3</b> : 보통이다</span><span>—</span>
-  <span><b>6</b> : 매우 그렇다</span>
-</div>
-""",
+        scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
     )
     if done:
@@ -1727,7 +1724,13 @@ def render_motivation() -> None:
             options=list(range(1, question.scale + 1)),
             key_prefix="motivation",
         )
-        st.session_state.payload["motivation_responses"][idx] = selected
+        value_key = f"motivation_val_{idx}"
+        if selected is None:
+            st.session_state[value_key] = None
+            st.session_state.payload["motivation_responses"][idx] = None
+        else:
+            st.session_state[value_key] = int(selected)
+            st.session_state.payload["motivation_responses"][idx] = int(selected)
 
     col_prev, col_next = st.columns(2)
     with col_prev:
@@ -1740,10 +1743,8 @@ def render_motivation() -> None:
         if page < total_pages:
             if st.button("다음 →", use_container_width=True, key="motivation_next"):
                 if any(
-                    v is None
-                    for v in st.session_state.payload["motivation_responses"][
-                        start_idx:end_idx
-                    ]
+                    st.session_state.get(f"motivation_val_{idx}") is None
+                    for idx in range(start_idx, end_idx)
                 ):
                     st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
                 else:
@@ -1751,11 +1752,15 @@ def render_motivation() -> None:
                     set_phase(st.session_state.phase)
         else:
             if st.button("설문 완료", use_container_width=True, key="motivation_done"):
-                if any(
-                    v is None for v in st.session_state.payload["motivation_responses"]
-                ):
+                all_values = [
+                    st.session_state.get(f"motivation_val_{idx}") for idx in range(total)
+                ]
+                if any(v is None for v in all_values):
                     st.warning("모든 문항에 응답해 주세요.")
                 else:
+                    st.session_state.payload["motivation_responses"] = [
+                        int(v) for v in all_values
+                    ]
                     category_scores: Dict[str, List[int]] = {}
                     for score, question in zip(
                         st.session_state.payload["motivation_responses"],
@@ -1792,10 +1797,13 @@ def render_manipulation_check() -> None:
             options=options,
             key_prefix="manip",
         )
+        value_key = f"manip_val_{item.id}"
         if selection is None:
+            st.session_state[value_key] = None
             answers.pop(item.id, None)
         else:
-            answers[item.id] = selection
+            st.session_state[value_key] = int(selection)
+            answers[item.id] = int(selection)
 
     all_done = all_answered(
         answers,
@@ -1914,36 +1922,32 @@ def render_summary() -> None:
             warn_registry: Dict[str, bool] = st.session_state.setdefault(
                 "_resource_fallback_warned", {}
             )
-            if not st.session_state.DRY_RUN:
+            if st.session_state.DRY_RUN:
+                key = "storage::dry_run"
+                if not warn_registry.get(key):
+                    st.info("DRY_RUN 모드이므로 원격 저장을 건너뜁니다.")
+                    warn_registry[key] = True
+                destinations.append("dry_run_only")
+            else:
+                if not google_ready():
+                    raise RuntimeError("Google Sheets credentials not configured.")
+                sheet_msg = save_to_sheets(sheet_row)
+                destinations.append(sheet_msg)
+
                 gcs_ok, gcs_msg = save_to_gcs(storage_record)
                 if gcs_ok and gcs_msg:
                     destinations.append(gcs_msg)
                 elif gcs_msg:
-                    key = f"gcs::{gcs_msg}"
-                    if not warn_registry.get(key):
-                        st.warning(f"GCS 업로드를 건너뜁니다: {gcs_msg}")
-                        warn_registry[key] = True
-
-                if google_ready():
-                    try:
-                        sheet_settings = getattr(st.secrets, "google_sheet", {}) or {}
-                    except Exception:
-                        sheet_settings = {}
-                    worksheet_name = sheet_settings.get("worksheet", "resp")
-                    sheet_msg = save_to_sheets(sheet_row, worksheet=worksheet_name)
-                    destinations.append(sheet_msg)
-                else:
-                    key = "sheets::local_fallback"
-                    if not warn_registry.get(key):
-                        st.warning("Google Sheets 인증이 없어 로컬 CSV로 저장합니다.")
-                        warn_registry[key] = True
-                    destinations.append(write_local_csv(sheet_row))
-            else:
-                key = "storage::dry_run"
-                if not warn_registry.get(key):
-                    st.info("DRY_RUN 모드이므로 응답을 로컬 CSV에만 기록합니다.")
-                    warn_registry[key] = True
-                destinations.append(write_local_csv(sheet_row))
+                    if gcs_msg == "GCS bucket not configured":
+                        key = "gcs::not_configured"
+                        if not warn_registry.get(key):
+                            st.info("GCS 버킷이 설정되지 않아 JSON 스냅샷 저장을 생략합니다.")
+                            warn_registry[key] = True
+                    else:
+                        key = f"gcs::{gcs_msg}"
+                        if not warn_registry.get(key):
+                            st.warning(f"GCS 업로드 실패: {gcs_msg}")
+                            warn_registry[key] = True
 
             if destinations:
                 st.session_state.saved_once = True

@@ -1,5 +1,5 @@
-streamlit>=1.31
-gspread>=6.0.0
-google-auth>=2.23.0
-pandas>=2.2.0
-google-cloud-storage>=2.16.0
+streamlit==1.40.0
+gspread==6.1.2
+google-auth==2.35.0
+pandas==2.2.3
+google-cloud-storage==2.18.2
