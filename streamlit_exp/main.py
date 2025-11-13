@@ -44,12 +44,20 @@ from utils.persistence import now_utc_iso
 # Streamlit page config & global styling
 # --------------------------------------------------------------------------------------
 
-st.set_page_config(page_title="AI 칭찬 연구 설문", layout="centered")
+st.set_page_config(
+    page_title="AI 칭찬 연구 설문",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 
 COMPACT_CSS = """
 <style>
   :root { --fs-base: 16px; --lh-base: 1.65; }
   #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
+  [data-testid="stSidebar"], section[data-testid="stSidebar"] { display: none !important; }
+  [data-testid="stSidebarCollapseButton"],
+  [data-testid="stSidebarNav"],
+  button[kind="header"] { display: none !important; }
   html, body, [data-testid="stAppViewContainer"] {
     font-size: var(--fs-base);
     line-height: var(--lh-base);
@@ -1218,28 +1226,6 @@ def set_phase(next_phase: str) -> None:
     st.rerun()
 
 
-def sidebar_controls() -> None:
-    with st.sidebar:
-        st.subheader("Session Controls")
-        st.session_state.DRY_RUN = st.checkbox(
-            "DRY_RUN (disable remote storage)",
-            value=st.session_state.get("DRY_RUN", False),
-        )
-        ready = google_ready()
-        remote_enabled = ready and not st.session_state.DRY_RUN
-        st.caption(f"Remote storage: {'enabled' if remote_enabled else 'disabled'}")
-        if not ready and not st.session_state.DRY_RUN:
-            st.warning(
-                "원격 저장을 위해 st.secrets['gcp_service_account']와 st.secrets['sheets']를 설정해 주세요."
-            )
-        st.write("Current phase:")
-        st.write(st.session_state.phase)
-        if st.button("Restart from scratch"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
-
-
 # [CHANGE] Updated resource fallbacks to use centralized constants.
 RESOURCE_FALLBACKS: Dict[str, List[str]] = {
     "questions_anthro.json": ANTHRO_DEFAULT_ITEMS,
@@ -1415,8 +1401,6 @@ def render_instructions() -> None:
 - 화면의 버튼으로만 이동해 주세요.
 """
     )
-    with st.expander("📘 추론 규칙 요약", expanded=True):
-        st.markdown(GRAMMAR_INFO_MD)
     if st.button("설문 시작", use_container_width=True):
         set_phase("anthro")
 
@@ -2059,7 +2043,6 @@ def render_summary() -> None:
 # --------------------------------------------------------------------------------------
 
 ensure_session_state()
-sidebar_controls()
 
 phase = st.session_state.phase
 if phase == "consent":
