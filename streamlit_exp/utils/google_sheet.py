@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import gspread
 from google.oauth2.service_account import Credentials
-import streamlit as st
+
+from .persistence import get_cfg
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -16,11 +17,12 @@ SCOPES = [
 
 def _service_account_info() -> Optional[Dict[str, Any]]:
     try:
-        info = dict(st.secrets["gcp_service_account"])
-        if info:
-            return info
-    except Exception:
-        pass
+        cfg = get_cfg()
+    except RuntimeError:
+        cfg = {}
+    info = dict(cfg.get("service_account") or {})
+    if info:
+        return info
     env_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
     if env_json:
         try:
@@ -47,16 +49,8 @@ def _client() -> gspread.Client:
 def get_google_sheet():
     client = _client()
     gs_conf = _sheet_config()
-    sheet_id = (
-        gs_conf.get("spreadsheet_id")
-        or gs_conf.get("id")
-        or os.getenv("GOOGLE_SHEET_ID")
-    )
-    sheet_url = (
-        gs_conf.get("spreadsheet_url")
-        or gs_conf.get("url")
-        or os.getenv("GOOGLE_SHEET_URL")
-    )
+    sheet_id = gs_conf.get("spreadsheet_id") or os.getenv("GOOGLE_SHEET_ID")
+    sheet_url = gs_conf.get("spreadsheet_url") or os.getenv("GOOGLE_SHEET_URL")
     if sheet_id:
         return client.open_by_key(sheet_id)
     if sheet_url:
@@ -75,13 +69,6 @@ def append_row_to_sheet(row: List[Any], worksheet: str = "resp") -> None:
 
 def _sheet_config() -> Dict[str, Any]:
     try:
-        config = dict(st.secrets["sheets"])
-        if config:
-            return config
-    except Exception:
-        pass
-    try:
-        legacy = dict(getattr(st.secrets, "google_sheet", {}) or {})
-    except Exception:
-        legacy = {}
-    return legacy
+        return get_cfg()
+    except RuntimeError:
+        return {}
