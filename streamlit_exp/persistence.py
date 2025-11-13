@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from constants import MANIPULATION_CHECK_ITEMS
@@ -26,74 +27,66 @@ SANITIZE_MAP: Dict[str, str] = {
 
 SHEET_COLUMNS: List[str] = [
     "saved_at",
+    "start_timestamp",
+    "end_timestamp",
     "participant_id",
     "condition",
     "condition_specificity",
     "phase_order",
-    "start_time",
-    "end_time",
-    "completion_seconds",
+    "completion_time_sec",
     "task_duration_seconds",
     "total_inference_questions",
     "inference_correct_count",
     "inference_accuracy_pct",
+    "anthro_count",
+    "achive_count",
+    "motivation_count",
+    "difficulty_checks_count",
+    "contact_provided",
+    "phone_number",
+    "phone_number_raw",
+    "praise_condition",
+    "feedback_condition",
+    "sex_biological",
+    "age_years",
+    "education_level",
     "consent_json",
     "consent_flags_json",
     "demographic_json",
     "anthro_responses_json",
     "achive_responses_json",
-    "difficulty_checks_json",
     "motivation_responses_json",
     "motivation_scores_json",
+    "difficulty_checks_json",
     "manipulation_check_json",
     "inference_summary_json",
     "inference_details_json",
     "inference_responses_json",
     "feedback_messages_json",
     "open_feedback_text",
-    "phone_number",
-    "phone_number_raw",
-    "praise_condition",
-    "feedback_condition",
-    "anthro_count",
-    "achive_count",
-    "motivation_count",
-    "storage_record_json",
+    "meta_full_json",
+    "payload_full_json",
+    "experiment_record_full_json",
     "schema_version",
 ]
 
-JSON_COLUMN_KEYS = {
+JSON_COLUMNS = {
     "consent_json",
     "consent_flags_json",
     "demographic_json",
     "anthro_responses_json",
     "achive_responses_json",
-    "difficulty_checks_json",
     "motivation_responses_json",
     "motivation_scores_json",
+    "difficulty_checks_json",
     "manipulation_check_json",
     "inference_summary_json",
     "inference_details_json",
     "inference_responses_json",
     "feedback_messages_json",
-    "storage_record_json",
-}
-
-JSON_VALUE_KEYS: Dict[str, Optional[str]] = {
-    "consent_json": "consent",
-    "consent_flags_json": "consent_flags",
-    "demographic_json": "demographic",
-    "anthro_responses_json": "anthro_responses",
-    "achive_responses_json": "achive_responses",
-    "difficulty_checks_json": "difficulty_checks",
-    "motivation_responses_json": "motivation_responses",
-    "motivation_scores_json": "motivation_scores",
-    "manipulation_check_json": "manipulation_check",
-    "inference_summary_json": "inference_summary",
-    "inference_details_json": "inference_details",
-    "inference_responses_json": "inference_responses",
-    "feedback_messages_json": "feedback_messages",
-    "storage_record_json": None,
+    "meta_full_json",
+    "payload_full_json",
+    "experiment_record_full_json",
 }
 
 AFFIRMATIVE_VALUES = {"agree", "yes", "y", "true", "1"}
@@ -185,8 +178,29 @@ def _safe_phone(phone: str) -> str:
     return "".join(ch for ch in (phone or "") if ch.isdigit() or ch == "+")
 
 
+def _experiment_record_to_dict(record: Any) -> Dict[str, Any]:
+    if record is None:
+        return {}
+    if is_dataclass(record):
+        try:
+            return asdict(record)
+        except TypeError:
+            pass
+    if isinstance(record, dict):
+        return dict(record)
+    if hasattr(record, "__dict__"):
+        return {
+            key: value
+            for key, value in vars(record).items()
+            if not key.startswith("_")
+        }
+    return {"value": record}
+
+
 def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]:
     """Build a JSON-serializable record that captures all participant responses."""
+    payload = dict(payload or {})
+
     consent = dict(payload.get("consent", {}) or {})
     demographic = dict(payload.get("demographic", {}) or {})
     anthro_responses = list(payload.get("anthro_responses", []) or [])
@@ -199,8 +213,8 @@ def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]
     feedback_messages = dict(payload.get("feedback_messages", {}) or {})
     open_feedback = (payload.get("open_feedback") or "").strip()
     phone_raw = payload.get("phone") or ""
-    record_timestamps = getattr(record, "timestamps", {}) if record else {}
 
+    record_timestamps = getattr(record, "timestamps", {}) if record else {}
     start_iso = payload.get("start_time") or record_timestamps.get("start")
     end_iso = payload.get("end_time") or record_timestamps.get("end")
     saved_at = now_utc_iso()
@@ -255,28 +269,18 @@ def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]
         completion_seconds = round(total_response_time, 3)
 
     payload_snapshot = _ensure_jsonable(payload)
-    experiment_record = _ensure_jsonable(
-        {
-            "participant_id": getattr(record, "participant_id", None),
-            "condition": getattr(record, "condition", None),
-            "demographic": getattr(record, "demographic", {}),
-            "inference_responses": getattr(record, "inference_responses", []),
-            "survey_responses": getattr(record, "survey_responses", []),
-            "feedback_messages": getattr(record, "feedback_messages", []),
-            "timestamps": record_timestamps,
-            "completion_time": getattr(record, "completion_time", None),
-        }
-        if record
-        else {}
-    )
+    experiment_record = _ensure_jsonable(_experiment_record_to_dict(record))
 
     consent_flags = {
         "research": _is_affirmative(consent.get("consent_research")),
         "privacy": _is_affirmative(consent.get("consent_privacy")),
     }
 
-    storage_record: Dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
+    manipulation_complete = dict(manipulation_check)
+    for item in MANIPULATION_CHECK_ITEMS:
+        manipulation_complete.setdefault(item.id, manipulation_check.get(item.id))
+
+    meta: Dict[str, Any] = {
         "saved_at": saved_at,
         "participant_id": payload.get("participant_id")
         or getattr(record, "participant_id", "")
@@ -293,15 +297,21 @@ def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]
         "total_inference_questions": total_questions,
         "inference_correct_count": correct_count,
         "inference_accuracy_pct": accuracy_pct,
-        "consent": consent,
+        "anthro_count": len([v for v in anthro_responses if v is not None]),
+        "achive_count": len([v for v in achive_responses if v is not None]),
+        "motivation_count": len([v for v in motivation_responses if v is not None]),
+        "difficulty_checks_count": len(difficulty_checks),
+        "phone_number": _safe_phone(phone_raw),
+        "phone_number_raw": phone_raw,
+        "contact_provided": bool(_safe_phone(phone_raw)),
+        "praise_condition": payload.get("praise_condition")
+        or getattr(record, "condition", "")
+        or "",
+        "feedback_condition": payload.get("feedback_condition")
+        or getattr(record, "condition", "")
+        or "",
         "consent_flags": consent_flags,
-        "demographic": demographic,
-        "anthro_responses": anthro_responses,
-        "achive_responses": achive_responses,
-        "difficulty_checks": difficulty_checks,
-        "motivation_responses": motivation_responses,
-        "motivation_scores": motivation_scores,
-        "manipulation_check": manipulation_check,
+        "manipulation_check_full": manipulation_complete,
         "inference_summary": {
             "total_questions": total_questions,
             "correct_count": correct_count,
@@ -316,31 +326,14 @@ def build_storage_record(payload: Dict[str, Any], record: Any) -> Dict[str, Any]
                 else None
             ),
         },
-        "inference_details": inference_details,
-        "inference_responses": getattr(record, "inference_responses", []),
-        "feedback_messages": feedback_messages,
-        "open_feedback": open_feedback,
-        "difficulty_checks_count": len(difficulty_checks),
-        "phone_number": _safe_phone(phone_raw),
-        "phone_number_raw": phone_raw,
-        "contact_provided": bool(_safe_phone(phone_raw)),
-        "praise_condition": payload.get("praise_condition")
-        or getattr(record, "condition", "")
-        or "",
-        "feedback_condition": payload.get("feedback_condition")
-        or getattr(record, "condition", "")
-        or "",
-        "anthro_count": len([v for v in anthro_responses if v is not None]),
-        "achive_count": len([v for v in achive_responses if v is not None]),
-        "motivation_count": len([v for v in motivation_responses if v is not None]),
-        "payload_snapshot": payload_snapshot,
-        "experiment_record": experiment_record,
+        "timestamps": record_timestamps,
     }
 
-    # Include manipulation items explicitly even if omitted from responses.
-    storage_record["manipulation_check"] = {
-        item.id: manipulation_check.get(item.id)
-        for item in MANIPULATION_CHECK_ITEMS
+    storage_record: Dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "meta": _ensure_jsonable(meta),
+        "payload": payload_snapshot,
+        "experiment_record": experiment_record,
     }
 
     return storage_record
@@ -351,51 +344,132 @@ def build_sheet_row(storage_record: Dict[str, Any]) -> List[Any]:
     if not isinstance(storage_record, dict):
         raise ValueError("storage_record must be a dict.")
 
-    record_copy = dict(storage_record)
-    saved_at = record_copy.get("saved_at") or now_utc_iso()
-    record_copy.setdefault("saved_at", saved_at)
-    schema_version = record_copy.get("schema_version") or SCHEMA_VERSION
-    record_copy["schema_version"] = schema_version
+    schema_version = storage_record.get("schema_version") or SCHEMA_VERSION
+    meta_raw = storage_record.get("meta") or {}
+    meta = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+
+    payload_raw = storage_record.get("payload") or storage_record.get("payload_snapshot") or {}
+    payload_data = dict(payload_raw) if isinstance(payload_raw, dict) else {}
+
+    experiment_raw = storage_record.get("experiment_record") or {}
+    experiment_data = dict(experiment_raw) if isinstance(experiment_raw, dict) else {}
+
+    saved_at = meta.get("saved_at") or storage_record.get("saved_at") or now_utc_iso()
+    meta.setdefault("saved_at", saved_at)
+
+    end_timestamp = (
+        meta.get("end_time")
+        or payload_data.get("end_time")
+        or storage_record.get("end_time")
+        or saved_at
+    )
+
+    participant_id = (
+        meta.get("participant_id")
+        or payload_data.get("participant_id")
+        or experiment_data.get("participant_id")
+        or ""
+    )
+
+    condition = meta.get("condition") or payload_data.get("feedback_condition") or ""
+    specificity = meta.get("condition_specificity") or _task_specificity(str(condition))
+    phase_order = meta.get("phase_order") or payload_data.get("phase_order") or ""
+
+    anthro_responses = payload_data.get("anthro_responses") or []
+    achive_responses = payload_data.get("achive_responses") or []
+    motivation_responses = payload_data.get("motivation_responses") or []
+    difficulty_checks = payload_data.get("difficulty_checks") or {}
+
+    consent_flags = meta.get("consent_flags") or storage_record.get("consent_flags") or {}
+    manipulation_full = (
+        meta.get("manipulation_check_full")
+        or payload_data.get("manipulation_check")
+        or {}
+    )
+
+    inference_summary = meta.get("inference_summary") or storage_record.get("inference_summary") or {}
+    inference_details = payload_data.get("inference_details") or storage_record.get("inference_details") or []
+    inference_responses = (
+        experiment_data.get("inference_responses")
+        or storage_record.get("inference_responses")
+        or []
+    )
+    feedback_messages = payload_data.get("feedback_messages") or storage_record.get("feedback_messages") or {}
+    open_feedback = payload_data.get("open_feedback") or storage_record.get("open_feedback") or ""
+
+    phone_number = meta.get("phone_number") or storage_record.get("phone_number") or _safe_phone(
+        payload_data.get("phone") or ""
+    )
+    phone_number_raw = meta.get("phone_number_raw") or storage_record.get("phone_number_raw") or payload_data.get(
+        "phone"
+    )
+    contact_provided = meta.get("contact_provided")
+    if contact_provided is None:
+        contact_provided = bool(phone_number)
+
+    def _count_with_fallback(meta_value: Any, responses: Any) -> Any:
+        if meta_value not in (None, ""):
+            return meta_value
+        if isinstance(responses, list):
+            return len([val for val in responses if val is not None])
+        if isinstance(responses, dict):
+            return len(responses)
+        return ""
 
     row_map: Dict[str, Any] = {
         "saved_at": saved_at,
-        "participant_id": record_copy.get("participant_id", ""),
-        "condition": record_copy.get("condition", ""),
-        "condition_specificity": record_copy.get("condition_specificity", ""),
-        "phase_order": record_copy.get("phase_order", ""),
-        "start_time": record_copy.get("start_time", ""),
-        "end_time": record_copy.get("end_time", ""),
-        "completion_seconds": _format_float(record_copy.get("completion_seconds")),
-        "task_duration_seconds": _format_float(
-            record_copy.get("task_duration_seconds")
+        "start_timestamp": meta.get("start_time") or payload_data.get("start_time") or "",
+        "end_timestamp": end_timestamp,
+        "participant_id": participant_id,
+        "condition": condition,
+        "condition_specificity": specificity,
+        "phase_order": phase_order,
+        "completion_time_sec": _format_float(meta.get("completion_seconds")),
+        "task_duration_seconds": _format_float(meta.get("task_duration_seconds")),
+        "total_inference_questions": _format_int(meta.get("total_inference_questions")),
+        "inference_correct_count": _format_int(meta.get("inference_correct_count")),
+        "inference_accuracy_pct": _format_float(meta.get("inference_accuracy_pct"), precision=4),
+        "anthro_count": _format_int(_count_with_fallback(meta.get("anthro_count"), anthro_responses)),
+        "achive_count": _format_int(_count_with_fallback(meta.get("achive_count"), achive_responses)),
+        "motivation_count": _format_int(_count_with_fallback(meta.get("motivation_count"), motivation_responses)),
+        "difficulty_checks_count": _format_int(
+            _count_with_fallback(meta.get("difficulty_checks_count"), difficulty_checks)
         ),
-        "total_inference_questions": _format_int(
-            record_copy.get("total_inference_questions")
-        ),
-        "inference_correct_count": _format_int(
-            record_copy.get("inference_correct_count")
-        ),
-        "inference_accuracy_pct": _format_float(
-            record_copy.get("inference_accuracy_pct"), precision=4
-        ),
-        "open_feedback_text": record_copy.get("open_feedback", ""),
-        "phone_number": record_copy.get("phone_number", ""),
-        "phone_number_raw": record_copy.get("phone_number_raw", ""),
-        "praise_condition": record_copy.get("praise_condition", ""),
-        "feedback_condition": record_copy.get("feedback_condition", ""),
-        "anthro_count": _format_int(record_copy.get("anthro_count")),
-        "achive_count": _format_int(record_copy.get("achive_count")),
-        "motivation_count": _format_int(record_copy.get("motivation_count")),
+        "contact_provided": contact_provided,
+        "phone_number": phone_number or "",
+        "phone_number_raw": phone_number_raw or "",
+        "praise_condition": meta.get("praise_condition") or payload_data.get("praise_condition") or "",
+        "feedback_condition": meta.get("feedback_condition") or payload_data.get("feedback_condition") or "",
+        "sex_biological": (payload_data.get("demographic") or {}).get("sex_biological", ""),
+        "age_years": _format_int((payload_data.get("demographic") or {}).get("age_years")),
+        "education_level": (payload_data.get("demographic") or {}).get("education_level", ""),
+        "consent_json": payload_data.get("consent"),
+        "consent_flags_json": consent_flags,
+        "demographic_json": payload_data.get("demographic"),
+        "anthro_responses_json": anthro_responses,
+        "achive_responses_json": achive_responses,
+        "motivation_responses_json": motivation_responses,
+        "motivation_scores_json": payload_data.get("motivation_category_scores"),
+        "difficulty_checks_json": difficulty_checks,
+        "manipulation_check_json": manipulation_full,
+        "inference_summary_json": inference_summary,
+        "inference_details_json": inference_details,
+        "inference_responses_json": inference_responses,
+        "feedback_messages_json": feedback_messages,
+        "open_feedback_text": open_feedback,
+        "meta_full_json": meta,
+        "payload_full_json": payload_data,
+        "experiment_record_full_json": experiment_data,
         "schema_version": schema_version,
     }
 
-    for column, source_key in JSON_VALUE_KEYS.items():
-        if column == "storage_record_json":
-            continue
-        value = record_copy if source_key is None else record_copy.get(source_key)
-        row_map[column] = _json_or_blank(value)
+    for column in JSON_COLUMNS:
+        row_map[column] = _json_or_blank(row_map.get(column))
 
-    row_map["storage_record_json"] = _json_or_blank(record_copy)
+    # Ensure primitives or blank strings for non-JSON columns.
+    for key in set(SHEET_COLUMNS) - JSON_COLUMNS:
+        if row_map.get(key) is None:
+            row_map[key] = ""
 
     return [row_map.get(column, "") for column in SHEET_COLUMNS]
 
@@ -464,10 +538,19 @@ def save_to_gcs(storage_record: Dict[str, Any]) -> Tuple[bool, str]:
     except Exception as exc:  # pragma: no cover - runtime dependent
         return False, f"GCS client unavailable: {exc}"
 
-    participant_id = str(storage_record.get("participant_id") or "unknown").replace("/", "_")
+    meta = storage_record.get("meta") or {}
+    participant_source = (
+        meta.get("participant_id")
+        or storage_record.get("participant_id")
+        or "unknown"
+    )
+    participant_id = str(participant_source).replace("/", "_")
     finished_at = (
-        storage_record.get("end_time")
+        meta.get("end_time")
+        or storage_record.get("end_time")
+        or meta.get("finished_at")
         or storage_record.get("finished_at")
+        or meta.get("saved_at")
         or storage_record.get("saved_at")
         or now_utc_iso()
     )
