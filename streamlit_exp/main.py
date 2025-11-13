@@ -91,107 +91,206 @@ FEEDBACK_UI_CSS = """
 <style>
   .feedback-page {
     width: 100%;
-    min-height: calc(100vh - 140px);
+    min-height: 100vh;
+    padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 48px) clamp(56px, 8vw, 80px);
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    gap: 24px;
-    padding: 32px 16px 48px;
-    box-sizing: border-box;
-    background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 60%);
-  }
-  .feedback-hero {
-    width: 100%;
-    max-width: 640px;
-    background: radial-gradient(circle at 10% 20%, rgba(99,102,241,0.95) 0%, rgba(79,70,229,0.97) 40%, rgba(55,48,163,0.95) 100%);
-    color: #EEF2FF;
-    border-radius: 28px;
-    padding: 40px 32px;
-    box-shadow: 0 25px 55px -30px rgba(79, 70, 229, 0.7);
+    gap: clamp(20px, 4vw, 32px);
+    background:
+      radial-gradient(circle at 20% -10%, rgba(126, 58, 242, 0.25), transparent 45%),
+      radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 40%),
+      linear-gradient(180deg, #0f172a 0%, #111827 48%, #0b1220 100%);
     position: relative;
-    text-align: center;
-    overflow: hidden;
+    isolation: isolate;
   }
-  .feedback-hero::after {
+  .feedback-page::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 85% 15%, rgba(244, 244, 255, 0.3), transparent 45%);
+    background: radial-gradient(circle at 50% 0%, rgba(199, 210, 254, 0.08), transparent 65%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .feedback-hero-container,
+  .feedback-comment-card,
+  .feedback-actions {
+    width: 100%;
+    max-width: 720px;
+  }
+  .feedback-hero-container {
+    display: flex;
+    justify-content: center;
+  }
+  .feedback-hero-card {
+    width: 100%;
+    padding: clamp(28px, 5vw, 44px);
+    border-radius: 30px;
+    background: linear-gradient(135deg, rgba(114, 78, 249, 0.98), rgba(79, 70, 229, 0.96) 55%, rgba(67, 56, 202, 0.94));
+    color: #f5f3ff;
+    box-shadow: 0 30px 65px -28px rgba(79, 70, 229, 0.85);
+    position: relative;
+    overflow: hidden;
+  }
+  .feedback-hero-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.28), transparent 55%);
     pointer-events: none;
   }
-  .feedback-icon-wrap {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
+  .feedback-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.18);
+    color: #eef2ff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  .feedback-hero-badge span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .feedback-hero-body {
+    display: flex;
+    align-items: center;
+    gap: clamp(20px, 5vw, 36px);
+    margin-top: clamp(18px, 3vw, 28px);
+  }
+  .feedback-icon-wrap {
+    flex-shrink: 0;
+    width: clamp(72px, 12vw, 96px);
+    height: clamp(72px, 12vw, 96px);
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(248, 250, 255, 0.28), rgba(255, 255, 255, 0.1));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
-    box-shadow: 0 18px 35px -20px rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(3px);
+    font-size: clamp(34px, 6vw, 48px);
+    box-shadow: 0 22px 45px -26px rgba(15, 23, 42, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(4px);
+  }
+  .feedback-hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
   .feedback-hero-title {
-    font-size: clamp(1.8rem, 2.2vw, 2.4rem);
+    font-size: clamp(1.9rem, 3vw, 2.6rem);
     font-weight: 800;
-    letter-spacing: 0.2px;
+    line-height: 1.15;
     margin: 0;
+    letter-spacing: 0.3px;
   }
   .feedback-hero-subtitle {
-    margin: 14px auto 0;
-    font-size: clamp(1.05rem, 1.8vw, 1.2rem);
-    color: rgba(255, 255, 255, 0.88);
-    max-width: 420px;
-    line-height: 1.6;
+    margin: 0;
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    color: rgba(238, 242, 255, 0.9);
   }
   .feedback-meta {
-    margin-top: 18px;
-    font-size: 0.95rem;
-    opacity: 0.85;
-    letter-spacing: 0.4px;
+    margin-top: clamp(20px, 3vw, 32px);
+    font-size: 1rem;
+    color: rgba(238, 242, 255, 0.88);
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .feedback-card {
-    width: 100%;
-    max-width: 640px;
-    background: #ffffff;
-    border-radius: 24px;
-    padding: 28px 32px 32px;
-    box-shadow: 0 24px 55px -40px rgba(15, 23, 42, 0.55);
+  .feedback-meta::before {
+    content: "📡";
+    font-size: 1.1rem;
+  }
+  .feedback-comment-card {
+    background: rgba(248, 250, 255, 0.96);
+    border-radius: 26px;
+    padding: clamp(24px, 5vw, 36px);
+    box-shadow: 0 26px 65px -36px rgba(15, 23, 42, 0.75);
     border: 1px solid rgba(148, 163, 184, 0.25);
+    backdrop-filter: blur(8px);
+    position: relative;
   }
-  .feedback-card-title {
-    font-size: 1.25rem;
+  .feedback-comment-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(124, 58, 237, 0.18);
+    pointer-events: none;
+  }
+  .feedback-comment-title {
+    font-size: 1.28rem;
     font-weight: 700;
-    color: #312e81;
+    color: #3730a3;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
     margin: 0;
   }
-  .feedback-card-body {
-    margin-top: 20px;
-    background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
-    border-radius: 18px;
-    border-left: 5px solid #6366f1;
-    padding: 20px 24px;
-    font-size: 1.05rem;
-    line-height: 1.75;
-    color: #1f2937;
-    box-shadow: inset 0 1px 0 rgba(99, 102, 241, 0.08);
-    transition: all 0.3s ease;
+  .feedback-comment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #facc15);
+    color: #fff;
+    font-size: 1.3rem;
+    box-shadow: 0 16px 30px -20px rgba(249, 115, 22, 0.6);
   }
-  .feedback-card-body[data-empty="true"] {
+  .feedback-comment-body {
+    margin-top: clamp(18px, 3vw, 26px);
+    padding: clamp(20px, 4vw, 28px);
+    font-size: clamp(1.05rem, 2vw, 1.18rem);
+    line-height: 1.8;
+    color: #1f2937;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 231, 255, 0.92));
+    border-radius: 22px;
+    border-left: 6px solid #7c3aed;
+    box-shadow: inset 0 1px 0 rgba(124, 58, 237, 0.18);
+    min-height: 110px;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+  }
+  .feedback-comment-body strong {
+    color: #4338ca;
+  }
+  .feedback-comment-body[data-empty="true"] {
     color: #6b7280;
     font-style: italic;
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.85));
+    border-left-color: rgba(124, 58, 237, 0.35);
   }
-  .feedback-card-body strong {
-    color: #312e81;
+  .feedback-comment-body::selection {
+    background: rgba(124, 58, 237, 0.16);
   }
-  .feedback-card-body::selection {
-    background: rgba(99, 102, 241, 0.2);
+  .feedback-micro-card {
+    background: rgba(15, 23, 42, 0.55);
+    color: #e0e7ff;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+  }
+  .feedback-micro-card::before {
+    border-color: rgba(96, 165, 250, 0.3);
+  }
+  .feedback-micro-card .feedback-comment-title {
+    color: #e0e7ff;
+  }
+  .feedback-micro-card .feedback-comment-icon {
+    background: linear-gradient(135deg, #38bdf8, #6366f1);
+    box-shadow: 0 16px 32px -22px rgba(59, 130, 246, 0.55);
+  }
+  .feedback-micro-card .feedback-comment-body {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(30, 64, 175, 0.8));
+    color: #e2e8f0;
+    border-left-color: rgba(129, 140, 248, 0.7);
   }
   .feedback-actions {
-    width: 100%;
-    max-width: 640px;
+    margin-top: clamp(4px, 1vw, 12px);
   }
   .feedback-actions .stButton > button {
     width: 100%;
@@ -199,46 +298,45 @@ FEEDBACK_UI_CSS = """
     padding: 16px 24px;
     font-size: 1.1rem;
     font-weight: 700;
-    background: #4f46e5;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #ffffff;
     border: none;
-    box-shadow: 0 18px 30px -22px rgba(79, 70, 229, 0.75);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: 0 20px 38px -24px rgba(99, 102, 241, 0.85);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   }
   .feedback-actions .stButton > button:hover {
     transform: translateY(-1px);
-    background: #4338ca;
-    box-shadow: 0 20px 40px -20px rgba(79, 70, 229, 0.85);
+    box-shadow: 0 24px 44px -24px rgba(124, 58, 237, 0.9);
+    opacity: 0.95;
   }
   .feedback-actions .stButton > button:active {
     transform: translateY(0);
+    opacity: 1;
   }
   @media (max-width: 720px) {
     .feedback-page {
-      padding: 24px 14px 36px;
-      gap: 20px;
       min-height: auto;
+      padding: 24px 14px 56px;
+      gap: 18px;
     }
-    .feedback-hero {
-      border-radius: 22px;
-      padding: 32px 24px;
+    .feedback-hero-card {
+      border-radius: 26px;
+    }
+    .feedback-hero-body {
+      flex-direction: column;
+      align-items: flex-start;
     }
     .feedback-icon-wrap {
       width: 68px;
       height: 68px;
-      font-size: 32px;
+      font-size: 34px;
     }
-    .feedback-card {
-      border-radius: 20px;
-      padding: 24px 20px 28px;
+    .feedback-comment-card {
+      border-radius: 22px;
     }
-    .feedback-card-body {
-      padding: 18px 20px;
-      font-size: 1rem;
-    }
-    .feedback-actions .stButton > button {
+    .feedback-comment-body {
       font-size: 1.05rem;
-      padding: 14px 20px;
+      border-left-width: 5px;
     }
   }
 </style>
@@ -1909,48 +2007,66 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
         st.markdown('<div class="feedback-page">', unsafe_allow_html=True)
         st.markdown(
             f"""
-<div class="feedback-hero">
-  <div class="feedback-icon-wrap">🧠</div>
-  <h1 class="feedback-hero-title">분석 완료! 훌륭합니다!</h1>
-  <p class="feedback-hero-subtitle">{hero_subtitle}</p>
-  <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석했습니다.</div>
+<div class="feedback-hero-container">
+  <div class="feedback-hero-card">
+    <div class="feedback-hero-badge"><span>🤖</span> AI 튜터 칭찬</div>
+    <div class="feedback-hero-body">
+      <div class="feedback-icon-wrap">🧠</div>
+      <div class="feedback-hero-text">
+        <h1 class="feedback-hero-title">분석 완료! 훌륭합니다!</h1>
+        <p class="feedback-hero-subtitle">{hero_subtitle}</p>
+      </div>
+    </div>
+    <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 성장을 칭찬하고 있습니다.</div>
+  </div>
 </div>
-<div class="feedback-card">
-  <div class="feedback-card-title">AI 튜터의 코멘트</div>
 """,
             unsafe_allow_html=True,
         )
 
         shown_flag = f"feedback_shown_{round_key}"
-        comment_placeholder = st.empty()
-        if summary_text:
-            if not st.session_state.get(shown_flag):
-                typewriter_markdown(
-                    summary_text,
-                    speed=0.01,
-                    container=comment_placeholder,
-                    wrapper_class="feedback-card-body",
-                )
-                st.session_state[shown_flag] = True
-            else:
-                comment_placeholder.markdown(
-                    f'<div class="feedback-card-body">{summary_text.replace("\\n", "<br />")}</div>',
-                    unsafe_allow_html=True,
-                )
-        else:
-            comment_placeholder.markdown(
-                '<div class="feedback-card-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
+        comment_section = st.container()
+        with comment_section:
+            st.markdown(
+                """
+<div class="feedback-comment-card">
+  <div class="feedback-comment-title">
+    <span class="feedback-comment-icon">✨</span>
+    AI 튜터의 코멘트
+  </div>
+""",
                 unsafe_allow_html=True,
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            comment_placeholder = st.empty()
+            if summary_text:
+                if not st.session_state.get(shown_flag):
+                    typewriter_markdown(
+                        summary_text,
+                        speed=0.01,
+                        container=comment_placeholder,
+                        wrapper_class="feedback-comment-body",
+                    )
+                    st.session_state[shown_flag] = True
+                else:
+                    comment_placeholder.markdown(
+                        f'<div class="feedback-comment-body">{summary_text.replace("\\n", "<br />")}</div>',
+                        unsafe_allow_html=True,
+                    )
+            else:
+                comment_placeholder.markdown(
+                    '<div class="feedback-comment-body" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if SHOW_PER_ITEM_SUMMARY and feedback_payload:
             st.markdown(
-                '<div class="feedback-card"><div class="feedback-card-title">문항별 간단 피드백</div>',
+                '<div class="feedback-comment-card feedback-micro-card"><div class="feedback-comment-title"><span class="feedback-comment-icon">💡</span> 문항별 간단 피드백</div>',
                 unsafe_allow_html=True,
             )
-            st.markdown('<div class="feedback-card-body">', unsafe_allow_html=True)
+            st.markdown('<div class="feedback-comment-body">', unsafe_allow_html=True)
             for question_id, micro_text in feedback_payload.get("micro_entries", []):
                 st.markdown(f"- **{question_id}** · {micro_text}")
             st.markdown("</div></div>", unsafe_allow_html=True)
