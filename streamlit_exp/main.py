@@ -87,6 +87,15 @@ COMPACT_CSS = """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
+# [CHANGE] Legend snippet for 6-point Likert (Achive scale only).
+LIKERT6_LEGEND_HTML = """
+<div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
+  <span><b>1</b> : 전혀 그렇지 않다</span><span>—</span>
+  <span><b>3</b> : 보통이다</span><span>—</span>
+  <span><b>6</b> : 매우 그렇다</span>
+</div>
+""".strip()
+
 # [CHANGE] Default runtime feature toggles for feedback/debug rendering.
 SHOW_PER_ITEM_INLINE_FEEDBACK = False
 SHOW_PER_ITEM_SUMMARY = False
@@ -1188,6 +1197,8 @@ def ensure_session_state() -> None:
         ss.anthro_page = 1
     if "achive_page" not in ss:
         ss.achive_page = 1
+    if "manip_page" not in ss:
+        ss.manip_page = 1
     if "DRY_RUN" not in ss:
         ss.DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
     if "record" not in ss:
@@ -1416,10 +1427,21 @@ def render_paginated_likert(
     prompt_html: str,
     scale_hint_html: str,
     per_page: int,
+    question_ids: Optional[List[str]] = None,
 ) -> bool:
     total = len(questions)
+    if total == 0:
+        return True
+
+    per_page = max(1, min(per_page, 10))
     total_pages = (total + per_page - 1) // per_page
     page = st.session_state.get(page_state_key, 1)
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    st.session_state[page_state_key] = page
+
     start_idx = (page - 1) * per_page
     end_idx = min(start_idx + per_page, total)
 
@@ -1433,11 +1455,14 @@ def render_paginated_likert(
         unsafe_allow_html=True,
     )
 
+    options = list(range(scale_min, scale_max + 1))
     for idx in range(start_idx, end_idx):
         label = questions[idx]
-        options = list(range(scale_min, scale_max + 1))
+        question_id = (
+            question_ids[idx] if question_ids and idx < len(question_ids) else str(idx)
+        )
         selected = render_likert_numeric(
-            item_id=f"{key_prefix}_{idx}",
+            item_id=f"{key_prefix}_{question_id}",
             label=f"{idx + 1}. {label}",
             options=options,
             key_prefix=f"{key_prefix}_opt",
@@ -1450,6 +1475,10 @@ def render_paginated_likert(
             st.session_state[value_key] = int(selected)
             st.session_state.payload[responses_key][idx] = int(selected)
 
+    page_values = [
+        st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(start_idx, end_idx)
+    ]
+
     col_prev, col_next = st.columns(2)
     with col_prev:
         if page > 1 and st.button(
@@ -1458,26 +1487,25 @@ def render_paginated_likert(
             st.session_state[page_state_key] = page - 1
             set_phase(st.session_state.phase)
     with col_next:
-        if page < total_pages:
-            if st.button("다음 →", use_container_width=True, key=f"{key_prefix}_next"):
-                if any(
-                    st.session_state.get(f"{key_prefix}_val_{idx}") is None
-                    for idx in range(start_idx, end_idx)
-                ):
-                    st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
+        next_label = "다음 단계" if page == total_pages else "다음 →"
+        if st.button(next_label, use_container_width=True, key=f"{key_prefix}_next"):
+            if any(v is None for v in page_values):
+                st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
+            else:
+                if page == total_pages:
+                    all_values = [
+                        st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(total)
+                    ]
+                    if any(v is None for v in all_values):
+                        st.warning("모든 문항에 응답해 주세요.")
+                    else:
+                        st.session_state.payload[responses_key] = [
+                            int(v) for v in all_values
+                        ]
+                        return True
                 else:
                     st.session_state[page_state_key] = page + 1
                     set_phase(st.session_state.phase)
-        else:
-            if st.button("완료", use_container_width=True, key=f"{key_prefix}_done"):
-                all_values = [
-                    st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(total)
-                ]
-                if any(v is None for v in all_values):
-                    st.warning("모든 문항에 응답해 주세요.")
-                else:
-                    st.session_state.payload[responses_key] = [int(v) for v in all_values]
-                    return True
     return False
 
 
@@ -1499,6 +1527,7 @@ def render_anthro() -> None:
         per_page=10,
     )
     if done:
+        st.session_state.anthro_page = 1
         set_phase("achive")
 
 
@@ -1511,14 +1540,15 @@ def render_achive() -> None:
         questions=questions,
         key_prefix="achive",
         scale_min=1,
-        scale_max=5,
+        scale_max=6,
         page_state_key="achive_page",
         responses_key="achive_responses",
         prompt_html="<h2 style='text-align:center;font-weight:bold;'>성취/접근 성향 설문</h2>",
-        scale_hint_html=LIKERT5_LEGEND_HTML,
+        scale_hint_html=LIKERT6_LEGEND_HTML,
         per_page=10,
     )
     if done:
+        st.session_state.achive_page = 1
         set_phase("task_intro")
 
 
@@ -1713,10 +1743,20 @@ def render_difficulty_check() -> None:
         "다음 라운드(동사 시제·상)를 위해 난이도가 높아져도 도전할 의향을 선택해 주세요."
     )
     slider = st.slider(
-        "다음 라운드 난이도 상향 허용 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5
+        "다음 라운드 난이도 상향 허용 (0=선택 없음, 10=매우 도전)",
+        min_value=0,
+        max_value=10,
+        value=0,
+        key="difficulty_after_round1_slider",
     )
-    st.session_state.payload["difficulty_checks"]["after_round1"] = slider
+    if slider > 0:
+        st.session_state.payload["difficulty_checks"]["after_round1"] = int(slider)
+    else:
+        st.session_state.payload["difficulty_checks"].pop("after_round1", None)
     if st.button("2회차 시작", use_container_width=True):
+        if slider <= 0:
+            st.warning("난이도 상향 의향을 1~10 사이에서 선택해 주세요.")
+            return
         st.session_state.round_state["verbs_index"] = 0
         st.session_state.round_state["question_start"] = None
         set_phase("inference_verbs")
@@ -1724,81 +1764,34 @@ def render_difficulty_check() -> None:
 
 def render_motivation() -> None:
     scroll_top_js()
-    per_page = 6
-    total = len(MOTIVATION_QUESTIONS)
-    total_pages = (total + per_page - 1) // per_page
-    page = st.session_state.motivation_page
-    start_idx = (page - 1) * per_page
-    end_idx = min(start_idx + per_page, total)
-
-    if not st.session_state.payload["motivation_responses"]:
-        st.session_state.payload["motivation_responses"] = [None] * total
-
-    # [CHANGE] Display updated 5-point Likert legend and enforce no default selections.
-    st.title("학습 동기 설문")
-    st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
-    st.markdown(
-        f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 {start_idx + 1}–{end_idx} / {total} (페이지 {page}/{total_pages})</div>",
-        unsafe_allow_html=True,
+    questions = [question.text for question in MOTIVATION_QUESTIONS]
+    question_ids = [question.id for question in MOTIVATION_QUESTIONS]
+    done = render_paginated_likert(
+        questions=questions,
+        key_prefix="motivation",
+        scale_min=1,
+        scale_max=5,
+        page_state_key="motivation_page",
+        responses_key="motivation_responses",
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>학습 동기 설문</h2>",
+        scale_hint_html=LIKERT5_LEGEND_HTML,
+        per_page=10,
+        question_ids=question_ids,
     )
-
-    for idx in range(start_idx, end_idx):
-        question = MOTIVATION_QUESTIONS[idx]
-        selected = render_likert_numeric(
-            item_id=question.id,
-            label=f"{idx + 1}. {question.text}",
-            options=list(range(1, question.scale + 1)),
-            key_prefix="motivation",
-        )
-        value_key = f"motivation_val_{idx}"
-        if selected is None:
-            st.session_state[value_key] = None
-            st.session_state.payload["motivation_responses"][idx] = None
-        else:
-            st.session_state[value_key] = int(selected)
-            st.session_state.payload["motivation_responses"][idx] = int(selected)
-
-    col_prev, col_next = st.columns(2)
-    with col_prev:
-        if page > 1 and st.button(
-            "← 이전", use_container_width=True, key="motivation_prev"
-        ):
-            st.session_state.motivation_page = page - 1
-            set_phase(st.session_state.phase)
-    with col_next:
-        if page < total_pages:
-            if st.button("다음 →", use_container_width=True, key="motivation_next"):
-                if any(
-                    st.session_state.get(f"motivation_val_{idx}") is None
-                    for idx in range(start_idx, end_idx)
-                ):
-                    st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
-                else:
-                    st.session_state.motivation_page = page + 1
-                    set_phase(st.session_state.phase)
-        else:
-            if st.button("설문 완료", use_container_width=True, key="motivation_done"):
-                all_values = [
-                    st.session_state.get(f"motivation_val_{idx}") for idx in range(total)
-                ]
-                if any(v is None for v in all_values):
-                    st.warning("모든 문항에 응답해 주세요.")
-                else:
-                    st.session_state.payload["motivation_responses"] = [
-                        int(v) for v in all_values
-                    ]
-                    category_scores: Dict[str, List[int]] = {}
-                    for score, question in zip(
-                        st.session_state.payload["motivation_responses"],
-                        MOTIVATION_QUESTIONS,
-                    ):
-                        val = question.scale + 1 - score if question.reverse else score
-                        category_scores.setdefault(question.category, []).append(val)
-                    st.session_state.payload["motivation_category_scores"] = {
-                        cat: round(sum(vals) / len(vals), 2) if vals else 0.0
-                        for cat, vals in category_scores.items()
-                    }
-                    set_phase("post_task_reflection")
+    if done:
+        responses = st.session_state.payload.get("motivation_responses", [])
+        category_scores: Dict[str, List[int]] = {}
+        for response, question in zip(responses, MOTIVATION_QUESTIONS):
+            if response is None:
+                continue
+            adjusted = question.scale + 1 - response if question.reverse else response
+            category_scores.setdefault(question.category, []).append(adjusted)
+        st.session_state.payload["motivation_category_scores"] = {
+            category: round(sum(values) / len(values), 2) if values else 0.0
+            for category, values in category_scores.items()
+        }
+        st.session_state.motivation_page = 1
+        set_phase("post_task_reflection")
 
 
 def render_manipulation_check() -> None:
@@ -1808,18 +1801,30 @@ def render_manipulation_check() -> None:
     st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
 
     total_items = len(MANIPULATION_CHECK_ITEMS)
+    per_page = 10
+    total_pages = (total_items + per_page - 1) // per_page
+    page = st.session_state.get("manip_page", 1)
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    st.session_state.manip_page = page
+
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_items)
+
     st.markdown(
-        f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 1–{total_items} / {total_items}</div>",
+        f"<div style='text-align:center;color:#6b7480;margin-bottom:12px;'>문항 {start_idx + 1}–{end_idx} / {total_items} (페이지 {page}/{total_pages})</div>",
         unsafe_allow_html=True,
     )
 
     answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
     options = LIKERT5_NUMERIC_OPTIONS
 
-    for idx, item in enumerate(MANIPULATION_CHECK_ITEMS, start=1):
+    for offset, item in enumerate(MANIPULATION_CHECK_ITEMS[start_idx:end_idx], start=start_idx + 1):
         selection = render_likert_numeric(
             item_id=item.id,
-            label=f"{idx}. {item.text}",
+            label=f"{offset}. {item.text}",
             options=options,
             key_prefix="manip",
         )
@@ -1831,41 +1836,67 @@ def render_manipulation_check() -> None:
             st.session_state[value_key] = int(selection)
             answers[item.id] = int(selection)
 
-    all_done = all_answered(
-        answers,
-        MANIPULATION_CHECK_EXPECTED_COUNT,
-        valid_options=options,
-    )
+    page_values = [
+        answers.get(item.id) for item in MANIPULATION_CHECK_ITEMS[start_idx:end_idx]
+    ]
 
     st.divider()
-    if not all_done:
-        st.markdown(
-            "<div style='text-align:center;color:#ef4444;font-weight:600;'>필수 응답입니다.</div>",
-            unsafe_allow_html=True,
-        )
-
-    if st.button("다음 단계", disabled=not all_done, use_container_width=True):
-        if not all_done:
-            st.warning("모든 문항에 응답해 주세요.")
-            return
-        saved = {item.id: int(answers[item.id]) for item in MANIPULATION_CHECK_ITEMS}
-        st.session_state.manip_check_saved = saved
-        st.session_state.payload["manipulation_check"] = saved
-        set_phase("phone_input")
+    col_prev, col_next = st.columns(2)
+    with col_prev:
+        if page > 1 and st.button(
+            "← 이전", use_container_width=True, key="manip_prev"
+        ):
+            st.session_state.manip_page = page - 1
+            set_phase(st.session_state.phase)
+    with col_next:
+        next_label = "다음 단계" if page == total_pages else "다음 →"
+        if st.button(next_label, use_container_width=True, key="manip_next"):
+            if any(v is None for v in page_values):
+                st.warning("현재 페이지의 모든 문항에 응답해 주세요.")
+            else:
+                if page == total_pages:
+                    complete = all_answered(
+                        answers,
+                        MANIPULATION_CHECK_EXPECTED_COUNT,
+                        valid_options=options,
+                    )
+                    if not complete:
+                        st.warning("모든 문항에 응답해 주세요.")
+                        return
+                    saved = {item.id: int(answers[item.id]) for item in MANIPULATION_CHECK_ITEMS}
+                    st.session_state.manip_check_saved = saved
+                    st.session_state.payload["manipulation_check"] = saved
+                    st.session_state.manip_page = 1
+                    set_phase("phone_input")
+                else:
+                    st.session_state.manip_page = page + 1
+                    set_phase(st.session_state.phase)
 
 
 def render_post_task_reflection() -> None:
     scroll_top_js()
     st.title("마무리 질문")
     st.write("다음 기회에 더 어려운 과제가 주어져도 도전할 의향을 선택해 주세요.")
-    slider = st.slider("난이도 상향 의향 (1=매우 꺼림, 10=매우 도전)", 1, 10, 5)
-    st.session_state.payload["difficulty_checks"]["final"] = slider
+    slider = st.slider(
+        "난이도 상향 의향 (0=선택 없음, 10=매우 도전)",
+        min_value=0,
+        max_value=10,
+        value=0,
+        key="difficulty_final_slider",
+    )
+    if slider > 0:
+        st.session_state.payload["difficulty_checks"]["final"] = int(slider)
+    else:
+        st.session_state.payload["difficulty_checks"].pop("final", None)
     st.write(
         "연구 과정에서 느낀 점이나 연구진에게 전하고 싶은 메시지를 남겨주세요. (선택 사항)"
     )
     feedback_text = st.text_area("연구 참여 소감", key="open_feedback_area")
     st.session_state.payload["open_feedback"] = feedback_text.strip()
     if st.button("연락처 입력으로 이동", use_container_width=True):
+        if slider <= 0:
+            st.warning("난이도 상향 의향을 1~10 사이에서 선택해 주세요.")
+            return
         set_phase("manipulation_check")
 
 
