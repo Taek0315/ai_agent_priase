@@ -366,6 +366,216 @@ FEEDBACK_UI_CSS = """
 </style>
 """.strip()
 
+MCP_OVERLAY_CSS = """
+<style>
+  .mcp-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.16), transparent 55%),
+                radial-gradient(circle at 80% 15%, rgba(14, 165, 233, 0.18), transparent 58%),
+                rgba(7, 12, 26, 0.86);
+    backdrop-filter: blur(6px);
+    z-index: 9995;
+    padding: clamp(24px, 6vw, 48px);
+  }
+  .mcp-card {
+    position: relative;
+    width: min(520px, 100%);
+    padding: clamp(28px, 5vw, 40px);
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 64, 175, 0.88));
+    box-shadow: 0 28px 60px -28px rgba(15, 23, 42, 0.8), 0 0 0 1px rgba(148, 163, 184, 0.18);
+    color: #e2e8f0;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .mcp-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 12%, rgba(96, 165, 250, 0.28), transparent 55%);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .mcp-card-header {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 3vw, 24px);
+    margin-bottom: clamp(20px, 3vw, 28px);
+  }
+  .mcp-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(64px, 12vw, 82px);
+    height: clamp(64px, 12vw, 82px);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(148, 163, 184, 0.12));
+    box-shadow: 0 18px 40px -24px rgba(96, 165, 250, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    font-size: clamp(32px, 6vw, 44px);
+    animation: mcpPulse 2.4s ease-in-out infinite;
+  }
+  .mcp-title {
+    font-size: clamp(1.5rem, 2.7vw, 1.9rem);
+    font-weight: 800;
+    margin: 0;
+    color: #f8fafc;
+    letter-spacing: 0.3px;
+  }
+  .mcp-subtitle {
+    margin: 6px 0 0;
+    font-size: clamp(1.02rem, 2.2vw, 1.15rem);
+    color: rgba(226, 232, 240, 0.88);
+    line-height: 1.6;
+  }
+  .mcp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.18);
+    color: #e0f2fe;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: clamp(18px, 3vw, 24px);
+  }
+  .mcp-status-block {
+    margin-bottom: clamp(20px, 3vw, 28px);
+  }
+  .mcp-status-label {
+    font-size: clamp(1.15rem, 2.3vw, 1.35rem);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #bfdbfe;
+  }
+  .mcp-status-detail {
+    margin-top: 8px;
+    font-size: clamp(0.98rem, 2vw, 1.08rem);
+    color: rgba(226, 232, 240, 0.8);
+    line-height: 1.6;
+  }
+  .mcp-dots {
+    display: inline-flex;
+    min-width: 28px;
+    letter-spacing: 2px;
+    color: rgba(148, 197, 255, 0.9);
+  }
+  .mcp-progress-track {
+    width: 100%;
+    height: 14px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.65);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+  .mcp-progress-fill {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.1), rgba(59, 130, 246, 0.9), rgba(129, 140, 248, 0.92));
+    transition: width 0.08s ease-out;
+    box-shadow: 0 0 18px rgba(99, 102, 241, 0.4);
+  }
+  .mcp-progress-meta {
+    margin-top: 12px;
+    font-size: 0.94rem;
+    color: rgba(191, 219, 254, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mcp-progress-meta span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(148, 197, 255, 0.18);
+    color: rgba(224, 242, 254, 0.95);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .mcp-footer-hint {
+    margin-top: clamp(16px, 3vw, 24px);
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: rgba(14, 165, 233, 0.08);
+    color: rgba(191, 219, 254, 0.9);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+  }
+  @media (max-width: 640px) {
+    .mcp-card {
+      padding: 24px;
+      border-radius: 24px;
+    }
+    .mcp-card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .mcp-icon-wrap {
+      width: 60px;
+      height: 60px;
+      border-radius: 20px;
+    }
+    .mcp-progress-meta {
+      font-size: 0.9rem;
+    }
+  }
+  @keyframes mcpPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.25); }
+    50% { transform: scale(1.04); box-shadow: 0 0 0 12px rgba(129, 140, 248, 0); }
+  }
+</style>
+""".strip()
+
+MCP_STATUS_SEQUENCE = [
+    ("패턴 스캔 중", "[INFO][COVNOX] Parsing rationale tags (single-select)"),
+    ("응답 일치도 정렬 중", "추론 근거 태그 분포를 규칙 템플릿과 비교하는 중입니다."),
+    ("추론 효율 계산 중", "조건별 비교 지표와 안정도를 재계산하고 있습니다."),
+    ("AI 튜터 리포트 구성 중", "맞춤형 칭찬 메시지를 정교화하고 있습니다."),
+]
+
+MCP_OVERLAY_TEMPLATE = """
+<div class="mcp-overlay">
+  <div class="mcp-card">
+    <div class="mcp-badge">COVNOX 분석 프로토콜 · {round_label}</div>
+    <div class="mcp-card-header">
+      <div class="mcp-icon-wrap">🤖</div>
+      <div>
+        <h2 class="mcp-title">AI 튜터 분석 중...</h2>
+        <p class="mcp-subtitle">응답 패턴을 분석하여 추론 리포트를 준비하고 있습니다.</p>
+      </div>
+    </div>
+    <div class="mcp-status-block">
+      <div class="mcp-status-label">{status_headline}<span class="mcp-dots">{dots}</span></div>
+      <div class="mcp-status-detail">{status_detail}</div>
+    </div>
+    <div class="mcp-progress-track">
+      <div class="mcp-progress-fill" style="width:{progress}%"></div>
+    </div>
+    <div class="mcp-progress-meta">
+      <span>{progress}%</span>
+      <div>AI 분석 서브루틴 실행 중</div>
+    </div>
+    <div class="mcp-footer-hint">
+      AI가 당신의 응답 구조를 정밀하게 해석하고 있습니다. 잠시만 기다려 주세요.
+    </div>
+  </div>
+</div>
+""".strip()
+
+
 # [CHANGE] Legend snippet for 6-point Likert (Achive scale only).
 LIKERT6_LEGEND_HTML = """
 <div style='display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:16px;margin-bottom:22px;'>
@@ -1426,23 +1636,37 @@ def inject_covx_toggle(round_no: int) -> None:
     )
 
 
-def run_mcp_motion(round_no: int, seconds: float = 2.5) -> None:
-    """Show a short MCP animation and mark completion in session_state."""
-    if "mcp_done" not in st.session_state:
-        st.session_state["mcp_done"] = {}
+def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) -> None:
+    """Render a full-screen MCP overlay animation that blocks background interactions."""
+    st.session_state["in_mcp"] = True
+    st.markdown(MCP_OVERLAY_CSS, unsafe_allow_html=True)
+    placeholder = st.empty()
 
-    container = st.container()
-    with container:
-        st.subheader("COVNOX: Inference Pattern Analysis")
-        timestamp = time.strftime("%H:%M:%S")
-        st.caption(f"[{timestamp}] [INFO][COVNOX] Parsing rationale tags (single-select)")
-        progress = st.progress(0)
-        steps = max(1, int(seconds * 20))
-        for step in range(steps + 1):
-            progress.progress(int(step / steps * 100))
-            time.sleep(seconds / steps)
+    steps = max(1, int(seconds * 20))
+    round_label_map = {
+        "nouns": "명사 라운드",
+        "verbs": "동사 라운드",
+    }
+    round_label = round_label_map.get(round_key, "추론 과제")
 
-    st.session_state["mcp_done"][round_no] = True
+    for step in range(steps + 1):
+        progress = int(step / steps * 100)
+        ratio = progress / 100 if steps > 0 else 0
+        status_index = min(len(MCP_STATUS_SEQUENCE) - 1, int(ratio * len(MCP_STATUS_SEQUENCE)))
+        status_headline, status_detail = MCP_STATUS_SEQUENCE[status_index]
+        if step == steps:
+            status_headline = "AI 분석 완료"
+            status_detail = "결과 요약을 준비하고 있습니다."
+        dots = "." * ((step % 3) + 1)
+        html = MCP_OVERLAY_TEMPLATE.format(
+            round_label=round_label,
+            status_headline=status_headline,
+            status_detail=status_detail,
+            dots=dots,
+            progress=progress,
+        )
+        placeholder.markdown(html, unsafe_allow_html=True)
+        time.sleep(seconds / steps)
 
 
 def export_session_json(payload: Dict[str, Any]) -> None:
@@ -1491,6 +1715,14 @@ def ensure_session_state() -> None:
         }
     if "analysis_seen" not in ss:
         ss.analysis_seen = {"nouns": False, "verbs": False}
+    if "in_mcp" not in ss:
+        ss.in_mcp = False
+    if "mcp_active_round" not in ss:
+        ss.mcp_active_round = None
+    if "mcp_active_round_no" not in ss:
+        ss.mcp_active_round_no = None
+    if "mcp_done" not in ss:
+        ss.mcp_done = {}
     # [CHANGE] Track final save status and retry context in session state.
     if "saved_once" not in ss:
         ss.saved_once = False
@@ -1883,6 +2115,7 @@ def render_inference_round(
     questions: List[Question],
     reason_labels: List[str],
     next_phase: str,
+    analysis_round_no: int,
 ) -> None:
     scroll_top_js()
     rs = st.session_state.round_state
@@ -1894,50 +2127,63 @@ def render_inference_round(
     question = questions[index]
     st.session_state["round_no"] = index
     current_index = int(st.session_state.get("round_no", 0)) + 1
-    st.header(f"추론 과제 12문항 중 {current_index}번째")
-    st.markdown(f"**설명:** {question.gloss}")
-    st.code(question.stem, language="text")
-    st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
 
-    if rs.get("question_start") is None:
-        rs["question_start"] = time.perf_counter()
+    question_container = st.container()
+    with question_container:
+        st.header(f"추론 과제 12문항 중 {current_index}번째")
+        st.markdown(f"**설명:** {question.gloss}")
+        st.code(question.stem, language="text")
+        st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
 
-    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(question.options)]
-    selected_answer_label, answer_valid = radio_required(
-        "정답을 선택하세요",
-        answer_labels,
-        key=f"{round_key}_answer_{index}",
-    )
+        if rs.get("question_start") is None:
+            rs["question_start"] = time.perf_counter()
 
-    rationale_tags = reason_labels
-    selected_tag, tag_valid = radio_required(
-        "추론 근거 태그를 하나 선택하세요 (필수)",
-        rationale_tags,
-        key=f"{round_key}_tag_{index}",
-    )
+        answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(question.options)]
+        selected_answer_label, answer_valid = radio_required(
+            "정답을 선택하세요",
+            answer_labels,
+            key=f"{round_key}_answer_{index}",
+        )
 
-    can_submit = bool(answer_valid and tag_valid)
-    submit_btn = st.button(
-        "응답 제출",
-        key=f"{round_key}_submit_{index}",
-        disabled=not can_submit,
-    )
+        rationale_tags = reason_labels
+        selected_tag, tag_valid = radio_required(
+            "추론 근거 태그를 하나 선택하세요 (필수)",
+            rationale_tags,
+            key=f"{round_key}_tag_{index}",
+        )
 
-    if not submit_btn:
-        if SHOW_PER_ITEM_INLINE_FEEDBACK:
-            last_micro = rs.get("last_micro_feedback")
-            if last_micro:
-                st.markdown(f"✅ {last_micro}")
-                st.success(last_micro)
-                rs["last_micro_feedback"] = None
-        return
+        can_submit = bool(answer_valid and tag_valid)
+        submit_btn = st.button(
+            "응답 제출",
+            key=f"{round_key}_submit_{index}",
+            disabled=not can_submit,
+        )
+
+        if not submit_btn:
+            if SHOW_PER_ITEM_INLINE_FEEDBACK:
+                last_micro = rs.get("last_micro_feedback")
+                if last_micro:
+                    st.markdown(f"✅ {last_micro}")
+                    st.success(last_micro)
+                    rs["last_micro_feedback"] = None
+            return
 
     if not can_submit:
         st.error("정답과 추론 태그 선택은 필수입니다.")
         return
 
-    response_time = round(time.perf_counter() - rs["question_start"], 2)
+    start_time = rs.get("question_start")
+    if start_time is None:
+        start_time = time.perf_counter()
+    response_time = round(time.perf_counter() - start_time, 2)
     rs["question_start"] = None
+
+    question_container.empty()
+    st.session_state["in_mcp"] = True
+    st.session_state.setdefault("mcp_done", {}).pop(analysis_round_no, None)
+    st.session_state["mcp_active_round"] = round_key
+    st.session_state["mcp_active_round_no"] = analysis_round_no
+
     manager: ExperimentManager = st.session_state.manager
     selected_option_idx = answer_labels.index(selected_answer_label)
     selected_tag_idx = rationale_tags.index(selected_tag)
@@ -1988,15 +2234,21 @@ def render_inference_round(
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     scroll_top_js()
     st.session_state.setdefault("mcp_done", {})
-    done = st.session_state["mcp_done"].get(round_no, False)
-    if not done:
-        run_mcp_motion(round_no)
+    if not st.session_state["mcp_done"].get(round_no, False):
+        render_mcp_animation(round_key, round_no)
+        st.session_state["mcp_done"][round_no] = True
+        st.session_state["in_mcp"] = False
+        st.session_state["mcp_active_round"] = None
+        st.session_state["mcp_active_round_no"] = None
         try:
             st.rerun()
         except Exception:
             st.experimental_rerun()
         return
 
+    st.session_state["in_mcp"] = False
+    st.session_state["mcp_active_round"] = None
+    st.session_state["mcp_active_round_no"] = None
     st.subheader("COVNOX: Inference Pattern Analysis")
     st.success("✅ 분석이 완료되었습니다. 아래 버튼을 눌러 피드백을 확인하세요.")
 
@@ -2456,7 +2708,7 @@ elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
     render_inference_round(
-        "nouns", NOUN_QUESTIONS, REASON_NOUN_LABELS, "analysis_nouns"
+        "nouns", NOUN_QUESTIONS, REASON_NOUN_LABELS, "analysis_nouns", analysis_round_no=1
     )
 elif phase == "analysis_nouns":
     render_analysis("nouns", 1, "feedback_nouns")
@@ -2466,7 +2718,7 @@ elif phase == "difficulty_check":
     render_difficulty_check()
 elif phase == "inference_verbs":
     render_inference_round(
-        "verbs", VERB_QUESTIONS, REASON_VERB_LABELS, "analysis_verbs"
+        "verbs", VERB_QUESTIONS, REASON_VERB_LABELS, "analysis_verbs", analysis_round_no=2
     )
 elif phase == "analysis_verbs":
     render_analysis("verbs", 2, "feedback_verbs")
