@@ -89,22 +89,22 @@ st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
 FEEDBACK_UI_CSS = """
 <style>
-  .feedback-page {
-    width: 100%;
-    min-height: 100vh;
-    padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 48px) clamp(56px, 8vw, 80px);
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(20px, 4vw, 32px);
-    background:
-      radial-gradient(circle at 20% -10%, rgba(126, 58, 242, 0.25), transparent 45%),
-      radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 40%),
-      linear-gradient(180deg, #0f172a 0%, #111827 48%, #0b1220 100%);
-    position: relative;
-    isolation: isolate;
-  }
+    .feedback-page {
+      width: 100%;
+      padding: clamp(28px, 5vw, 48px) clamp(16px, 4vw, 48px) clamp(48px, 7vw, 72px);
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: clamp(20px, 4vw, 32px);
+      background:
+        radial-gradient(circle at 20% -10%, rgba(126, 58, 242, 0.25), transparent 45%),
+        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.18), transparent 40%),
+        linear-gradient(180deg, #0f172a 0%, #111827 48%, #0b1220 100%);
+      position: relative;
+      isolation: isolate;
+    }
   .feedback-page::before {
     content: "";
     position: absolute;
@@ -314,11 +314,10 @@ FEEDBACK_UI_CSS = """
     opacity: 1;
   }
   @media (max-width: 720px) {
-    .feedback-page {
-      min-height: auto;
-      padding: 24px 14px 56px;
-      gap: 18px;
-    }
+      .feedback-page {
+        padding: 24px 14px 48px;
+        gap: 18px;
+      }
     .feedback-hero-card {
       border-radius: 26px;
     }
