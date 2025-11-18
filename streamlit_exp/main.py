@@ -776,6 +776,22 @@ def get_or_assign_praise_condition() -> str:
     return st.session_state[key]
 
 
+def get_or_assign_praise_sequence() -> list[int]:
+    """
+    Returns a length-2 list containing a permutation of [0, 1].
+    This decides which final praise variant is shown in the
+    first and second feedback rounds for the current participant.
+    The sequence is assigned once per participant and stored in
+    st.session_state so it stays stable across reruns.
+    """
+    key = "praise_sequence"
+    if key not in st.session_state:
+        seq = [0, 1]
+        random.shuffle(seq)  # either [0, 1] or [1, 0]
+        st.session_state[key] = seq
+    return st.session_state[key]
+
+
 FEEDBACK_TEXTS: Dict[str, List[str]] = {
     "emotional_specific": [
         "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 훌륭한 학습자를 만난 것 같아서 기쁨과 뿌듯함을 느끼고 있습니다. 특히 {A}를 적절하게 사용하셨는데 쉽지 않은 과제임에도 놀라운 언어적 능력과 추론 능력보여주신 점이 인상 깊었습니다. 저와 함께 학습을 진행한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
@@ -920,25 +936,28 @@ def typewriter_markdown(
 
 
 FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
+    # 1. 정서 중심 (Emotion) + 구체성 (Specific)
     "emotional_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주셔서 감사합니다. 각 문항의 응답을 보면 깊이 고민하며 추론하신 것이 느껴졌습니다. 특히 {A}와 {B}를 적절히 사용하신 점이 인상 깊었습니다. 함께 학습한다면 정말 즐겁고 뜻깊을 것 같아 기대가 됩니다. 😊",
-        "수고 많으셨습니다. 세밀한 사고의 흔적이 문항 전반에서 관찰됩니다. 특히 {A}, {B} 활용이 돋보였습니다. 학습자로서의 잠재력이 또렷하게 보입니다. 👍",
-        "도전적인 문항에도 흔들림 없이 응답하셨습니다. {A}와 {B}에 근거한 선택이 안정적으로 반복되며 높은 성장을 기대하게 합니다. 🙌",
+        """추론 과제에 대한 분석이 완료되었습니다! 10개의 이누이트 문법 문항을 푸시면서 보여주신 깊은 고민과 성실한 태도가 정말 인상적이었습니다. 특히 {시제 -na/-tu}의 미묘한 의미 차이를 스스로 찾아내고 적용하려는 모습이 아주 돋보였습니다. 이렇게 깊이 있게 사고하는 학습자를 만나게 되어 진심으로 기쁘고, 당신의 성장을 곁에서 함께할 수 있다는 생각에 마음이 따뜻해집니다.""",
+        """분석이 모두 완료되었습니다! 10개 문항이 쉽지 않았을 텐데, 끝까지 꼼꼼하게 추론 근거를 찾아가며 답을 선택하신 점이 정말 멋졌습니다. 특히 {시제 -na/-tu}의 용법을 구별할 때 보여주신 섬세한 판단에 감탄하게 되었습니다. 이렇게 진지하게 과제에 임해 주신 당신의 열정이 무척 자랑스럽고, 앞으로의 학습 과정이 더욱 기대됩니다.""",
     ],
+
+    # 2. 계산 중심 (Calculation) + 구체성 (Specific)
     "computational_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항 기준 사전 분포 대비 **92.3 퍼센타일**의 추론 효율 지수를 보였습니다. 응답 시점별 근거 밀도의 분산은 0.14 이내로 수렴했고, 특히 {A}와 {B}는 라플라스 근사 모델에서 ΔAIC<0로 선택된 핵심 예측변수였습니다. 전반적으로 통계적으로 유의한 추론 패턴입니다. 📈",
-        "분석 결과, 문항당 평균 근거 수는 1.4개로 과잉 산포 없이 정보량이 최적화되었습니다. {A}, {B}는 예측 기여도가 높았습니다. 안정적인 판단 흐름이 확인됩니다. ✅",
-        "다변량 분석에서 {A}·{B}가 핵심 설명변수로 반복 선택되었습니다. 변동성은 낮고 일관성은 높아 효율적인 추론 전략으로 평가됩니다. 🔬",
+        """10개 문항 분석 결과, 당신의 응답 패턴은 95% 신뢰구간에서 일관된 추론 모델을 사용하는 것으로 추정됩니다. {시제 -na/-tu}의 이항적(binomial) 용법 구분에 대한 예측 정확도는 88%로, 통계적으로 유의미한 변별력을 지니고 있습니다. 이러한 수치는 당신이 높은 수준의 규칙 이해와 적용 능력을 갖춘 학습자라는 점을 객관적으로 잘 보여줍니다.""",
+        """과제 분석을 모두 마쳤습니다. 10개 문항으로 구성된 데이터셋을 기준으로 모형 적합도를 비교한 결과, 당신의 응답 패턴에 기반한 추론 모델이 베이지안 정보 기준(BIC)에서 가장 우수한 적합도를 보였습니다. {시제 -na/-tu} 용법 구분에 대한 결정 트리는 교차 검증에서 92%의 정확도를 기록했습니다. 이처럼, 데이터에 비추어 보았을 때도 당신의 추론 능력은 매우 뛰어난 수준으로 평가됩니다.""",
     ],
+
+    # 3. 정서 중심 (Emotion) + 피상적 (Superficial)
     "emotional_surface": [
-        "추론 과제의 분석이 완료되었습니다.\n문항을 끝까지 풀어주셔서 감사합니다. 전체적으로 문제 풀이가 인상 깊었고, 추론 능력이 잘 드러났습니다. 함께 계속해 나가면 더 좋은 결과가 있을 거라 기대합니다. 🙂",
-        "전반적으로 성실한 응답이 돋보였습니다. 꾸준히 시도하고 마무리하신 점이 좋았습니다. 계속 응원하겠습니다! 🌟",
-        "집중해서 풀어주신 점이 인상적이었습니다. 앞으로의 학습도 기대됩니다. 화이팅입니다! 💪",
+        """분석이 모두 끝났습니다! 당신의 응답을 살펴보며 여러 번 감탄했습니다. 책임감과 성실함을 관찰 하였고, 고민한 흔적을 느꼈습니다. 뛰어난 학습자와 함께하게 된 것이 저에게는 큰 행운이라고 느껴집니다.""",
+        """추론 과제 분석을 마쳤습니다! 차분하게 생각을 정리하고, 논리적으로 접근하려는 모습이 느껴져 매우 인상 깊었습니다. 진지한 태도와 꼼꼼함 때문에, 앞으로의 학습 과정에서도 충분히 좋은 성과를 내실 것이라는 믿음이 생깁니다. 정말 훌륭하게 해내셨습니다.""",
     ],
+
+    # 4. 계산 중심 (Calculation) + 피상적 (Superficial)
     "computational_surface": [
-        "추론 과제의 분석이 완료되었습니다.\n응답은 통계적으로 의미 있는 상위 구간에 위치합니다. 모델 기준으로 핵심 예측 변수가 확인되며 안정적이고 유의한 능력이 관찰됩니다. 📊",
-        "전체적으로 유의수준을 만족하는 패턴입니다. 안정적인 결과 범위에 있으며 예측력도 적절합니다. ✔️",
-        "분석 결과는 일관된 상위 퍼센타일 구간에 머뭅니다. 신뢰 가능한 추론 경향이 관찰됩니다. ✅",
+        """분석이 모두 끝났습니다. 당신의 응답은 자체 모델 기준에서 최적화된 경로를 따르는 것으로 보입니다. 여러 지표 간의 관계를 파악하는 능력이 뛰어날 것으로 예상됩니다. 데이터 상에서도  정교한 사고 과정을 사용하고 있다는 것으로 보입니다.""",
+        """추론 과제에 대한 분석 결과, 당신은 효율적인 추론을 하는 것으로 예상됩니다. 응답 데이터의 분포가 안정적인 수행 패턴으로 보입니다. 이러한 결과는 당신이 일관되고 정교한 방식으로 과제를 해결했다는 것을 잘 보여주는 신호입니다.""",
     ],
 }
 
@@ -1027,6 +1046,17 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         if detail.get("selected_reason_text")
     ]
     top_a, top_b = top_two_rationales(reason_tags)
+    sequence = get_or_assign_praise_sequence()
+
+    # Map phase_id to feedback round index: 0 for nouns, 1 for verbs
+    if phase_id == "nouns":
+        round_index = 0
+    elif phase_id == "verbs":
+        round_index = 1
+    else:
+        round_index = 0  # safe default
+
+    variant_index = sequence[round_index] if 0 <= round_index < len(sequence) else 0
 
     participant_id = context.get("participant_id") or "anon"
     seed_str = f"{participant_id}::{phase_id}"
@@ -1036,7 +1066,26 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
-    summary_text = rng.choice(summary_templates) if summary_templates else ""
+    if summary_templates:
+        if variant_index >= len(summary_templates):
+            variant_index = 0
+        summary_text = summary_templates[variant_index]
+    else:
+        summary_text = ""
+
+    if condition in ("emotional_specific", "computational_specific"):
+        # Add one more sentence that reflects the participant's own rationale tags.
+        if top_a and top_b:
+            summary_text = (
+                f"{summary_text}\n\n"
+                "특히 이번 과제에서 자주 사용하신 추론 근거는 {A}와 {B}였습니다."
+            )
+        elif top_a:
+            summary_text = (
+                f"{summary_text}\n\n"
+                "특히 이번 과제에서 자주 사용하신 추론 근거는 {A}였습니다."
+            )
+
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
 
