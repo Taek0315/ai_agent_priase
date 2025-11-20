@@ -1140,8 +1140,6 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
-    rationale_phrase_display: Optional[str] = None
-
     if summary_templates:
         if variant_index >= len(summary_templates):
             variant_index = 0
@@ -1157,15 +1155,15 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         and "{시제 -na/-tu}" in summary_text
     ):
         if top_a and top_b:
-            raw_rationale = f"{top_a}와 {top_b}"
+            rationale_phrase = f"{top_a}와 {top_b}"
         elif top_a:
-            raw_rationale = top_a
+            rationale_phrase = top_a
         elif top_b:
-            raw_rationale = top_b
+            rationale_phrase = top_b
         else:
-            raw_rationale = "시제 -na/-tu"
-        rationale_phrase_display = html.escape(raw_rationale)
-        summary_text = summary_text.replace("{시제 -na/-tu}", rationale_phrase_display)
+            rationale_phrase = "시제 -na/-tu"
+        safe_rationale_phrase = html.escape(rationale_phrase)
+        summary_text = summary_text.replace("{시제 -na/-tu}", safe_rationale_phrase)
 
     if "{A}" in summary_text or "{B}" in summary_text:
         summary_text = summary_text.replace("{A}", safe_top_a).replace("{B}", safe_top_b)
@@ -2231,7 +2229,6 @@ def render_demographic() -> None:
         st.session_state.payload["demographic"] = {
             "sex_biological": sex_value,
             "age_years": age_value,
-            "education_level": "",
         }
         condition = normalize_condition(get_or_assign_praise_condition())
         st.session_state["praise_condition"] = condition
@@ -2651,27 +2648,17 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
             unsafe_allow_html=True,
         )
 
-        shown_flag = f"feedback_shown_{round_key}"
         praise_card_container = st.container()
-        if summary_text:
-            if not st.session_state.get(shown_flag):
-                typewriter_markdown(
-                    summary_text,
-                    speed=0.01,
-                    container=praise_card_container,
-                    wrapper_class="feedback-card feedback-praise-card",
-                )
-                st.session_state[shown_flag] = True
-            else:
-                praise_card_container.markdown(
-                    f'<div class="feedback-card feedback-praise-card">{summary_text.replace("\\n", "<br />")}</div>',
-                    unsafe_allow_html=True,
-                )
-        else:
-            praise_card_container.markdown(
-                '<div class="feedback-card feedback-praise-card" data-empty="true">피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>',
+        with praise_card_container:
+            st.markdown(
+                '<div class="feedback-card feedback-praise-card">',
                 unsafe_allow_html=True,
             )
+            if summary_text:
+                st.markdown(summary_text)
+            else:
+                st.markdown("피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if SHOW_PER_ITEM_SUMMARY and feedback_payload:
             st.markdown(
