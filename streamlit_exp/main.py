@@ -76,8 +76,33 @@ COMPACT_CSS = """
     padding-top: 0 !important;
     padding-bottom: 20px !important;
   }
-  h1, .stMarkdown h1 { margin-top: 0 !important; margin-bottom: 12px !important; line-height: 1.2; }
-  h2, .stMarkdown h2 { margin-top: 0 !important; margin-bottom: 10px !important; }
+    h1, .stMarkdown h1 {
+      margin-top: 0 !important;
+      margin-bottom: 12px !important;
+      line-height: 1.2;
+      text-align: left !important;
+    }
+    h2, .stMarkdown h2 {
+      margin-top: 0 !important;
+      margin-bottom: 10px !important;
+      text-align: left !important;
+    }
+    h3, .stMarkdown h3 {
+      margin-top: 0 !important;
+      margin-bottom: 8px !important;
+      text-align: left !important;
+    }
+    .section-heading,
+    .section-title {
+      font-weight: 700;
+      text-align: left !important;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    .praise-highlight {
+      color: #FFE082;
+      font-weight: 600;
+    }
   p, .stMarkdown p   { margin-top: 0 !important; }
   .anthro-title { margin-top: 0 !important; }
   div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
@@ -961,6 +986,39 @@ FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
     ],
 }
 
+PRAISE_HIGHLIGHT_TERMS: List[str] = [
+    "분석 결과",
+    "추론 효율",
+    "일관된 추론 모델",
+    "높은 수준의 규칙 이해와 적용 능력",
+    "안정적인 수행 패턴",
+    "효율적인 추론",
+    "깊은 고민과 성실한 태도",
+    "섬세한 판단",
+    "추론 능력은 매우 뛰어난 수준으로 평가됩니다",
+]
+
+
+def apply_praise_highlights(
+    text: str, extra_terms: Optional[List[str]] = None
+) -> str:
+    if not text:
+        return text
+
+    def _apply_once(source: str, term: str) -> str:
+        if not term:
+            return source
+        highlight = f'<span class="praise-highlight">{term}</span>'
+        if highlight in source:
+            return source
+        return source.replace(term, highlight, 1)
+
+    for term in filter(None, extra_terms or []):
+        text = _apply_once(text, term)
+    for term in PRAISE_HIGHLIGHT_TERMS:
+        text = _apply_once(text, term)
+    return text
+
 MICRO_FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
     "emotional_specific": [
         "깊이 있는 추론 흐름입니다. {A}/{B} 사용이 돋보였습니다. 🙂",
@@ -1066,6 +1124,8 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
+    rationale_phrase: Optional[str] = None
+
     if summary_templates:
         if variant_index >= len(summary_templates):
             variant_index = 0
@@ -1074,20 +1134,25 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         summary_text = ""
 
     if condition in ("emotional_specific", "computational_specific"):
-        # Add one more sentence that reflects the participant's own rationale tags.
         if top_a and top_b:
-            summary_text = (
-                f"{summary_text}\n\n"
-                "특히 이번 과제에서 자주 사용하신 추론 근거는 {A}와 {B}였습니다."
-            )
+            rationale_phrase = f"{top_a}와 {top_b}"
         elif top_a:
-            summary_text = (
-                f"{summary_text}\n\n"
-                "특히 이번 과제에서 자주 사용하신 추론 근거는 {A}였습니다."
-            )
+            rationale_phrase = top_a
+        elif top_b:
+            rationale_phrase = top_b
+        else:
+            rationale_phrase = "시제 -na/-tu"
+        summary_text = summary_text.replace(
+            "{시제 -na/-tu}", rationale_phrase or "시제 -na/-tu"
+        )
 
     if "{A}" in summary_text:
         summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+
+    summary_text = apply_praise_highlights(
+        summary_text,
+        extra_terms=[rationale_phrase] if rationale_phrase else None,
+    )
 
     micro_entries: List[tuple[str, str]] = []
     micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
@@ -2301,7 +2366,7 @@ def render_anthro() -> None:
         scale_max=5,
         page_state_key="anthro_page",
         responses_key="anthro_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>다음 문항을 읽고 평소에 생각과 가장 가까운 것을 선택해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>다음 문항을 읽고 평소에 생각과 가장 가까운 것을 선택해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
     )
@@ -2322,7 +2387,7 @@ def render_achive() -> None:
         scale_max=6,
         page_state_key="achive_page",
         responses_key="achive_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>다음 문항을 읽고 학습에 대한 본인의 생각과 가장 가까운 것을 선택해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>다음 문항을 읽고 학습에 대한 본인의 생각과 가장 가까운 것을 선택해주세요.</h2>",
         scale_hint_html=LIKERT6_LEGEND_HTML,
         per_page=10,
     )
@@ -2659,7 +2724,7 @@ def render_motivation() -> None:
         scale_max=5,
         page_state_key="motivation_page",
         responses_key="motivation_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>방금 진행한 2가지 추론 과제에 대한 생각을 응답해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>방금 진행한 2가지 추론 과제에 대한 생각을 응답해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
         question_ids=question_ids,
@@ -2896,13 +2961,20 @@ def render_summary() -> None:
         except Exception as exc:  # pragma: no cover
             st.session_state.save_error = str(exc)
 
-    st.title("연구 참여가 완료되었습니다.")
+    st.header("연구 참여가 완료되었습니다.")
     st.markdown(
-        "본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 탐색하기 위한 연구입니다.  "  
-        "모든 응답은 익명으로 처리되며 연구 목적 외에 사용되지 않습니다.  "  
-        "본 연구에서 주어진 AI의 피드백은 미리 생성된 피드백으로 실제 연구 참여자님의 추론 능력을 평가한 내용이 아닙니다."
+        """
+        지금까지 연구에 참여해 주셔서 감사합니다. 아래 내용을 꼭 읽어 주세요.
+
+        - 본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 살펴보기 위한 연구입니다.
+        - 설문과 과제에 대한 모든 응답은 연구 목적으로만 사용되며, 익명으로 안전하게 처리됩니다.
+        - 실험 중에 보신 AI 튜터의 칭찬·분석 문장은 실제 능력을 평가한 결과가 아니라, 연구 설계를 위해 미리 만들어 둔 예시 피드백입니다.
+        - 따라서 피드백에 포함된 점수, 표현, 분석 내용은 참여자님의 실제 실력이나 성격을 의미하지 않습니다.
+        - 연구와 관련하여 궁금한 점이 있다면 안내문에 기재된 연구자 연락처로 언제든지 문의해 주시기 바랍니다.
+
+        다시 한 번 소중한 참여에 감사드립니다.
+        """.strip()
     )
-    st.markdown("참여와 협조에 진심으로 감사드립니다.")
 
     if st.session_state.saved_once:
         st.success("연구가 완료되었습니다. 하단의 종료/제출 버튼을 눌러주세요.")
