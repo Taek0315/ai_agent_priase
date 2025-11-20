@@ -319,6 +319,10 @@ FEEDBACK_UI_CSS = """
       .feedback-praise-card p {
         margin: 0;
       }
+        .feedback-praise-text {
+          margin: 0;
+          white-space: pre-line;
+        }
       .feedback-praise-card strong {
         color: #4338ca;
       }
@@ -1049,6 +1053,62 @@ def typewriter(text: str, speed: float = 0.01) -> None:
         output += ch
         holder.markdown(output.replace("\n", "  \n"))
         time.sleep(speed)
+
+
+def render_praise_card_with_typewriter(
+    text: str,
+    *,
+    round_key: str,
+    placeholder: Optional["st.delta_generator.DeltaGenerator"] = None,
+    speed: float = 0.01,
+) -> None:
+    """
+    Render the gradient praise card and animate the feedback text with a simple typewriter effect.
+
+    The animation runs only once per feedback round (nouns/verbs) and falls back to the full text
+    on subsequent reruns to avoid re-triggering the effect on every Streamlit refresh.
+    """
+
+    target = placeholder if placeholder is not None else st.empty()
+    raw_text = text or ""
+    has_text = bool(raw_text.strip())
+    cache_key = f"{round_key}_praise_card_text"
+    typed_flag_key = f"{round_key}_praise_card_typed"
+
+    def render_card(content: str, *, mark_empty: bool = False) -> None:
+        display_text = (
+            content
+            if content
+            else "피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+        )
+        safe_text = html.escape(display_text).replace("\n", "<br />")
+        empty_attr = ' data-empty="true"' if mark_empty else ""
+        target.markdown(
+            f'<div class="feedback-card feedback-praise-card"{empty_attr}>'
+            f'<div class="feedback-praise-text">{safe_text}</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+    if not has_text:
+        render_card("", mark_empty=True)
+        return
+
+    if st.session_state.get(cache_key) != raw_text:
+        st.session_state[cache_key] = raw_text
+        st.session_state[typed_flag_key] = False
+
+    if st.session_state.get(typed_flag_key):
+        render_card(raw_text)
+        return
+
+    buffer = ""
+    for ch in raw_text:
+        buffer += ch
+        render_card(buffer)
+        time.sleep(speed)
+
+    st.session_state[typed_flag_key] = True
 
 
 def run_once(key: str, fn, *args, **kwargs):
@@ -2648,17 +2708,13 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
             unsafe_allow_html=True,
         )
 
-        praise_card_container = st.container()
-        with praise_card_container:
-            st.markdown(
-                '<div class="feedback-card feedback-praise-card">',
-                unsafe_allow_html=True,
-            )
-            if summary_text:
-                st.markdown(summary_text)
-            else:
-                st.markdown("피드백 메시지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        praise_placeholder = st.empty()
+        render_praise_card_with_typewriter(
+            summary_text,
+            round_key=round_key,
+            placeholder=praise_placeholder,
+            speed=0.01,
+        )
 
         if SHOW_PER_ITEM_SUMMARY and feedback_payload:
             st.markdown(
