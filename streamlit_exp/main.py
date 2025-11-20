@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import os
 import random
@@ -92,17 +93,30 @@ COMPACT_CSS = """
       margin-bottom: 8px !important;
       text-align: left !important;
     }
-    .section-heading,
-    .section-title {
-      font-weight: 700;
-      text-align: left !important;
-      margin-top: 0;
-      margin-bottom: 12px;
-    }
-    .praise-highlight {
-      color: #FFE082;
-      font-weight: 600;
-    }
+      .section-heading,
+      .section-title {
+        font-weight: 700;
+        text-align: left !important;
+        margin-top: 0;
+        margin-bottom: 12px;
+      }
+      .praise-highlight {
+        color: #FFE082;
+        font-weight: 600;
+      }
+      .debrief-box {
+        width: 100%;
+        max-width: 100%;
+        white-space: normal;
+        word-break: keep-all;
+        overflow-x: hidden;
+        overflow-y: visible;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.75rem;
+        background-color: #20252b;
+        color: #f5f5f5;
+        box-sizing: border-box;
+      }
   p, .stMarkdown p   { margin-top: 0 !important; }
   .anthro-title { margin-top: 0 !important; }
   div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
@@ -1124,7 +1138,7 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     summary_templates = FEEDBACK_TEMPLATES.get(
         condition, FEEDBACK_TEMPLATES["emotional_surface"]
     )
-    rationale_phrase: Optional[str] = None
+    rationale_phrase_display: Optional[str] = None
 
     if summary_templates:
         if variant_index >= len(summary_templates):
@@ -1133,25 +1147,31 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     else:
         summary_text = ""
 
+    safe_top_a = html.escape(top_a) if top_a else ""
+    safe_top_b = html.escape(top_b) if top_b else ""
+
     if condition in ("emotional_specific", "computational_specific"):
         if top_a and top_b:
-            rationale_phrase = f"{top_a}와 {top_b}"
+            raw_rationale = f"{top_a}와 {top_b}"
         elif top_a:
-            rationale_phrase = top_a
+            raw_rationale = top_a
         elif top_b:
-            rationale_phrase = top_b
+            raw_rationale = top_b
         else:
-            rationale_phrase = "시제 -na/-tu"
+            raw_rationale = "시제 -na/-tu"
+        rationale_phrase_display = html.escape(raw_rationale)
+
+    if "{시제 -na/-tu}" in summary_text:
         summary_text = summary_text.replace(
-            "{시제 -na/-tu}", rationale_phrase or "시제 -na/-tu"
+            "{시제 -na/-tu}", rationale_phrase_display or "시제 -na/-tu"
         )
 
-    if "{A}" in summary_text:
-        summary_text = summary_text.replace("{A}", top_a).replace("{B}", top_b)
+    if "{A}" in summary_text or "{B}" in summary_text:
+        summary_text = summary_text.replace("{A}", safe_top_a).replace("{B}", safe_top_b)
 
     summary_text = apply_praise_highlights(
         summary_text,
-        extra_terms=[rationale_phrase] if rationale_phrase else None,
+        extra_terms=[rationale_phrase_display] if rationale_phrase_display else None,
     )
 
     micro_entries: List[tuple[str, str]] = []
@@ -2964,16 +2984,17 @@ def render_summary() -> None:
     st.header("연구 참여가 완료되었습니다.")
     st.markdown(
         """
-        지금까지 연구에 참여해 주셔서 감사합니다. 아래 내용을 꼭 읽어 주세요.
-
-        - 본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 살펴보기 위한 연구입니다.
-        - 설문과 과제에 대한 모든 응답은 연구 목적으로만 사용되며, 익명으로 안전하게 처리됩니다.
-        - 실험 중에 보신 AI 튜터의 칭찬·분석 문장은 실제 능력을 평가한 결과가 아니라, 연구 설계를 위해 미리 만들어 둔 예시 피드백입니다.
-        - 따라서 피드백에 포함된 점수, 표현, 분석 내용은 참여자님의 실제 실력이나 성격을 의미하지 않습니다.
-        - 연구와 관련하여 궁금한 점이 있다면 안내문에 기재된 연구자 연락처로 언제든지 문의해 주시기 바랍니다.
-
-        다시 한 번 소중한 참여에 감사드립니다.
-        """.strip()
+        <div class="debrief-box">
+          지금까지 연구에 참여해 주셔서 감사합니다. 아래 내용을 꼭 읽어 주세요.<br><br>
+          - 본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 살펴보기 위한 연구입니다.<br>
+          - 설문과 과제에 대한 모든 응답은 연구 목적으로만 사용되며, 익명으로 안전하게 처리됩니다.<br>
+          - 실험 중에 보신 AI 튜터의 칭찬·분석 문장은 실제 능력을 평가한 결과가 아니라, 연구 설계를 위해 미리 만들어 둔 예시 피드백입니다.<br>
+          - 따라서 피드백에 포함된 점수, 표현, 분석 내용은 참여자님의 실제 실력이나 성격을 의미하지 않습니다.<br>
+          - 연구와 관련하여 궁금한 점이 있다면 안내문에 기재된 연구자 연락처로 언제든지 문의해 주시기 바랍니다.<br><br>
+          다시 한 번 소중한 참여에 감사드립니다.
+        </div>
+        """.strip(),
+        unsafe_allow_html=True,
     )
 
     if st.session_state.saved_once:
