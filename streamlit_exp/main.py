@@ -1016,21 +1016,6 @@ PRAISE_HIGHLIGHT_TERMS: List[str] = [
 def apply_praise_highlights(
     text: str, extra_terms: Optional[List[str]] = None
 ) -> str:
-    if not text:
-        return text
-
-    def _apply_once(source: str, term: str) -> str:
-        if not term:
-            return source
-        highlight = f'<span class="praise-highlight">{term}</span>'
-        if highlight in source:
-            return source
-        return source.replace(term, highlight, 1)
-
-    for term in filter(None, extra_terms or []):
-        text = _apply_once(text, term)
-    for term in PRAISE_HIGHLIGHT_TERMS:
-        text = _apply_once(text, term)
     return text
 
 MICRO_FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
@@ -1074,16 +1059,32 @@ def run_once(key: str, fn, *args, **kwargs):
 
 def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
     """
-    Returns the two most frequent rationale labels (ties broken deterministically).
-    If fewer than 2 exist, pad with safe fallbacks like '시제 -na', '시제 -tu'.
+    Returns up to two most frequent rationale labels (ties broken deterministically).
+    Missing slots are returned as empty strings so callers can decide how to fall back.
     """
     counts = Counter([tag for tag in all_reason_tags if tag])
     if not counts:
-        return ("시제 -na", "시제 -tu")
+        return ("", "")
     most = [label for label, _ in counts.most_common(2)]
-    while len(most) < 2:
-        most.append("시제 -tu" if "시제 -na" in most else "시제 -na")
+    if len(most) == 1:
+        return most[0], ""
     return most[0], most[1]
+
+
+def ensure_rationale_pair(primary: Optional[str], secondary: Optional[str]) -> tuple[str, str]:
+    """
+    Guarantee a readable pair of rationale strings, inserting safe defaults if needed.
+    """
+    first = (primary or "").strip()
+    second = (secondary or "").strip()
+    if not first and second:
+        first, second = second, ""
+    display_first = first or "시제 -na"
+    if second:
+        display_second = second
+    else:
+        display_second = "시제 -tu" if display_first != "시제 -tu" else "시제 -na"
+    return display_first, display_second
 
 
 def normalize_condition(value: Optional[str]) -> str:
@@ -1118,6 +1119,7 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         if detail.get("selected_reason_text")
     ]
     top_a, top_b = top_two_rationales(reason_tags)
+    display_top_a, display_top_b = ensure_rationale_pair(top_a, top_b)
     sequence = get_or_assign_praise_sequence()
 
     # Map phase_id to feedback round index: 0 for nouns, 1 for verbs
@@ -1147,10 +1149,13 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     else:
         summary_text = ""
 
-    safe_top_a = html.escape(top_a) if top_a else ""
-    safe_top_b = html.escape(top_b) if top_b else ""
+    safe_top_a = html.escape(display_top_a)
+    safe_top_b = html.escape(display_top_b)
 
-    if condition in ("emotional_specific", "computational_specific"):
+    if (
+        condition in ("emotional_specific", "computational_specific")
+        and "{시제 -na/-tu}" in summary_text
+    ):
         if top_a and top_b:
             raw_rationale = f"{top_a}와 {top_b}"
         elif top_a:
@@ -1160,19 +1165,10 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         else:
             raw_rationale = "시제 -na/-tu"
         rationale_phrase_display = html.escape(raw_rationale)
-
-    if "{시제 -na/-tu}" in summary_text:
-        summary_text = summary_text.replace(
-            "{시제 -na/-tu}", rationale_phrase_display or "시제 -na/-tu"
-        )
+        summary_text = summary_text.replace("{시제 -na/-tu}", rationale_phrase_display)
 
     if "{A}" in summary_text or "{B}" in summary_text:
         summary_text = summary_text.replace("{A}", safe_top_a).replace("{B}", safe_top_b)
-
-    summary_text = apply_praise_highlights(
-        summary_text,
-        extra_terms=[rationale_phrase_display] if rationale_phrase_display else None,
-    )
 
     micro_entries: List[tuple[str, str]] = []
     micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
@@ -1183,7 +1179,9 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
             break
         micro_text = rng.choice(micro_templates)
         if "{A}" in micro_text:
-            micro_text = micro_text.replace("{A}", top_a).replace("{B}", top_b)
+            micro_text = micro_text.replace("{A}", display_top_a).replace(
+                "{B}", display_top_b
+            )
         micro_entries.append((detail.get("question_id", ""), micro_text))
 
     return {
@@ -2223,20 +2221,7 @@ def render_demographic() -> None:
     if age_error:
         st.error(age_error)
 
-    education = st.selectbox(
-        "최종 학력",
-        [
-            "선택해 주세요",
-            "고등학교 졸업 이하",
-            "대학(재학/졸업)",
-            "대학원(재학/졸업)",
-            "기타",
-        ],
-        key="demographic_edu",
-    )
-    education_valid = education != "선택해 주세요"
-
-    can_proceed = bool(sex_valid and age_valid and education_valid)
+    can_proceed = bool(sex_valid and age_valid)
     next_disabled = not can_proceed
 
     if st.button("다음 단계", use_container_width=True, disabled=next_disabled):
@@ -2246,7 +2231,7 @@ def render_demographic() -> None:
         st.session_state.payload["demographic"] = {
             "sex_biological": sex_value,
             "age_years": age_value,
-            "education_level": education,
+            "education_level": "",
         }
         condition = normalize_condition(get_or_assign_praise_condition())
         st.session_state["praise_condition"] = condition
@@ -2542,7 +2527,8 @@ def render_inference_round(
         if d["round"] == round_key
     ]
     top_a, top_b = top_two_rationales(completed_tags)
-    micro_text = get_next_micro_feedback(condition, top_a, top_b)
+    micro_a, micro_b = ensure_rationale_pair(top_a, top_b)
+    micro_text = get_next_micro_feedback(condition, micro_a, micro_b)
     if SHOW_PER_ITEM_INLINE_FEEDBACK:
         rs["last_micro_feedback"] = micro_text
     else:
@@ -3027,12 +3013,13 @@ def render_summary() -> None:
             for detail in payload.get("inference_details", [])
         ]
         overall_a, overall_b = top_two_rationales(all_reason_tags)
+        debug_a, debug_b = ensure_rationale_pair(overall_a, overall_b)
         summary_templates = FEEDBACK_TEMPLATES.get(
             condition, FEEDBACK_TEMPLATES["emotional_surface"]
         )
         summary_text = random.choice(summary_templates)
         if "{A}" in summary_text:
-            summary_text = summary_text.replace("{A}", overall_a).replace("{B}", overall_b)
+            summary_text = summary_text.replace("{A}", debug_a).replace("{B}", debug_b)
         typewriter_markdown(summary_text, speed=0.01)
 
         analyzer = DataAnalyzer([record])
