@@ -1663,23 +1663,26 @@ CONSENT_HTML = """
   <h1>연구대상자 설명문</h1>
   <div class="subtitle"><strong>제목: </strong>인공지능 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
   <h2>1. 연구 목적</h2>
-  <p>최근 과학기술의 발전과 함께 인공지능(AI)은 다양한 학습 환경에서 활용되고 있습니다. 본 연구는 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지 경험적으로 검증합니다.</p>
+  <p>과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 특히 학습 환경에서 AI 에이전트는 단순 정보 전달자 역할을 넘어, 학습자의 성취와 노력을 평가하고 동기를 촉진하는 상호작용 주체로 주목받고 있습니다. 본 연구는 학습 상황에서 AI 에이전트가 제공하는 칭찬(피드백) 방식이 학습자의 학습 동기에 어떠한 영향을 미치는지를 경험적으로 검증하고자 합니다. 또한, 참여자가 AI 에이전트를 얼마나 ‘인간처럼’ 지각하는지(의인화 경향성)가 이 관계를 조절하는지를 함께 탐구합니다. 학습 동기는 과제의 지속 의지, 어려운 과제에 대한 도전 성향, 과제를 통한 성취감 등 다양한 심리적 요인을 바탕으로 측정되며, 이를 통해 AI 기반 학습 환경 설계에 필요한 심리적·교육적 시사점을 도출하고자 합니다.</p>
   <h2>2. 연구 참여 대상</h2>
   <p>만 18세 이상 한국어 사용자를 대상으로 하며, 문장 이해가 어려운 경우 제외될 수 있습니다.</p>
   <h2>3. 연구 방법</h2>
-  <p>의인화 및 성취 관련 설문 56문항, 추론 과제 2회차, AI 피드백 확인, 학습 동기 설문, 연락처 입력 순으로 진행되며 약 10~15분 소요됩니다.</p>
+  <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 일반적인 의인화 경향성을 알아보는 문항과 성취목표지향성에 대한 문항 총 56개를 진행하고 추론 과제를 진행하게 됩니다. 추론 과제 이후에 AI 에이전트의 평가 문장을 받아볼 수 있습니다. 추론 과제는 총 2회 진행됩니다. 마지막으로 학습에 관한 문항에 응답을 하며 연구 참여가 종료됩니다. 약 10~15분 소요됩니다.</p>
   <h2>4. 연구 참여 기간</h2>
   <p>링크가 활성화된 기간 내 1회 참여 가능합니다.</p>
   <h2>5. 연구 참여 보상</h2>
-  <p>1500원 상당의 기프티콘이 발송되며, 휴대폰 번호를 입력하지 않으면 보상이 어려울 수 있습니다.</p>
+  <p>연구 참여를 해주신 연구 대상자 분들에게는 1500원 상당의 기프티콘이 발송됩니다. 기프티콘 발송을 위해 핸드폰 번호를 기입해주셔야 하며, 참여 도중 포기하거나 핸드폰 번호를 기입하지 않을 경우 답례품이 지급되지 않습니다.</p>
   <h2>6. 위험요소 및 조치</h2>
-  <p>지루함, AI 평가에 대한 불편감 등 경미한 불편감을 느낄 수 있으며, 언제든지 연구를 중단할 수 있습니다.</p>
+  <p>연구에 참여하시는 도중 불편감을 느끼신다면 언제든 화면을 종료하여 연구를 중단할 수 있습니다. 연구 중단시 어떠한 불이익도 존재하지 않습니다.
+  본 연구에서 예상되는 불편감은 과제의 지루함, AI 에이전트의 평가에 대한 불편감, 과제 지속을 해야하는 부담감 등이 예상됩니다.
+  연구를 통해 심리적 불편감을 호소하실 경우 연구책임자가 1회의 심리 상담 지원을 진행해드립니다. 지원 내용은 상담소 및 상담가 소개를 진행해드리며, 상담 의뢰는 소개된 상담소의 방침을 따릅니다.</p>
   <h2>7. 개인정보와 비밀보장</h2>
-  <p>성별, 연령, 휴대폰 번호를 수집하며 연구 종료 후 3년간 안전하게 보관 후 폐기됩니다.</p>
+  <p>본 연구의 참여로 수집되는 개인정보는 다음과 같습니다. 성별, 연령, 핸드폰 번호를 수집하며 이 정보는 연구를 위해 3년간 사용되며 수집된 정보는 개인정보보호법에 따라 적절히 관리됩니다. 관련 정보는 본 연구자(들)만이 접근 가능한 클라우드 서버에 저장됩니다. 연구를 통해 얻은 모든 개인정보의 비밀보장을 위해 최선을 다할 것입니다. 이 연구에서 얻어진 개인정보가 학회지나 학회에 공개될 때 귀하의 이름과 정보는 사용되지 않을 것입니다. 그러나 만일 법이 요구하면 귀하의 개인정보는 제공될 수도 있습니다. 또한 가톨릭대학교 성심교정 생명윤리심의위원회가 연구대상자의 비밀보장을 침해하지 않고 관련 규정이 정하는 범위 안에서 본 연구의 실시 절차와 자료의 신뢰성을 검증하기 위해 연구 관련 자료를 직접 열람하거나 제출을 요청할 수 있습니다. 귀하가 본 동의서에 서명 또는 동의에 체크하는 것은, 이러한 사항에 대하여 사전에 알고 있었으며 이를 허용한다는 의사로 간주될 것입니다. 연구 종료 후 연구관련 자료(위원회 심의결과, 서면동의서(해당 경우), 개인정보수집/이용·제공현황, 연구종료보고서)는 「생명윤리 및 안전에 관한 법률」 시행규칙 제15조에 따라 연구종료 후 3년간 보관됩니다. 보관기간이 끝나면 분쇄 또는 파일 삭제 방법으로 폐기될 것입니다. 답례품 제공을 위해 수집된 핸드폰 번호의 경우 답례품 전달 즉시 폐기 됩니다.</p>
   <h2>8. 자발적 참여와 중지</h2>
-  <p>자발적으로 참여하며 언제든 중단할 수 있습니다. 연구 중단 시 불이익이 없습니다.</p>
+  <p>본 연구는 자발적으로 참여 의사를 밝히신 분에 한하여 수행될 것입니다. 이에 따라 본 연구에 참여하지 않을 자유가 있으며 본 연구에 참여하지 않아도 귀하에게는 어떠한 불이익도 없습니다. 또한, 귀하는 연구에 참여하신 언제든지 도중에 그만 둘 수 있습니다. 만일 귀하가 연구에 참여하는 것을 그만두고 싶다면 연구 진행 도중 언제든 화면을 종료하고 연구를 중단할 수 있습니다. 참여 중지 시 귀하의 자료는 저장되지 않으며 어떠한 불이익도 존재하지 않습니다</p>
   <h2>* 문의</h2>
-  <p>가톨릭대학교 발달심리학 오현택 (010-6532-3161, toh315@gmail.com)</p>
+  <p>가톨릭대학교 발달심리학 오현택 (010-6532-3161, toh315@gmail.com)
+  만일 어느 때라도 연구대상자로서 귀하의 권리에 대한 질문이 있다면 다음의 가톨릭대학교 성심교정 생명윤리심의위원회에 연락하십시오. 가톨릭대학교 성심교정 생명윤리심의위원회(IRB사무국) 전화번호: 02-2164-4827</p>
 </div>
 """
 
@@ -1688,12 +1691,12 @@ AGREE_HTML = """
   <div class="agree-title">동 의 서</div>
   <p><strong>연구제목:</strong> 인공지능 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</p>
   <ol class="agree-list">
-    <li><span class="agree-num">1.</span>연구 설명문을 충분히 이해하였습니다.</li>
-    <li><span class="agree-num">2.</span>연구 참여 시 발생할 위험과 이득을 숙지하였습니다.</li>
-    <li><span class="agree-num">3.</span>자발적으로 연구 참여에 동의합니다.</li>
-    <li><span class="agree-num">4.</span>연구에서 수집되는 개인정보 처리에 동의합니다.</li>
-    <li><span class="agree-num">5.</span>연구 관련 자료 열람 가능성에 동의합니다.</li>
-    <li><span class="agree-num">6.</span>언제든 참여를 철회할 수 있으며 불이익이 없음을 이해합니다.</li>
+    <li><span class="agree-num">1.</span>나는 이 연구의 설명문을 읽고 충분히 이해하였습니다./li>
+    <li><span class="agree-num">2.</span>나는 이 연구에 참여함으로써 발생할 위험과 이득을 숙지하였습니다.</li>
+    <li><span class="agree-num">3.</span>나는 이 연구에 참여하는 것에 대하여 자발적으로 동의합니다. </li>
+    <li><span class="agree-num">4.</span>나는 이 연구에서 얻어진 나에 대한 정보를 현행 법률과 가톨릭대학교 성심교정 생명윤리심의위원회 규정이 허용하는 범위 내에서 연구자가 수집하고 처리하는데 동의합니다.</li>
+    <li><span class="agree-num">5.</span>나는 담당 연구자나 위임 받은 대리인이 연구를 진행하거나 결과 관리를 하는 경우와 연구기관, 연구비지원기관 및 가톨릭대학교 성심교정 생명윤리심의위원회가 실태 조사를 하는 경우에는 비밀로 유지되는 나의 개인 신상 정보를 직접적으로 열람하는 것에 동의합니다.</li>
+    <li><span class="agree-num">6.</span>나는 언제라도 이 연구의 참여를 철회할 수 있고 이러한 결정이 나에게 어떠한 해도 되지 않을 것이라는 것을 압니다.</li>
   </ol>
 </div>
 """
@@ -1704,29 +1707,36 @@ PRIVACY_HTML = """
   <h2>[ 개인정보 수집∙이용에 대한 동의 ]</h2>
   <table class="privacy-table">
     <tr>
-      <th>수집 개인정보</th>
+      <th>수집하는 개인정보 항목
+</th>
       <td>성별, 나이, 휴대폰 번호</td>
     </tr>
     <tr>
-      <th>수집 및 이용목적</th>
+      <th>개인정보의 수집 및 이용목적
+</th>
       <td>
-        <p>연구 수행 및 논문 작성을 위한 기초 데이터</p>
+        <p>제공하신 정보는 연구수행 및 논문작성 등을 위해서 사용합니다.</p>
         <ol>
-          <li>연구 수행: 성별, 나이, 휴대폰 번호</li>
-          <li>민감정보는 수집하지 않습니다.</li>
+          <li>연구수행을 위해 이용 :성별, 나이, 핸드폰 번호</li>
+          <li>단, 이용자의 기본적 인권 침해의 우려가 있는 민감한 개인정보 (인종 및 민족, 사상 및 신조, 정치적 성향 및 범죄기록 등)는 수집하지 않습니다.</li>
         </ol>
       </td>
     </tr>
     <tr>
-      <th>제3자 제공 및 목적 외 이용</th>
-      <td>법적 요구 또는 IRB 검증 목적에 한해 자료를 열람할 수 있습니다.</td>
+      <th>개인정보의 제3자 제공 및 목적 외 이용</th>
+      <td>법이 요구하거나 가톨릭대학교 성심교정 생명윤리심의위원회가 본 연구의 실시 절차와 자료의 신뢰성을 검증하기 위해 연구 결과를 직접 열람할 수 있습니다.</td>
     </tr>
     <tr>
-      <th>보유 및 이용기간</th>
-      <td>연구 종료 후 3년간 보관 후 안전하게 폐기합니다.</td>
+      <th>개인정보의 보유 및 이용기간
+</th>
+      <td>수집된 개인정보의 보유기간은 연구종료 후 3년 까지 입니다. 또한 파기(삭제)시 연구대상자의 개인정보를 재생이 불가능한 방법으로 즉시 파기합니다.</td>
     </tr>
   </table>
-  <p class="privacy-note">※ 동의를 거부할 수 있으나, 그 경우 연구 참여가 어려울 수 있습니다.</p>
+  <p class="privacy-note">※ 귀하는 이에 대한 동의를 거부할 수 있으며, 다만, 동의가 없을 경우 연구 참여가 불가능할 수 있음을 알려드립니다.
+  ※ 개인정보 제공자가 동의한 내용외의 다른 목적으로 활용하지 않음
+  ※ 만 18세 미만인 경우 반드시 법적대리인의 동의가 필요함 
+  ※「개인정보보호법」등 관련 법규에 의거하여 상기 본인은 위와 같이 개인정보 수집 및 활용에 동의함.
+</p>
 </div>
 """
 
@@ -2162,6 +2172,7 @@ def render_instructions() -> None:
   4. 학습 동기 설문 (26문항)
   5. 연구 종료 안내 및 연락처 입력 (선택 사항)
 - 화면의 버튼으로만 이동해 주세요.
+- 추론 과제는 이누이트 문법에 관한 과제로 선행되는 문법 규칙을 잘 읽고 이후에 주어지는 문항에 응답해주시면 됩니다.
 """
     )
     if st.button("설문 시작", use_container_width=True):
@@ -2274,7 +2285,7 @@ def render_anthro() -> None:
         scale_max=5,
         page_state_key="anthro_page",
         responses_key="anthro_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>AI 에이전트에 대한 인식 설문</h2>",
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>다음 문항을 읽고 평소에 생각과 가장 가까운 것을 선택해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
     )
@@ -2295,7 +2306,7 @@ def render_achive() -> None:
         scale_max=6,
         page_state_key="achive_page",
         responses_key="achive_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>성취/접근 성향 설문</h2>",
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>다음 문항을 읽고 학습에 대한 본인의 생각과 가장 가까운 것을 선택해주세요.</h2>",
         scale_hint_html=LIKERT6_LEGEND_HTML,
         per_page=10,
     )
@@ -2306,7 +2317,7 @@ def render_achive() -> None:
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("추론 과제 안내")
+    st.title("이누이트 문법 추론 과제 안내")
     st.markdown(
         """
 - **1회차 (명사구 12문항)**: 소유, 복수, 목적 표지 등 규칙을 추론합니다.  
@@ -2597,12 +2608,12 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
 
 def render_difficulty_check() -> None:
     scroll_top_js()
-    st.title("난이도 조정 의향")
+    st.title("다음 진행할 과제의 난이도를 선택해주세요")
     st.write(
-        "다음 라운드(동사 시제·상)를 위해 난이도가 높아져도 도전할 의향을 선택해 주세요."
+        "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
     )
     slider = st.slider(
-        "다음 라운드 난이도 상향 허용 (0=선택 없음, 10=매우 도전)",
+        "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)",
         min_value=0,
         max_value=10,
         value=0,
@@ -2614,7 +2625,7 @@ def render_difficulty_check() -> None:
         st.session_state.payload["difficulty_checks"].pop("after_round1", None)
     if st.button("2회차 시작", use_container_width=True):
         if slider <= 0:
-            st.warning("난이도 상향 의향을 1~10 사이에서 선택해 주세요.")
+            st.warning("난이도 수준을 1~10 사이에서 선택해 주세요.")
             return
         st.session_state.round_state["verbs_index"] = 0
         st.session_state.round_state["question_start"] = None
@@ -2632,7 +2643,7 @@ def render_motivation() -> None:
         scale_max=5,
         page_state_key="motivation_page",
         responses_key="motivation_responses",
-        prompt_html="<h2 style='text-align:center;font-weight:bold;'>학습 동기 설문</h2>",
+        prompt_html="<h2 style='text-align:center;font-weight:bold;'>방금 진행한 2가지 추론 과제에 대한 생각을 응답해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
         question_ids=question_ids,
@@ -2655,7 +2666,7 @@ def render_motivation() -> None:
 
 def render_manipulation_check() -> None:
     scroll_top_js()
-    st.header("조작 점검 문항")
+    st.header("방금 피드백을 준 AI에이전트에 대한 평가를 진행해주세요.")
     st.caption("각 문항은 1(전혀 그렇지 않다) ~ 5(매우 그렇다) 사이에서 선택해 주세요. 모든 문항은 필수입니다.")
     st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
 
@@ -2734,10 +2745,10 @@ def render_manipulation_check() -> None:
 
 def render_post_task_reflection() -> None:
     scroll_top_js()
-    st.title("마무리 질문")
-    st.write("다음 기회에 더 어려운 과제가 주어져도 도전할 의향을 선택해 주세요.")
+    st.title("다음 기회에 유사한 과제가 있을 때 어느 정도 난이도에 도전하시겠습니까?")
+    st.write("유사한 과제를 더 진행한다면 어느 정도 난이도로 진행하실지 선택해주세요.")
     slider = st.slider(
-        "난이도 상향 의향 (0=선택 없음, 10=매우 도전)",
+        "난이도 상향 의향 (1=매우 쉬움, 10=매우 어려움)",
         min_value=0,
         max_value=10,
         value=0,
@@ -2750,9 +2761,9 @@ def render_post_task_reflection() -> None:
     st.session_state.payload["open_feedback"] = st.session_state.payload.get(
         "open_feedback", ""
     )
-    if st.button("연락처 입력으로 이동", use_container_width=True):
+    if st.button("다음 단계", use_container_width=True):
         if slider <= 0:
-            st.warning("난이도 상향 의향을 1~10 사이에서 선택해 주세요.")
+            st.warning("난이도를 1~10 사이에서 선택해 주세요.")
             return
         set_phase("manipulation_check")
 
@@ -2871,13 +2882,14 @@ def render_summary() -> None:
 
     st.title("연구 참여가 완료되었습니다.")
     st.markdown(
-        "본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 탐색하기 위한 IRB 승인 연구입니다. "
+        "본 연구는 AI 피드백 방식이 학습 경험과 동기에 미치는 영향을 탐색하기 위한 연구입니다. "
         "모든 응답은 익명으로 처리되며 연구 목적 외에 사용되지 않습니다."
+        "본 연구에서 주어진 AI의 피드백은 미리 생성된 피드백으로 실제 연구 참여자님의 추론 능력을 평가한 내용이 아닙니다."
     )
     st.markdown("참여와 협조에 진심으로 감사드립니다.")
 
     if st.session_state.saved_once:
-        st.success("응답이 안전하게 저장되었습니다. 창을 닫으셔도 무방합니다.")
+        st.success("연구가 완료되었습니다. 하단의 종료/제출 버튼을 눌러주세요.")
     elif st.session_state.save_error:
         st.error("응답 저장 중 오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.")
         if st.button("다시 시도", use_container_width=True):
