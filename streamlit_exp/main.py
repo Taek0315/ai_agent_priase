@@ -1377,8 +1377,8 @@ class ExperimentData:
 NOUN_QUESTIONS: List[Question] = [
     Question(
         id="N1",
-        gloss="사람들이 소유한 개의 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람들이 소유한 개의 집을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 여러 사람이 함께 기르는 한 마리 개가 사용하는 집을 나타내는 표현으로 빈칸을 채우세요.",
+        stem="'nuk-t ____ taku-na' (사람들이 ____를 본다; 대상은 공동으로 키우는 개의 집입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "nuk-t-mi sua-mi ani",
             "nuk-mi sua-t-mi ani",
@@ -1391,8 +1391,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N2",
-        gloss="사람이 집과 음식을 보는 상황에서 목적 표지가 올바르게 사용된 문장을 선택하세요.",
-        stem="'nuk _____ taku-na' (사람이 _____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
+        gloss="이누이트 문법 규칙에 따라, 집과 음식을 모두 목적 표지로 묶어 표현해야 하는 상황입니다. 주어진 문장을 완성해 주세요.",
+        stem="'nuk ____ taku-na' (사람이 ____를 본다; 집과 음식이 모두 목적어입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "ani-ka ama pira-ka",
             "ani-ka ama pira",
@@ -1405,8 +1405,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N3",
-        gloss="사람의 개들이 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람의 개들이 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 한 사람이 기르는 여러 마리 개가 소유한 물그릇을 표현하세요.",
+        stem="'nuk ____ taku-na' (사람이 자신의 개 무리가 차지한 물그릇을 살핀다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "nuk-mi sua-t-mi ika",
             "nuk-t-mi sua-mi ika",
@@ -1419,8 +1419,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N4",
-        gloss="사람이 개의 집들을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk _____ taku-na' (사람이 _____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
+        gloss="이누이트 문법 규칙에 따라, 특정 개의 여러 집을 올바른 소유 순서로 나타내세요.",
+        stem="'nuk ____ taku-na' (사람이 특정 개의 집 여러 채를 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "sua-mi ani-t-mi",
             "sua-t-mi ani-mi",
@@ -1433,22 +1433,22 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N5",
-        gloss="사람들의 개가 소유한 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람들의 개가 소유한 집을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 한 사람이 기르는 여러 마리 개가 함께 사용하는 집을 나타내는 표현을 고르세요.",
+        stem="'nuk ____ taku-na' (사람이 자신의 여러 마리 개가 쓰는 집을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
-            "nuk-t-mi sua-mi ani",
             "nuk-mi sua-t-mi ani",
+            "nuk-t-mi sua-mi ani",
             "nuk-mi sua-mi ani",
             "nuk-t sua-mi ani",
             "nuk sua-t-mi ani",
         ],
         answer_idx=0,
-        reason_idx=4,
+        reason_idx=1,
     ),
     Question(
         id="N6",
-        gloss="사람과 개가 각각 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람과 개가 각각 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 사람과 개가 각각 소유한 물을 한 문장 안에서 표현하세요.",
+        stem="'nuk ____ taku-na' (사람이 자신과 개가 각자 쓰는 물을 확인한다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "nuk-mi ama sua-mi ika",
             "nuk-t-mi ama sua-t-mi ika",
@@ -1461,8 +1461,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N7",
-        gloss="개들이 소유한 물을 나타내는 올바른 표현을 선택하세요.",
-        stem="개들이 소유한 물을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 개 무리 자체가 공동으로 소유한 물을 나타내는 표현을 선택하세요.",
+        stem="'nuk ____ taku-na' (사람이 개 무리가 차지한 물을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "sua-t-mi ika",
             "sua-mi ika",
@@ -1475,8 +1475,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N8",
-        gloss="사람들이 집들과 음식을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람들이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
+        gloss="이누이트 문법 규칙에 따라, 사람들이 여러 채의 집과 음식을 동시에 목적 표지로 표현하는 상황을 완성하세요.",
+        stem="'nuk-t ____ taku-na' (사람들이 ____를 본다; 여러 집과 음식이 함께 목적어입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "ani-t-mi ama pira-ka",
             "ani-mi ama pira-ka",
@@ -1489,8 +1489,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N9",
-        gloss="사람이 소유한 그 집을 나타내는 올바른 표현을 선택하세요.",
-        stem="사람이 소유한 그 집을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 특정 사람이 소유한 바로 그 집을 지칭하는 표현을 고르세요.",
+        stem="'nuk ____ taku-na' (사람이 자신이 소유한 바로 그 집을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "nuk-mi ani na",
             "nuk-t-mi ani na",
@@ -1503,8 +1503,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N10",
-        gloss="사람이 소유한 개의 집과 물을 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
+        gloss="이누이트 문법 규칙에 따라, 개가 소유한 집과 물을 모두 목적 표지로 엮어 표현하세요.",
+        stem="'nuk ____ taku-na' (사람이 개의 집과 물을 동시에 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "sua-mi ani-ka ama ika-ka",
             "sua-t-mi ani-ka ama ika-ka",
@@ -1517,8 +1517,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N11",
-        gloss="여러 사람들의 각각 다른 개들을 나타내는 올바른 표현을 선택하세요.",
-        stem="여러 사람들의 각각 다른 개들을 나타내는 올바른 표현은 무엇입니까?",
+        gloss="이누이트 문법 규칙에 따라, 여러 사람이 각각 다른 개를 소유하는 상황을 표현하세요.",
+        stem="'nuk-t ____ taku-na' (사람들이 각자의 개들을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "nuk-t-mi sua-t-mi",
             "nuk-mi sua-mi",
@@ -1531,8 +1531,8 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N12",
-        gloss="사람이 개들의 집들을 모두 보는 상황을 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람이 ____를 본다)에서 빈 칸에 들어갈 올바른 표현은?",
+        gloss="이누이트 문법 규칙에 따라, 한 사람이 모든 개의 집들을 한꺼번에 살피는 상황을 표현하세요.",
+        stem="'nuk ____ taku-na' (사람이 여러 마리 개의 집들을 모두 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=[
             "sua-t-mi ani-t-mi",
             "sua-mi ani-mi",
@@ -2130,8 +2130,8 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
 
     steps = max(1, int(seconds * 20))
     round_label_map = {
-        "nouns": "이누이트 문법 추론 1차",
-        "verbs": "이누이트 문법 추론 2차",
+        "nouns": "이누이트 문법 추론 과제 1차",
+        "verbs": "이누이트 문법 추론 과제 2차",
     }
     round_label = round_label_map.get(round_key, "추론 과제")
 
@@ -2423,14 +2423,14 @@ def render_instructions() -> None:
     st.markdown(
         """
 - 전체 소요 시간은 약 **10~15분**입니다.
-- 연구는 다음 순서로 진행됩니다.
-  1. 의인화/성취 관련 설문 (56문항)
-    2. 이누이트 문법 빈칸 추론 1차 (12문항) + AI 피드백
-    3. 이누이트 문법 빈칸 추론 2차 (12문항) + AI 피드백
-  4. 학습 동기 설문 (26문항)
-  5. 연구 종료 안내 및 연락처 입력 (선택 사항)
+  - 연구는 다음 순서로 진행됩니다.
+    1. 의인화/성취 관련 설문 (56문항)
+      2. 이누이트 문법 추론 과제 1차 (12문항) + AI 피드백
+      3. 이누이트 문법 추론 과제 2차 (12문항) + AI 피드백
+    4. 학습 동기 설문 (26문항)
+    5. 연구 종료 안내 및 연락처 입력 (선택 사항)
 - 화면의 버튼으로만 이동해 주세요.
-- 추론 과제는 이누이트 문법에 관한 과제로 선행되는 문법 규칙을 잘 읽고 이후에 주어지는 문항에 응답해주시면 됩니다.
+  - 추론 과제는 이누이트 문법 규칙을 바탕으로 빈칸에 들어갈 표현을 추론하는 형식입니다. 규칙 설명을 먼저 읽고 각 문항에 응답해 주세요.
 """
     )
     if st.button("설문 시작", use_container_width=True):
@@ -2583,7 +2583,7 @@ def render_question_card(question: Question, badge: Optional[str] = None) -> Non
   {badge_html}
   <div class="question-label">지시문</div>
   <p class="question-stem">{gloss_html}</p>
-  <div class="question-label">문항</div>
+  <div class="question-label">문제</div>
   <p class="question-stem-text">{stem_html}</p>
 </div>
 """,
@@ -2679,11 +2679,11 @@ def render_inuit_training_intro() -> None:
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("이누이트 문법 빈칸 추론 과제 안내")
+    st.title("이누이트 문법 추론 과제 안내")
     st.markdown(
         """
-- **이누이트 문법 빈칸 추론 1차 (12문항)**: 소유·복수·목적 표지 등의 규칙을 종합해 빈칸에 들어갈 표현을 추론합니다.  
-- **이누이트 문법 빈칸 추론 2차 (12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li) 규칙을 활용해 상황에 맞는 표현을 선택합니다.  
+- **이누이트 문법 추론 과제 1차 (12문항)**: 소유·복수·정관·목적 표지를 종합해 빈칸에 들어갈 명사 표현을 추론합니다.  
+- **이누이트 문법 추론 과제 2차 (12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li) 규칙을 활용해 문장 속 빈칸에 맞는 동사 형태를 선택합니다.  
 - 각 문항은 5지선다이며, **추론 근거 태그**도 5지선다에서 선택합니다.  
 - 제출 후 AI 에이전트가 조건 맞춤형 칭찬 피드백을 제공합니다.
 """
@@ -2705,10 +2705,10 @@ def render_inference_round(
 ) -> None:
     scroll_top_js()
     round_title_map = {
-        "nouns": "이누이트 문법에 따른 빈칸 맞추기 추론 과제 1차",
-        "verbs": "이누이트 문법에 따른 빈칸 맞추기 추론 과제 2차",
+        "nouns": "이누이트 문법 추론 과제 1차",
+        "verbs": "이누이트 문법 추론 과제 2차",
     }
-    st.title(round_title_map.get(round_key, "이누이트 문법 빈칸 추론 과제"))
+    st.title(round_title_map.get(round_key, "이누이트 문법 추론 과제"))
     rs = st.session_state.round_state
     payload = st.session_state.payload
     index = rs.get(f"{round_key}_index", 0)
@@ -2723,9 +2723,9 @@ def render_inference_round(
     with question_container:
         st.header(f"추론 과제 12문항 중 {current_index}번째")
         round_badge = (
-            "이누이트 문법 추론 1차 문항"
+            "이누이트 문법 추론 과제 1차 문항"
             if round_key == "nouns"
-            else "이누이트 문법 추론 2차 문항"
+            else "이누이트 문법 추론 과제 2차 문항"
         )
         render_question_card(question, badge=round_badge)
         st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
@@ -2848,8 +2848,8 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "nouns": "이누이트 문법 추론 1차",
-        "verbs": "이누이트 문법 추론 2차",
+        "nouns": "이누이트 문법 추론 과제 1차",
+        "verbs": "이누이트 문법 추론 과제 2차",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -2905,8 +2905,8 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     summary_text = feedback_payload.get("summary_text", "")
 
     hero_subtitle_map = {
-        "nouns": "이누이트 문법 추론 1차 분석 리포트",
-        "verbs": "이누이트 문법 추론 2차 분석 리포트",
+        "nouns": "이누이트 문법 추론 과제 1차 분석 리포트",
+        "verbs": "이누이트 문법 추론 과제 2차 분석 리포트",
     }
     hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
 
@@ -2971,12 +2971,20 @@ def render_difficulty_check() -> None:
         "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
     )
     likert_options = list(range(1, 11))
-    rating_value, rating_valid = radio_required(
-        "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)",
-        likert_options,
-        key="difficulty_after_round1_radio",
-        horizontal=True,
-    )
+    prompt = "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)"
+    try:
+        rating_value = st.radio(
+            prompt,
+            options=likert_options,
+            index=None,
+            horizontal=True,
+            key="difficulty_rating",
+        )
+        rating_valid = rating_value is not None
+    except TypeError:
+        rating_value, rating_valid = _render_horizontal_radio_stack(
+            prompt, likert_options, "difficulty_rating_fallback"
+        )
     if rating_valid:
         st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_value)
     else:
