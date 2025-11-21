@@ -2594,7 +2594,10 @@ def render_question_card(question: Question, badge: Optional[str] = None) -> Non
 def render_inuit_training_intro() -> None:
     scroll_top_js()
     st.title("이누이트 문법 학습 안내")
-    st.write("지금부터 이누이트 문법 규칙을 간단히 학습하도록 하겠습니다. 학습을 충분히 하신 뒤, 연습 문제를 풀어주세요.")
+    st.write("지금부터 이누이트 문법 규칙을 간단히 학습하도록 하겠습니다.")
+    st.write("학습을 충분히 하신 뒤, 연습 문제를 풀어주세요.")
+    st.write("본 과제는 새로운 언어 규칙에 대한 추론 능력을 측정하는 과제입니다.")
+    st.write("정답이 아닌 정답을 도출해낸 과정이 중요합니다.")
     st.write("연습 문제는 점수에 반영되지 않으며, 규칙을 이해하는 데 도움을 주기 위한 문항입니다.")
 
     with st.expander("핵심 규칙 요약", expanded=True):
