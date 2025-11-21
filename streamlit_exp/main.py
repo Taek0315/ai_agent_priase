@@ -3113,22 +3113,30 @@ def render_post_task_reflection() -> None:
     scroll_top_js()
     st.title("다음 기회에 유사한 과제가 있을 때 어느 정도 난이도에 도전하시겠습니까?")
     st.write("유사한 과제를 더 진행한다면 어느 정도 난이도로 진행하실지 선택해주세요.")
-    slider = st.slider(
-        "난이도 상향 의향 (1=매우 쉬움, 10=매우 어려움)",
-        min_value=0,
-        max_value=10,
-        value=0,
-        key="difficulty_final_slider",
-    )
-    if slider > 0:
-        st.session_state.payload["difficulty_checks"]["final"] = int(slider)
+    likert_options = list(range(1, 11))
+    prompt = "난이도 상향 의향 (1=매우 쉬움, 10=매우 어려움)"
+    try:
+        rating_value = st.radio(
+            prompt,
+            options=likert_options,
+            index=None,
+            horizontal=True,
+            key="difficulty_future_rating",
+        )
+        rating_valid = rating_value is not None
+    except TypeError:
+        rating_value, rating_valid = _render_horizontal_radio_stack(
+            prompt, likert_options, "difficulty_future_rating_fallback"
+        )
+    if rating_valid:
+        st.session_state.payload["difficulty_checks"]["final"] = int(rating_value)
     else:
         st.session_state.payload["difficulty_checks"].pop("final", None)
     st.session_state.payload["open_feedback"] = st.session_state.payload.get(
         "open_feedback", ""
     )
     if st.button("다음 단계", use_container_width=True):
-        if slider <= 0:
+        if not rating_valid:
             st.warning("난이도를 1~10 사이에서 선택해 주세요.")
             return
         set_phase("manipulation_check")
