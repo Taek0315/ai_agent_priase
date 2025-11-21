@@ -52,77 +52,158 @@ st.set_page_config(
 )
 
 COMPACT_CSS = """
-<style>
-  :root { --fs-base: 16px; --lh-base: 1.65; }
-  #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
-  [data-testid="stSidebar"], section[data-testid="stSidebar"] { display: none !important; }
-  [data-testid="stSidebarCollapseButton"],
-  [data-testid="stSidebarNav"],
-  button[kind="header"] { display: none !important; }
-  html, body, [data-testid="stAppViewContainer"] {
-    font-size: var(--fs-base);
-    line-height: var(--lh-base);
-    overflow-x: hidden !important;
-  }
-  .stApp,
-  [data-testid="stAppViewContainer"],
-  [data-testid="stAppViewContainer"] > .main,
-  section.main {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-  }
-  [data-testid="stAppViewContainer"] > .main > div,
-  .main .block-container,
-  section.main > div.block-container {
-    padding-top: 0 !important;
-    padding-bottom: 20px !important;
-  }
-    h1, .stMarkdown h1 {
-      margin-top: 0 !important;
-      margin-bottom: 12px !important;
-      line-height: 1.2;
-      text-align: left !important;
-    }
-    h2, .stMarkdown h2 {
-      margin-top: 0 !important;
-      margin-bottom: 10px !important;
-      text-align: left !important;
-    }
-    h3, .stMarkdown h3 {
-      margin-top: 0 !important;
-      margin-bottom: 8px !important;
-      text-align: left !important;
-    }
-      .section-heading,
-      .section-title {
-        font-weight: 700;
-        text-align: left !important;
-        margin-top: 0;
-        margin-bottom: 12px;
-      }
-      .praise-highlight {
-        color: #FFE082;
-        font-weight: 600;
-      }
-      .debrief-box {
-        width: 100%;
-        max-width: 100%;
-        white-space: normal;
-        word-break: keep-all;
-        overflow-x: hidden;
-        overflow-y: visible;
-        padding: 1.25rem 1.5rem;
-        border-radius: 0.75rem;
-        background-color: #20252b;
-        color: #f5f5f5;
-        box-sizing: border-box;
-      }
-  p, .stMarkdown p   { margin-top: 0 !important; }
-  .anthro-title { margin-top: 0 !important; }
-  div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
-  .mcp-footer { margin-top: 0.6rem !important; }
-</style>
-"""
+ <style>
+   :root { --fs-base: 16px; --lh-base: 1.65; }
+   #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
+   [data-testid="stSidebar"], section[data-testid="stSidebar"] { display: none !important; }
+   [data-testid="stSidebarCollapseButton"],
+   [data-testid="stSidebarNav"],
+   button[kind="header"] { display: none !important; }
+   html, body, [data-testid="stAppViewContainer"] {
+     font-size: var(--fs-base);
+     line-height: var(--lh-base);
+     overflow-x: hidden !important;
+   }
+   *, *::before, *::after {
+     box-sizing: border-box;
+   }
+   .stApp,
+   [data-testid="stAppViewContainer"],
+   [data-testid="stAppViewContainer"] > .main,
+   section.main {
+     margin-top: 0 !important;
+     padding-top: 0 !important;
+   }
+   [data-testid="stAppViewContainer"] > .main > div,
+   .main .block-container,
+   section.main > div.block-container {
+     padding-top: 0 !important;
+     padding-bottom: 20px !important;
+   }
+     h1, .stMarkdown h1 {
+       font-size: 1.8rem;
+       line-height: 1.3;
+       margin-top: 0 !important;
+       margin-bottom: 12px !important;
+       text-align: left !important;
+     }
+     h2, .stMarkdown h2 {
+       font-size: 1.4rem;
+       line-height: 1.35;
+       margin-top: 0 !important;
+       margin-bottom: 10px !important;
+       text-align: left !important;
+     }
+     h3, .stMarkdown h3 {
+       font-size: 1.2rem;
+       margin-top: 0 !important;
+       margin-bottom: 8px !important;
+       text-align: left !important;
+     }
+   @media (max-width: 768px) {
+     h1, .stMarkdown h1 {
+       font-size: 1.4rem;
+       line-height: 1.3;
+     }
+     h2, .stMarkdown h2 {
+       font-size: 1.25rem;
+     }
+     h3, .stMarkdown h3 {
+       font-size: 1.08rem;
+     }
+   }
+       .section-heading,
+       .section-title {
+         font-weight: 700;
+         text-align: left !important;
+         margin-top: 0;
+         margin-bottom: 12px;
+       }
+       .praise-highlight {
+         color: #FFE082;
+         font-weight: 600;
+       }
+       .debrief-box {
+         width: 100%;
+         max-width: 100%;
+         white-space: normal;
+         word-break: keep-all;
+         overflow-x: hidden;
+         overflow-y: visible;
+         padding: 1.25rem 1.5rem;
+         border-radius: 0.75rem;
+         background-color: #20252b;
+         color: #f5f5f5;
+         box-sizing: border-box;
+       }
+   .question-card {
+     width: 100%;
+     max-width: 100%;
+     border-radius: 16px;
+     border: 1px solid #dfe4f0;
+     background: #f6f7fb;
+     padding: 18px 20px;
+     margin: 12px 0 18px;
+     overflow: hidden;
+   }
+   .question-badge {
+     display: inline-flex;
+     padding: 4px 12px;
+     border-radius: 999px;
+     background: #dde1fb;
+     color: #3941a4;
+     font-size: 0.85rem;
+     font-weight: 600;
+     margin-bottom: 10px;
+   }
+   .question-label {
+     font-size: 0.85rem;
+     letter-spacing: 0.02em;
+     text-transform: uppercase;
+     color: #6c7390;
+     font-weight: 600;
+     margin-bottom: 4px;
+   }
+   .question-stem,
+   .question-stem-text {
+     font-weight: 700;
+     font-size: 1.08rem;
+     margin: 0 0 8px;
+     color: #1f2433;
+     line-height: 1.65;
+     white-space: normal;
+     word-break: keep-all;
+   }
+   .question-stem-text {
+     font-weight: 600;
+   }
+   .question-card pre,
+   .question-card code {
+     white-space: normal !important;
+   }
+   @media (max-width: 768px) {
+     .question-card {
+       padding: 14px 16px;
+     }
+     .question-stem,
+     .question-stem-text {
+       font-size: 1rem;
+     }
+   }
+   .stRadio > div[role="radiogroup"] {
+     gap: 6px !important;
+   }
+   .stRadio label {
+     white-space: normal !important;
+     align-items: flex-start !important;
+     font-weight: 500;
+   }
+   p, .stMarkdown p   { margin-top: 0 !important; }
+   .anthro-title { margin-top: 0 !important; }
+   div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }
+   .mcp-footer { margin-top: 0.6rem !important; }
+ </style>
+ """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
 
@@ -2075,6 +2156,7 @@ def ensure_session_state() -> None:
             "motivation_category_scores": {},
             "difficulty_checks": {},
             "inference_details": [],
+            "practice_attempt": {},
             "feedback_messages": {"nouns": [], "verbs": []},
             "feedback_condition": "",
             "open_feedback": "",
@@ -2092,6 +2174,13 @@ def ensure_session_state() -> None:
             "verbs_index": 0,
             "question_start": None,
             "last_micro_feedback": None,
+        }
+    if "practice_state" not in ss:
+        ss.practice_state = {
+            "attempted": False,
+            "correct": None,
+            "message": "",
+            "explanation": "",
         }
     if "analysis_seen" not in ss:
         ss.analysis_seen = {"nouns": False, "verbs": False}
@@ -2137,6 +2226,7 @@ def set_phase(next_phase: str) -> None:
         "instructions",
         "anthro",
         "achive",
+        "inuit_training_intro",
         "task_intro",
         "inference_nouns",
         "analysis_nouns",
@@ -2455,6 +2545,110 @@ def render_achive() -> None:
     )
     if done:
         st.session_state.achive_page = 1
+        set_phase("inuit_training_intro")
+
+
+def render_question_card(question: Question, badge: Optional[str] = None) -> None:
+    gloss_html = html.escape(question.gloss)
+    stem_html = html.escape(question.stem)
+    badge_html = f'<div class="question-badge">{badge}</div>' if badge else ""
+    st.markdown(
+        f"""
+<div class="question-card">
+  {badge_html}
+  <div class="question-label">설명</div>
+  <p class="question-stem">{gloss_html}</p>
+  <div class="question-label">문장</div>
+  <p class="question-stem-text">{stem_html}</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def render_inuit_training_intro() -> None:
+    scroll_top_js()
+    st.title("이누이트 문법 학습 안내")
+    st.write("지금부터 이누이트 문법 규칙을 간단히 학습한 뒤, 연습 문제 1개를 풀어보게 됩니다.")
+    st.write("연습 문제는 점수에 반영되지 않으며, 규칙을 이해하는 데 도움을 주기 위한 문항입니다.")
+
+    with st.expander("핵심 규칙 요약", expanded=True):
+        st.markdown(GRAMMAR_INFO_MD)
+
+    practice_question = next((q for q in NOUN_QUESTIONS if q.id == "N4"), NOUN_QUESTIONS[0])
+    st.subheader("연습 문제 (점수에 반영되지 않음)")
+    render_question_card(practice_question, badge="연습 문제")
+    st.caption("정답과 추론 근거 태그를 모두 선택하면 즉시 정오답과 간단한 해설이 제공됩니다.")
+
+    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(practice_question.options)]
+    selected_answer, answer_valid = radio_required(
+        "정답을 선택하세요",
+        answer_labels,
+        key="practice_answer",
+    )
+
+    selected_reason, reason_valid = radio_required(
+        "추론 근거 태그를 선택하세요 (필수)",
+        REASON_NOUN_LABELS,
+        key="practice_reason",
+    )
+
+    ready_to_submit = bool(answer_valid and reason_valid)
+    submit_clicked = st.button(
+        "연습 문제 채점하기",
+        use_container_width=True,
+        disabled=not ready_to_submit,
+        key="practice_submit_button",
+    )
+
+    if submit_clicked and ready_to_submit:
+        answer_idx = answer_labels.index(selected_answer)
+        correct = answer_idx == practice_question.answer_idx
+        rule_label = REASON_NOUN_LABELS[practice_question.reason_idx]
+        correct_text = practice_question.options[practice_question.answer_idx]
+        feedback_message = (
+            "정답입니다! 핵심 규칙을 잘 적용하셨어요."
+            if correct
+            else f"아쉽지만 오답입니다. 정답은 '{correct_text}' 입니다."
+        )
+        rationale_hint = (
+            f"이 문항은 '{rule_label}' 규칙을 확인합니다. "
+            "소유 순서와 표지를 끝까지 적용하며 목적 표지 위치를 살펴보세요."
+        )
+        st.session_state.practice_state = {
+            "attempted": True,
+            "correct": correct,
+            "message": feedback_message,
+            "explanation": rationale_hint,
+        }
+        st.session_state.payload["practice_attempt"] = {
+            "round": "practice",
+            "question_id": practice_question.id,
+            "selected_option_idx": answer_idx,
+            "selected_option_text": practice_question.options[answer_idx],
+            "selected_reason_text": selected_reason,
+            "selected_reason_idx": REASON_NOUN_LABELS.index(selected_reason),
+            "correct_idx": practice_question.answer_idx,
+            "correct_text": correct_text,
+            "is_correct": correct,
+            "timestamp": now_utc_iso(),
+        }
+
+    practice_state = st.session_state.practice_state
+    if practice_state.get("attempted"):
+        show_feedback = st.success if practice_state.get("correct") else st.error
+        show_feedback(practice_state.get("message", "응답이 기록되었습니다."))
+        st.info(practice_state.get("explanation", "규칙 설명을 확인해 주세요."))
+
+    st.divider()
+    proceed_disabled = not practice_state.get("attempted")
+    if proceed_disabled:
+        st.info("연습 문제를 채점한 뒤에 추론 과제 설명으로 이동할 수 있습니다.")
+    if st.button(
+        "추론 과제 설명으로 이동",
+        use_container_width=True,
+        disabled=proceed_disabled,
+    ):
         set_phase("task_intro")
 
 
@@ -2498,8 +2692,8 @@ def render_inference_round(
     question_container = st.container()
     with question_container:
         st.header(f"추론 과제 12문항 중 {current_index}번째")
-        st.markdown(f"**설명:** {question.gloss}")
-        st.code(question.stem, language="text")
+        round_badge = "명사 라운드 문항" if round_key == "nouns" else "동사 라운드 문항"
+        render_question_card(question, badge=round_badge)
         st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
 
         if rs.get("question_start") is None:
@@ -2742,19 +2936,18 @@ def render_difficulty_check() -> None:
     st.write(
         "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
     )
-    slider = st.slider(
+    likert_options = [str(i) for i in range(1, 11)]
+    rating_label, rating_valid = radio_required(
         "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)",
-        min_value=0,
-        max_value=10,
-        value=0,
-        key="difficulty_after_round1_slider",
+        likert_options,
+        key="difficulty_after_round1_radio",
     )
-    if slider > 0:
-        st.session_state.payload["difficulty_checks"]["after_round1"] = int(slider)
+    if rating_valid:
+        st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_label)
     else:
         st.session_state.payload["difficulty_checks"].pop("after_round1", None)
     if st.button("2회차 시작", use_container_width=True):
-        if slider <= 0:
+        if not rating_valid:
             st.warning("난이도 수준을 1~10 사이에서 선택해 주세요.")
             return
         st.session_state.round_state["verbs_index"] = 0
@@ -3103,6 +3296,8 @@ elif phase == "anthro":
     render_anthro()
 elif phase == "achive":
     render_achive()
+elif phase == "inuit_training_intro":
+    render_inuit_training_intro()
 elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
