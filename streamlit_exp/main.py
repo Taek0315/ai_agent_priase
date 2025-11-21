@@ -1548,96 +1548,96 @@ NOUN_QUESTIONS: List[Question] = [
 VERB_QUESTIONS: List[Question] = [
     Question(
         id="V1",
-        gloss="사람이 지금 집을 보고 있는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 지금 집을 보고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["taku-li-na", "taku-na", "taku-mu-na", "taku-li-ki", "taku-tu"],
         answer_idx=0,
         reason_idx=1,
     ),
     Question(
         id="V2",
-        gloss="사람이 어제 저녁 전에 이미 음식을 만들어 두었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 어제 저녁 전에 이미 음식을 만들어 두었던 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["siku-mu-tu", "siku-tu", "siku-li-tu", "siku-mu-na", "siku-ki"],
         answer_idx=0,
         reason_idx=4,
     ),
     Question(
         id="V3",
-        gloss="개가 내일까지 물을 다 먹어 놓을 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua ika-ka ____' (개가 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 개가 내일까지 물을 모두 먹어 둘 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'sua ika-ka ____' (개가 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-mu-ki", "niri-ki", "niri-li-ki", "niri-mu-na", "niri-tu"],
         answer_idx=0,
         reason_idx=1,
     ),
     Question(
         id="V4",
-        gloss="개가 어제 음식을 먹었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua pira-ka ____' (개가 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 개가 어제 음식을 먹은 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'sua pira-ka ____' (개가 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
         answer_idx=0,
         reason_idx=0,
     ),
     Question(
         id="V5",
-        gloss="사람이 이미 물을 보았다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 이미 물을 본 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["taku-mu-na", "taku-na", "taku-tu", "taku-li-na", "taku-mu-tu"],
         answer_idx=0,
         reason_idx=1,
     ),
     Question(
         id="V6",
-        gloss="사람과 개가 곧 음식을 보는 중일 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ama sua pira-ka ____' (사람과 개가 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람과 개가 곧 음식을 보는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk ama sua pira-ka ____' (사람과 개가 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["taku-li-ki", "taku-ki", "taku-li-na", "taku-mu-ki", "taku-tu"],
         answer_idx=0,
         reason_idx=0,
     ),
     Question(
         id="V7",
-        gloss="개가 지금 집을 보는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua ani-ka ____' (개가 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 개가 지금 집을 보고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'sua ani-ka ____' (개가 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["taku-li-na", "taku-na-li", "li-taku-na", "taku-na", "taku-li-tu"],
         answer_idx=0,
         reason_idx=2,
     ),
     Question(
         id="V8",
-        gloss="사람이 그때까지 음식을 다 먹어 둘 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 그때까지 음식을 모두 먹어 둘 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-mu-ki", "niri-li-ki", "niri-ki", "niri-mu-tu", "niri-na"],
         answer_idx=0,
         reason_idx=3,
     ),
     Question(
         id="V9",
-        gloss="사람이 항상 물을 마신다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 항상 물을 마시는 습관을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-na", "niri-li-na", "niri-mu-na", "niri-tu", "niri-ki"],
         answer_idx=0,
         reason_idx=0,
     ),
     Question(
         id="V10",
-        gloss="사람이 집을 본 뒤에 음식을 먹었다는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'(ani-ka taku-mu-tu) ama pira-ka ____' (집을 본 뒤에 음식을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 집을 본 뒤에 음식을 먹은 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'(ani-ka taku-mu-tu) ama pira-ka ____' (집을 본 뒤에 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
         answer_idx=0,
         reason_idx=4,
     ),
     Question(
         id="V11",
-        gloss="개들이 동시에 물을 마시고 있는 중이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'sua-t-mi ika-ka ____' (개들이 물을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 개들이 동시에 물을 마시고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'sua-t-mi ika-ka ____' (개들이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["niri-li-na", "niri-na", "niri-li-tu", "niri-mu-na", "niri-ki"],
         answer_idx=0,
         reason_idx=1,
     ),
     Question(
         id="V12",
-        gloss="사람이 내일 아침까지 집을 다 지어 놓을 것이라는 의미를 나타내는 올바른 동사 형태를 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 동사 형태는?",
+        gloss="이누이트 문법 규칙에 따라, 사람이 내일 아침까지 집을 완성해 놓을 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
+        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
         options=["siku-mu-ki", "siku-ki", "siku-li-ki", "siku-mu-tu", "siku-na"],
         answer_idx=0,
         reason_idx=3,
@@ -1983,17 +1983,17 @@ GRAMMAR_INFO_MD = r"""
 - *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
 - *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
 
-**명사구(NP) 규칙**  
+**소유·표지 규칙 (1차 문항 참고)**  
 - 소유: 명사 뒤 `-mi` (예: *nuk-mi ani* = 사람의 집)  
 - 복수: `-t`; 복수+소유는 `-t-mi`  
-- 목적 표지: NP 오른쪽 끝에 `-ka` (등위 구조에서도 마지막 항만)  
+- 목적 표지: 표현 오른쪽 끝에 `-ka` (등위 구조에서도 마지막 항만)  
 - 어순: 바깥 소유자 → 안쪽 소유자 → 머리 명사  
-- 정관 `-ri`: NP 말단, `-ka` 앞 위치
+- 정관 `-ri`: 표현 말단, `-ka` 앞 위치
 
-**동사 시제·상(TAM)**  
+**시제·상(TAM) 규칙 (2차 문항 참고)**  
 - 시제: `-na`(현재), `-tu`(과거), `-ki`(미래)  
 - 상: `-mu`(완료), `-li`(진행)  
-- 순서: 동사 + 상 + 시제 (예: *niri-mu-tu*)  
+- 순서: 어간 + 상 + 시제 (예: *niri-mu-tu*)  
 - 맥락 단서: 이미/항상/어제/내일까지 등으로 시제·상을 결정
 """
 
@@ -2051,21 +2051,46 @@ def scroll_top_js(nonce: Optional[int] = None) -> None:
 
 
 def radio_required(
-    label: str, options: List[str], key: str
-) -> tuple[Optional[str], bool]:
+    label: str, options: List[Any], key: str, *, horizontal: bool = False
+) -> tuple[Optional[Any], bool]:
     """
     Render a radio input without a default selection.
 
     Returns the selected value (or None) and whether the input is valid.
     """
     try:
-        value = st.radio(label, options, index=None, key=key)
+        value = st.radio(label, options, index=None, key=key, horizontal=horizontal)
         return value, value is not None
     except TypeError:
+        if horizontal:
+            return _render_horizontal_radio_stack(label, options, key)
         placeholder = "— Select one —"
         opts = [placeholder] + options
         choice = st.radio(label, opts, index=0, key=key)
         return (None, False) if choice == placeholder else (choice, True)
+
+
+def _render_horizontal_radio_stack(
+    label: str, options: List[Any], key: str
+) -> tuple[Optional[Any], bool]:
+    st.markdown(f"**{label}**")
+    selected = st.session_state.get(key)
+    columns = st.columns(len(options))
+    for option, col in zip(options, columns):
+        option_label = str(option)
+        display = f"✓ {option_label}" if selected == option else option_label
+        if col.button(
+            display,
+            key=f"{key}_btn_{option_label}",
+            use_container_width=True,
+        ):
+            selected = option
+    if selected is not None:
+        st.session_state[key] = selected
+        st.caption(f"현재 선택: {selected}")
+    else:
+        st.session_state.pop(key, None)
+    return selected, selected is not None
 
 
 def inject_covx_toggle(round_no: int) -> None:
@@ -2105,8 +2130,8 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
 
     steps = max(1, int(seconds * 20))
     round_label_map = {
-        "nouns": "명사 라운드",
-        "verbs": "동사 라운드",
+        "nouns": "이누이트 문법 추론 1차",
+        "verbs": "이누이트 문법 추론 2차",
     }
     round_label = round_label_map.get(round_key, "추론 과제")
 
@@ -2400,8 +2425,8 @@ def render_instructions() -> None:
 - 전체 소요 시간은 약 **10~15분**입니다.
 - 연구는 다음 순서로 진행됩니다.
   1. 의인화/성취 관련 설문 (56문항)
-  2. 추론 과제 1회차 (명사구 12문항) + AI 피드백
-  3. 추론 과제 2회차 (동사 시제·상 12문항) + AI 피드백
+    2. 이누이트 문법 빈칸 추론 1차 (12문항) + AI 피드백
+    3. 이누이트 문법 빈칸 추론 2차 (12문항) + AI 피드백
   4. 학습 동기 설문 (26문항)
   5. 연구 종료 안내 및 연락처 입력 (선택 사항)
 - 화면의 버튼으로만 이동해 주세요.
@@ -2556,9 +2581,9 @@ def render_question_card(question: Question, badge: Optional[str] = None) -> Non
         f"""
 <div class="question-card">
   {badge_html}
-  <div class="question-label">설명</div>
+  <div class="question-label">지시문</div>
   <p class="question-stem">{gloss_html}</p>
-  <div class="question-label">문장</div>
+  <div class="question-label">문항</div>
   <p class="question-stem-text">{stem_html}</p>
 </div>
 """,
@@ -2654,18 +2679,18 @@ def render_inuit_training_intro() -> None:
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("이누이트 문법 추론 과제 안내")
+    st.title("이누이트 문법 빈칸 추론 과제 안내")
     st.markdown(
         """
-- **1회차 (명사구 12문항)**: 소유, 복수, 목적 표지 등 규칙을 추론합니다.  
-- **2회차 (동사 12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li)을 판별합니다.  
-- 각 문항은 5지선다이며, **추론 이유**도 5지선다에서 선택합니다.  
+- **이누이트 문법 빈칸 추론 1차 (12문항)**: 소유·복수·목적 표지 등의 규칙을 종합해 빈칸에 들어갈 표현을 추론합니다.  
+- **이누이트 문법 빈칸 추론 2차 (12문항)**: 시제(-na/-tu/-ki)와 상(-mu/-li) 규칙을 활용해 상황에 맞는 표현을 선택합니다.  
+- 각 문항은 5지선다이며, **추론 근거 태그**도 5지선다에서 선택합니다.  
 - 제출 후 AI 에이전트가 조건 맞춤형 칭찬 피드백을 제공합니다.
 """
     )
     with st.expander("📘 규칙 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
-    if st.button("1회차 시작", use_container_width=True):
+    if st.button("1차 시작", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
         st.session_state.round_state["question_start"] = None
         set_phase("inference_nouns")
@@ -2679,6 +2704,11 @@ def render_inference_round(
     analysis_round_no: int,
 ) -> None:
     scroll_top_js()
+    round_title_map = {
+        "nouns": "이누이트 문법에 따른 빈칸 맞추기 추론 과제 1차",
+        "verbs": "이누이트 문법에 따른 빈칸 맞추기 추론 과제 2차",
+    }
+    st.title(round_title_map.get(round_key, "이누이트 문법 빈칸 추론 과제"))
     rs = st.session_state.round_state
     payload = st.session_state.payload
     index = rs.get(f"{round_key}_index", 0)
@@ -2692,7 +2722,11 @@ def render_inference_round(
     question_container = st.container()
     with question_container:
         st.header(f"추론 과제 12문항 중 {current_index}번째")
-        round_badge = "명사 라운드 문항" if round_key == "nouns" else "동사 라운드 문항"
+        round_badge = (
+            "이누이트 문법 추론 1차 문항"
+            if round_key == "nouns"
+            else "이누이트 문법 추론 2차 문항"
+        )
         render_question_card(question, badge=round_badge)
         st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
 
@@ -2814,8 +2848,8 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "nouns": "명사 라운드",
-        "verbs": "동사 라운드",
+        "nouns": "이누이트 문법 추론 1차",
+        "verbs": "이누이트 문법 추론 2차",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -2871,8 +2905,8 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     summary_text = feedback_payload.get("summary_text", "")
 
     hero_subtitle_map = {
-        "nouns": "명사구 라운드 분석 리포트",
-        "verbs": "동사 시제·상 라운드 분석 리포트",
+        "nouns": "이누이트 문법 추론 1차 분석 리포트",
+        "verbs": "이누이트 문법 추론 2차 분석 리포트",
     }
     hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
 
@@ -2936,17 +2970,18 @@ def render_difficulty_check() -> None:
     st.write(
         "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
     )
-    likert_options = [str(i) for i in range(1, 11)]
-    rating_label, rating_valid = radio_required(
+    likert_options = list(range(1, 11))
+    rating_value, rating_valid = radio_required(
         "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)",
         likert_options,
         key="difficulty_after_round1_radio",
+        horizontal=True,
     )
     if rating_valid:
-        st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_label)
+        st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_value)
     else:
         st.session_state.payload["difficulty_checks"].pop("after_round1", None)
-    if st.button("2회차 시작", use_container_width=True):
+    if st.button("2차 시작", use_container_width=True):
         if not rating_valid:
             st.warning("난이도 수준을 1~10 사이에서 선택해 주세요.")
             return
