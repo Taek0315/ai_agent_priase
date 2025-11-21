@@ -2992,7 +2992,7 @@ def render_difficulty_check() -> None:
         st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_value)
     else:
         st.session_state.payload["difficulty_checks"].pop("after_round1", None)
-    if st.button("2차 시작", use_container_width=True):
+    if st.button("두번째 시작", use_container_width=True):
         if not rating_valid:
             st.warning("난이도 수준을 1~10 사이에서 선택해 주세요.")
             return
@@ -3012,7 +3012,7 @@ def render_motivation() -> None:
         scale_max=5,
         page_state_key="motivation_page",
         responses_key="motivation_responses",
-        prompt_html="<h2 class='section-heading'>방금 진행한 2가지 추론 과제에 대한 생각을 응답해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>다음 문항을 보고 방금 진행한 추론 과제를 한 느낌과 생각을 응답해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
         question_ids=question_ids,
