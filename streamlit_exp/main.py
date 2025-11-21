@@ -2693,7 +2693,7 @@ def render_task_intro() -> None:
     )
     with st.expander("📘 규칙 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
-    if st.button("1차 시작", use_container_width=True):
+    if st.button("첫번째 과제 시작", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
         st.session_state.round_state["question_start"] = None
         set_phase("inference_nouns")
@@ -2726,9 +2726,9 @@ def render_inference_round(
     with question_container:
         st.header(f"추론 과제 12문항 중 {current_index}번째")
         round_badge = (
-            "이누이트 문법 추론 과제 1차 문항"
+            "이누이트 문법을 추론해주세요."
             if round_key == "nouns"
-            else "이누이트 문법 추론 과제 2차 문항"
+            else "이누이트 문법을 추론해주세요."
         )
         render_question_card(question, badge=round_badge)
         st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
