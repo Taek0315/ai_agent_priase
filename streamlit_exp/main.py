@@ -2851,8 +2851,8 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "nouns": "이누이트 문법 추론 과제 1차",
-        "verbs": "이누이트 문법 추론 과제 2차",
+        "nouns": "이누이트 문법 첫번째 추론 과제",
+        "verbs": "이누이트 문법 두번째 추론 과제",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -2908,8 +2908,8 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     summary_text = feedback_payload.get("summary_text", "")
 
     hero_subtitle_map = {
-        "nouns": "이누이트 문법 추론 과제 1차 분석 리포트",
-        "verbs": "이누이트 문법 추론 과제 2차 분석 리포트",
+        "nouns": "이누이트 문법 첫번째 추론 과제 분석 리포트",
+        "verbs": "이누이트 문법 두번째 추론 과제 분석 리포트",
     }
     hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
 
@@ -2974,7 +2974,7 @@ def render_difficulty_check() -> None:
         "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
     )
     likert_options = list(range(1, 11))
-    prompt = "다음 라운드 난이도 상향 허용 (1=매우 쉬움, 10=매우 어려움)"
+    prompt = "다음 라운드 난이도는 어느 정도를 원하시나요? (1=매우 쉬움, 10=매우 어려움)"
     try:
         rating_value = st.radio(
             prompt,
