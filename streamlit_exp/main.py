@@ -2564,7 +2564,7 @@ def render_achive() -> None:
         scale_max=6,
         page_state_key="achive_page",
         responses_key="achive_responses",
-        prompt_html="<h2 class='section-heading'>다음 문항을 읽고 학습에 대한 본인의 생각과 가장 가까운 것을 선택해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>학습과 관련하여 본인의 생각과 가장 가까운 것을 선택해주세요.</h2>",
         scale_hint_html=LIKERT6_LEGEND_HTML,
         per_page=10,
     )
