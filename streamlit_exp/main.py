@@ -3012,7 +3012,7 @@ def render_motivation() -> None:
         scale_max=5,
         page_state_key="motivation_page",
         responses_key="motivation_responses",
-        prompt_html="<h2 class='section-heading'>다음 문항을 보고 방금 진행한 추론 과제를 한 느낌과 생각을 응답해주세요.</h2>",
+        prompt_html="<h2 class='section-heading'>방금 진행한 추론 과제를 하면서 떠오른 느낌과 생각을 응답해주세요.</h2>",
         scale_hint_html=LIKERT5_LEGEND_HTML,
         per_page=10,
         question_ids=question_ids,
@@ -3117,7 +3117,7 @@ def render_post_task_reflection() -> None:
     st.title("다음 기회에 유사한 과제가 있을 때 어느 정도 난이도에 도전하시겠습니까?")
     st.write("유사한 과제를 더 진행한다면 어느 정도 난이도로 진행하실지 선택해주세요.")
     likert_options = list(range(1, 11))
-    prompt = "난이도 상향 의향 (1=매우 쉬움, 10=매우 어려움)"
+    prompt = "원하는 난이도를 선택해주세요 (1=매우 쉬움, 10=매우 어려움)"
     try:
         rating_value = st.radio(
             prompt,
