@@ -2262,6 +2262,8 @@ def set_phase(next_phase: str) -> None:
         "anthro",
         "achive",
         "inuit_training_intro",
+        "inuit_practice",
+        "inuit_practice_feedback",
         "task_intro",
         "inference_nouns",
         "analysis_nouns",
@@ -2611,32 +2613,36 @@ def render_inuit_training_intro() -> None:
     st.title("이누이트 문법 학습 안내")
     st.markdown(
         """
-### 이누이트어 연습 과제 안내
+### 이누이트어 연습 과제를 시작합니다
 
-지금부터는 **이누이트(Inuit) 언어라는 새로운 외국어에 익숙해지기 위한 연습 문제**를 먼저 진행한다. 화면에 제시되는 예시 문장과 단어를 보면서,
+지금부터는 **이누이트(Inuit) 언어 규칙을 익히기 위한 연습 문제**를 진행합니다. 화면에 제시되는 예시 문장과 단어를 보면서,
 
 - 어떤 단어가 어떤 뜻을 가지는지  
 - 어떤 규칙으로 형태가 바뀌는지  
 
-를 가볍게 추측해 보고 **빈칸에 들어갈 알맞은 단어를 선택**하면 된다.
+를 살펴본 뒤 **빈칸에 들어갈 알맞은 표현과 그 근거가 되는 태그를 선택**해 주시면 됩니다.
 
-이 단계는 ‘점수를 매기는 시험’이라기보다, **이누이트어라는 낯선 언어에 몸을 풀고 규칙을 익혀 보는 학습 단계**에 가깝다. 여기에서 연습해 본 방식과 규칙 이해가, 뒤에 이어질 **본 과제와 AI 칭찬 피드백의 중요한 기초**가 된다.
-
-사전에 이누이트어를 알고 있을 필요는 전혀 없다. 대부분의 참여자가 **처음 접하는 언어**이므로, 정답을 완벽하게 맞히지 않아도 괜찮다. “이 언어가 어떤 식으로 굴러가는지”를 편하게 탐색한다는 느낌으로 응답해 주면 된다.
+이번 연습 단계는 **문제를 푸는 방법을 익히고 규칙을 감각적으로 이해하기 위한 과정**이며, 결과는 본 과제의 최종 점수에 반영되지 않습니다. 차분히 규칙을 익힌다는 마음으로 응답해 주세요.
         """
     )
+    st.info("연습 단계에서 익힌 풀이 방식이 이후 본 과제를 수행할 때 큰 도움이 됩니다.")
 
-    with st.expander("핵심 규칙 요약", expanded=True):
+    with st.expander("핵심 규칙 요약 다시 보기", expanded=True):
+        st.markdown(GRAMMAR_INFO_MD)
+
+    if st.button("연습 문제 시작하기", use_container_width=True):
+        set_phase("inuit_practice")
+
+
+def render_inuit_practice() -> None:
+    scroll_top_js()
+    st.title("이누이트 문법 연습 문제")
+    st.caption("아래 연습 문항은 점수에 반영되지 않고, 풀이 방법을 익히기 위한 단계입니다.")
+
+    with st.expander("핵심 규칙 요약 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
     practice_question = next((q for q in NOUN_QUESTIONS if q.id == "N4"), NOUN_QUESTIONS[0])
-    st.markdown(
-        """
-> ※ 지금은 **이누이트어 규칙에 익숙해지기 위한 연습 단계**이다.  
-> 뒤에서 AI가 칭찬 피드백을 줄 때도, 이 단계에서 익힌 규칙과 풀이 방식이 함께 반영된다.
-        """.strip()
-    )
-    st.subheader("연습 문제 (점수에 반영되지 않음)")
     render_question_card(practice_question, badge="연습 문제")
     st.caption("정답과 추론 근거 태그를 모두 선택하면 즉시 정오답과 간단한 해설이 제공됩니다.")
 
@@ -2703,12 +2709,37 @@ def render_inuit_training_intro() -> None:
     st.divider()
     proceed_disabled = not practice_state.get("attempted")
     if proceed_disabled:
-        st.info("연습 문제를 채점한 뒤에 추론 과제 설명으로 이동할 수 있습니다.")
+        st.info("연습 문제를 채점하면 다음 단계로 이동할 수 있습니다.")
     if st.button(
-        "추론 과제 설명으로 이동",
+        "연습 해설 및 예시 피드백 보기",
         use_container_width=True,
         disabled=proceed_disabled,
     ):
+        set_phase("inuit_practice_feedback")
+
+
+def render_inuit_practice_feedback() -> None:
+    scroll_top_js()
+    st.title("연습 결과 및 예시 칭찬 안내")
+    practice_state = st.session_state.practice_state
+
+    if not practice_state.get("attempted"):
+        st.warning("연습 문제 응답을 먼저 완료해 주세요.")
+        if st.button("연습 문제로 돌아가기", use_container_width=True):
+            set_phase("inuit_practice")
+        return
+
+    show_feedback = st.success if practice_state.get("correct") else st.error
+    show_feedback(practice_state.get("message", "연습 결과를 확인했습니다."))
+    st.info(practice_state.get("explanation", "규칙 설명을 다시 확인해 주세요."))
+
+    st.markdown("### 예시 칭찬 피드백")
+    st.success(
+        "연습 문항을 잘 푸셨습니다. 문제 풀이 방법을 잘 이해하신 것 같습니다. 추후 진행되는 본 문제도 동일하게 문제를 풀어주세요. 감사합니다."
+    )
+    st.caption("※ 위 문장은 예시 칭찬으로, 본 과제 응답 후 실제 AI 칭찬 피드백이 제공됩니다.")
+
+    if st.button("본 문제 안내로 넘어가기", use_container_width=True):
         set_phase("task_intro")
 
 
@@ -2717,40 +2748,23 @@ def render_task_intro() -> None:
     st.title("이누이트 문법 추론 과제 안내")
     st.markdown(
         """
-### 연습을 마쳤습니다. 이제 본 과제를 진행합니다.
+### 본 이누이트 문법 추론 과제를 시작합니다
 
-지금까지의 연습을 통해,
-- 이누이트어 문장이 어떤 식으로 구성되는지  
-- 어떤 단어와 형태가 함께 쓰이는지  
+이제부터는 방금 연습에서 익힌 방법을 바탕으로 **본 이누이트 문법 추론 과제**를 진행합니다.  
+문제를 푸는 방식은 연습 문제와 동일합니다. 각 문항에서 알맞은 표현을 선택하고, 그 선택의 근거가 되는 태그를 함께 선택해 주시면 됩니다.
 
-를 대략적으로 살펴보았다.
-
-이제부터는 **연습에서 익힌 규칙과 감각을 바탕으로 본 과제를 진행**하게 된다. 본 과제에서도 기본적인 방식은 연습과 동일하며, **이 과정을 통해 어떤 방식으로 언어를 학습해 나가는지**가 중요한 관찰 대상이 된다.
-
-본 과제가 끝난 뒤에는, **AI가 전체 학습 과정과 응답 내용을 바탕으로 칭찬 피드백을 제공**할 예정이며, 그 후에는 **이누이트어 학습 및 칭찬 경험에 대한 설문**이 이어진다. 지금까지 익힌 내용을 떠올리며 차분히 응답해 주면 된다.
+본 과제에서의 응답과 추론 과정은 이후에 제공될 **AI 칭찬 피드백**을 생성하는 데 사용됩니다.  
+연습에서 익힌 풀이 방법을 떠올리면서 차분하게 문항을 풀어 주시면 됩니다.
         """
     )
     st.markdown(
         """
-### 이누이트어(외국어) 학습 과제 안내
-
-지금부터는 **이누이트(Inuit) 언어라는 외국어를 짧게 배워 보는 본 과제**를 진행한다. 이누이트어는 실제로 존재하는 언어이지만, 이 연구에서는 이해를 돕기 위해 **연구용으로 단순화한 문장과 규칙**을 사용한다.
-
-화면에 여러 예시 문장과 단어가 제시되며, 참여자는 이를 보면서
-
-- 어떤 단어가 어떤 뜻을 가지는지  
-- 어떤 규칙으로 형태가 바뀌는지  
-
-를 **추측해 본 뒤, 빈칸에 들어갈 알맞은 단어를 선택**하게 된다.
-
-사전에 이누이트어를 알고 있을 필요는 전혀 없다. 정답을 완벽하게 맞히는 것보다, **새로운 외국어를 어떻게 이해해 나가고 그 과정에서 어떤 생각과 느낌을 가지는지**가 더 중요하다.
-
-이 과제를 마친 뒤에는, **AI가 응답과 학습 과정을 바탕으로 짧은 칭찬 피드백을 제공**하며, 그 다음 단계에서 **지금 경험한 이누이트어 학습 과제와 칭찬 피드백에 대한 느낌을 묻는 설문**이 이어진다. 호기심을 가지고 편안한 마음으로 참여해 주면 된다.
-"""
+이 과제를 마치면 실제 AI가 여러분의 응답과 학습 과정을 바탕으로 맞춤형 칭찬 피드백을 제공한 뒤, 이 경험에 대한 설문이 간단히 이어집니다. 지금처럼 차분한 마음으로 응답해 주세요.
+        """
     )
     with st.expander("📘 규칙 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
-    if st.button("첫번째 과제 시작", use_container_width=True):
+    if st.button("본 문제 시작하기", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
         st.session_state.round_state["question_start"] = None
         set_phase("inference_nouns")
@@ -3409,6 +3423,10 @@ elif phase == "achive":
     render_achive()
 elif phase == "inuit_training_intro":
     render_inuit_training_intro()
+elif phase == "inuit_practice":
+    render_inuit_practice()
+elif phase == "inuit_practice_feedback":
+    render_inuit_practice_feedback()
 elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
