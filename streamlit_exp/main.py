@@ -1648,78 +1648,88 @@ ALL_INFERENCE_QUESTIONS = NOUN_QUESTIONS + VERB_QUESTIONS
 
 MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
     SurveyQuestion(
-        "IE1", "이 과제를 하는 동안 즐거웠다.", category="interest_enjoyment"
+        "IE1", "이 과제를 하는 동안 즐거웠습니다.", category="interest_enjoyment"
     ),
-    SurveyQuestion("IE2", "이 과제는 재미있었다.", category="interest_enjoyment"),
+    SurveyQuestion("IE2", "이 과제는 재미있었습니다.", category="interest_enjoyment"),
     SurveyQuestion(
-        "IE3", "이 과제가 지루했다.", reverse=True, category="interest_enjoyment"
-    ),
-    SurveyQuestion(
-        "IE4", "이 과제를 하는 것이 흥미로웠다.", category="interest_enjoyment"
+        "IE3", "이 과제가 지루했습니다.", reverse=True, category="interest_enjoyment"
     ),
     SurveyQuestion(
-        "IE5", "이 과제를 하면서 시간이 빨리 지나갔다.", category="interest_enjoyment"
+        "IE4", "이 과제를 하는 것이 흥미로웠습니다.", category="interest_enjoyment"
     ),
-    SurveyQuestion("IE6", "이 과제에 몰입할 수 있었다.", category="interest_enjoyment"),
+    SurveyQuestion(
+        "IE5", "이 과제를 하면서 시간이 빨리 지나갔습니다.", category="interest_enjoyment"
+    ),
+    SurveyQuestion(
+        "IE6", "이 과제에 몰입할 수 있었습니다.", category="interest_enjoyment"
+    ),
     SurveyQuestion(
         "IE7",
-        "이 과제를 계속 하고 싶다는 생각이 들었다.",
+        "이 과제를 계속 하고 싶다는 생각이 들었습니다.",
         category="interest_enjoyment",
     ),
     SurveyQuestion(
-        "PC1", "이 과제를 잘 수행했다고 생각한다.", category="perceived_competence"
+        "PC1", "이 과제를 잘 수행했다고 생각합니다.", category="perceived_competence"
     ),
     SurveyQuestion(
-        "PC2", "이 과제에서 만족스러운 결과를 얻었다.", category="perceived_competence"
-    ),
-    SurveyQuestion(
-        "PC3", "이 과제를 수행하는 데 능숙했다.", category="perceived_competence"
-    ),
-    SurveyQuestion(
-        "PC4", "이 과제가 너무 어려웠다.", reverse=True, category="perceived_competence"
-    ),
-    SurveyQuestion(
-        "PC5",
-        "이 과제를 완수할 수 있다는 자신감이 있었다.",
+        "PC2",
+        "이 과제에서 만족스러운 결과를 얻었습니다.",
         category="perceived_competence",
     ),
     SurveyQuestion(
-        "PC6", "이 과제에서 좋은 성과를 낼 수 있었다.", category="perceived_competence"
+        "PC3", "이 과제를 수행하는 데 능숙했습니다.", category="perceived_competence"
     ),
     SurveyQuestion(
-        "EI1", "이 과제에 많은 노력을 기울였다.", category="effort_importance"
+        "PC4", "이 과제가 너무 어려웠습니다.", reverse=True, category="perceived_competence"
     ),
     SurveyQuestion(
-        "EI2", "이 과제를 잘 수행하는 것이 중요했다.", category="effort_importance"
-    ),
-    SurveyQuestion("EI3", "이 과제에 최선을 다했다.", category="effort_importance"),
-    SurveyQuestion(
-        "EI4", "이 과제에 집중하려고 노력했다.", category="effort_importance"
+        "PC5",
+        "이 과제를 완수할 수 있다는 자신감이 있었습니다.",
+        category="perceived_competence",
     ),
     SurveyQuestion(
-        "EI5", "이 과제를 대충 했다.", reverse=True, category="effort_importance"
+        "PC6",
+        "이 과제에서 좋은 성과를 낼 수 있었습니다.",
+        category="perceived_competence",
     ),
     SurveyQuestion(
-        "VU1", "이 과제는 나에게 가치가 있었다.", category="value_usefulness"
+        "EI1", "이 과제에 많은 노력을 기울였습니다.", category="effort_importance"
     ),
     SurveyQuestion(
-        "VU2", "이 과제를 통해 유용한 것을 배웠다.", category="value_usefulness"
+        "EI2", "이 과제를 잘 수행하는 것이 중요했습니다.", category="effort_importance"
+    ),
+    SurveyQuestion("EI3", "이 과제에 최선을 다했습니다.", category="effort_importance"),
+    SurveyQuestion(
+        "EI4", "이 과제에 집중하려고 노력했습니다.", category="effort_importance"
     ),
     SurveyQuestion(
-        "VU3", "이 과제는 나에게 도움이 되었다.", category="value_usefulness"
+        "EI5", "이 과제를 대충 했습니다.", reverse=True, category="effort_importance"
     ),
     SurveyQuestion(
-        "VU4", "이 과제는 시간 낭비였다.", reverse=True, category="value_usefulness"
+        "VU1", "이 과제는 나에게 가치가 있었습니다.", category="value_usefulness"
     ),
     SurveyQuestion(
-        "AU1", "이 과제를 수행하는 방식을 스스로 선택할 수 있었다.", category="autonomy"
+        "VU2", "이 과제를 통해 유용한 것을 배웠습니다.", category="value_usefulness"
     ),
     SurveyQuestion(
-        "AU2", "이 과제를 하면서 자유롭게 행동할 수 있었다.", category="autonomy"
+        "VU3", "이 과제는 나에게 도움이 되었습니다.", category="value_usefulness"
     ),
-    SurveyQuestion("PT1", "이 과제를 하는 동안 긴장했다.", category="pressure_tension"),
     SurveyQuestion(
-        "PT2", "이 과제를 하면서 스트레스를 받았다.", category="pressure_tension"
+        "VU4", "이 과제는 시간 낭비였습니다.", reverse=True, category="value_usefulness"
+    ),
+    SurveyQuestion(
+        "AU1",
+        "이 과제를 수행하는 방식을 스스로 선택할 수 있었습니다.",
+        category="autonomy",
+    ),
+    SurveyQuestion(
+        "AU2", "이 과제를 하면서 자유롭게 행동할 수 있었습니다.", category="autonomy"
+    ),
+    SurveyQuestion(
+        "PT1", "이 과제를 하는 동안 긴장했습니다.", category="pressure_tension"
+    ),
+    SurveyQuestion(
+        "PT2", "이 과제를 하면서 스트레스를 받았습니다.", category="pressure_tension"
     ),
 ]
 
@@ -2435,7 +2445,7 @@ def render_instructions() -> None:
 
 대부분의 참여자는 이누이트어를 처음 접하게 된다. 정답을 모두 맞히는 것보다 **새로운 언어를 어떻게 이해해 가는지와 그 과정에서의 느낌**이 더 중요하다. 부담 없이, 떠오르는 생각에 가깝게 응답해 주면 된다.
 
-전체 소요 시간은 약 ○○분 정도이며, 응답 내용은 연구 목적 외에는 사용되지 않으며 익명으로 처리된다.
+전체 소요 시간은 약 10~15분 정도이며, 응답 내용은 연구 목적 외에는 사용되지 않으며 익명으로 처리된다.
 """
     )
     if st.button("설문 시작", use_container_width=True):
@@ -3052,19 +3062,6 @@ def render_motivation() -> None:
     scroll_top_js()
     questions = [question.text for question in MOTIVATION_QUESTIONS]
     question_ids = [question.id for question in MOTIVATION_QUESTIONS]
-    st.markdown(
-        """
-### 이제 방금 경험에 대해 여쭙겠습니다
-
-방금까지는 **이누이트어라는 새로운 외국어의 규칙을 연습 문제와 본 과제를 통해 학습**하고, 그 뒤에 **AI가 노력과 풀이 과정을 바탕으로 칭찬 피드백을 제공하는 단계**까지 마쳤다.
-
-지금부터는, 이 **“연습 + 본 과제 + AI 칭찬 피드백” 전체 경험에 대해 어떻게 느꼈는지**를 여쭙는 설문이다. 과제를 하면서 어떤 기분이 들었는지, 학습에 대한 동기는 어떠했는지, AI의 칭찬이 어떻게 느껴졌는지 등이 포함된다.
-
-각 문항에는 정답이 없으며, 지금 떠오르는 생각과 가장 가까운 응답을 선택해 주면 된다. 애매하게 느껴지더라도 “그래도 조금 더 가까운 쪽”을 골라 주면 연구에 큰 도움이 된다.
-
-피로감을 줄이기 위해 가능하면 **10문항 단위로 나누어** 문항을 제시한다. 잠시 숨 고르는 마음으로, 편안하게 응답해 주면 된다.
-        """
-    )
     done = render_paginated_likert(
         questions=questions,
         key_prefix="motivation",
