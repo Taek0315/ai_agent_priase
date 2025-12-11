@@ -2755,13 +2755,13 @@ def render_task_intro() -> None:
 이제부터는 방금 연습에서 익힌 방법을 바탕으로 **본 이누이트 문법 추론 과제**를 진행합니다.  
 문제를 푸는 방식은 연습 문제와 동일합니다. 각 문항에서 알맞은 표현을 선택하고, 그 선택의 근거가 되는 태그를 함께 선택해 주시면 됩니다.
 
-본 과제에서의 응답과 추론 과정은 이후에 제공될 **AI 칭찬 피드백**을 생성하는 데 사용됩니다.  
+본 과제에서의 응답과 추론 과정은 이후에 제공될 **AI 피드백**을 생성하는 데 사용됩니다.  
 연습에서 익힌 풀이 방법을 떠올리면서 차분하게 문항을 풀어 주시면 됩니다.
         """
     )
     st.markdown(
         """
-이 과제를 마치면 실제 AI가 여러분의 응답과 학습 과정을 바탕으로 맞춤형 칭찬 피드백을 제공한 뒤, 이 경험에 대한 설문이 간단히 이어집니다. 지금처럼 차분한 마음으로 응답해 주세요.
+이 과제를 마치면 실제 AI가 여러분의 응답과 학습 과정을 바탕으로 맞춤형 피드백을 제공한 뒤, 이 경험에 대한 설문이 간단히 이어집니다. 지금처럼 차분한 마음으로 응답해 주세요.
         """
     )
     with st.expander("📘 규칙 다시 보기", expanded=True):
@@ -2999,7 +2999,7 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
           <p class="feedback-hero-subtitle">{hero_subtitle}</p>
         </div>
       </div>
-      <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 응답 내용에 대한 피드백을 정리하고 있습니다.</div>
+      <div class="feedback-meta">AI 튜터가 응답 패턴을 정밀 분석하고 당신의 응답 내용에 대한 피드백을 정리했습니다.</div>
     </div>
     <div class="feedback-card feedback-comment-card">
       <div class="feedback-comment-title">
