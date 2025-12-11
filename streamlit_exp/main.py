@@ -2270,7 +2270,6 @@ def set_phase(next_phase: str) -> None:
         "achive",
         "inuit_training_intro",
         "inuit_practice",
-        "inuit_practice_feedback",
         "task_intro",
         "inference_nouns",
         "analysis_nouns",
@@ -2762,33 +2761,10 @@ def render_inuit_practice() -> None:
     if proceed_disabled:
         st.info("연습 문제를 채점하면 다음 단계로 이동할 수 있습니다.")
     if st.button(
-        "연습 해설 및 예시 피드백 보기",
+        "본 문제 안내로 넘어가기",
         use_container_width=True,
         disabled=proceed_disabled,
     ):
-        set_phase("inuit_practice_feedback")
-
-
-def render_inuit_practice_feedback() -> None:
-    scroll_top_js()
-    st.title("연습 결과 및 예시 칭찬 안내")
-    practice_state = st.session_state.practice_state
-
-    if not practice_state.get("attempted"):
-        st.warning("연습 문제 응답을 먼저 완료해 주세요.")
-        if st.button("연습 문제로 돌아가기", use_container_width=True):
-            set_phase("inuit_practice")
-        return
-
-    show_feedback = st.success if practice_state.get("correct") else st.error
-    show_feedback(practice_state.get("message", "연습 결과를 확인했습니다."))
-    st.info(practice_state.get("explanation", "규칙 설명을 다시 확인해 주세요."))
-
-    st.info(
-        "연습 문제 풀이가 완료되었습니다. 이제 본 과제에서는 동일한 방식으로 문항을 풀고, 문항 종료 후 AI 칭찬 피드백을 받게 됩니다."
-    )
-
-    if st.button("본 문제 안내로 넘어가기", use_container_width=True):
         set_phase("task_intro")
 
 
@@ -3490,8 +3466,6 @@ elif phase == "inuit_training_intro":
     render_inuit_training_intro()
 elif phase == "inuit_practice":
     render_inuit_practice()
-elif phase == "inuit_practice_feedback":
-    render_inuit_practice_feedback()
 elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
