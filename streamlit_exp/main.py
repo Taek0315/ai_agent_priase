@@ -11,7 +11,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -1065,19 +1065,16 @@ FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
         """추론 과제에 대한 분석이 완료되었습니다! 10개의 이누이트 문법 문항을 푸시면서 보여주신 깊은 고민과 성실한 태도가 정말 인상적이었습니다. 특히 {시제 -na/-tu}의 미묘한 의미 차이를 스스로 찾아내고 적용하려는 모습이 아주 돋보였습니다. 이렇게 깊이 있게 사고하는 학습자를 만나게 되어 진심으로 기쁘고, 당신의 성장을 곁에서 함께할 수 있다는 생각에 마음이 따뜻해집니다.""",
         """분석이 모두 완료되었습니다! 10개 문항이 쉽지 않았을 텐데, 끝까지 꼼꼼하게 추론 근거를 찾아가며 답을 선택하신 점이 정말 멋졌습니다. 특히 {시제 -na/-tu}의 용법을 구별할 때 보여주신 섬세한 판단에 감탄하게 되었습니다. 이렇게 진지하게 과제에 임해 주신 당신의 열정이 무척 자랑스럽고, 앞으로의 학습 과정이 더욱 기대됩니다.""",
     ],
-
     # 2. 계산 중심 (Calculation) + 구체성 (Specific)
     "computational_specific": [
         """10개 문항 분석 결과, 당신의 응답 패턴은 95% 신뢰구간에서 일관된 추론 모델을 사용하는 것으로 추정됩니다. {시제 -na/-tu}의 이항적(binomial) 용법 구분에 대한 예측 정확도는 88%로, 통계적으로 유의미한 변별력을 지니고 있습니다. 이러한 수치는 당신이 높은 수준의 규칙 이해와 적용 능력을 갖춘 학습자라는 점을 객관적으로 잘 보여줍니다.""",
         """과제 분석을 모두 마쳤습니다. 10개 문항으로 구성된 데이터셋을 기준으로 모형 적합도를 비교한 결과, 당신의 응답 패턴에 기반한 추론 모델이 베이지안 정보 기준(BIC)에서 가장 우수한 적합도를 보였습니다. {시제 -na/-tu} 용법 구분에 대한 결정 트리는 교차 검증에서 92%의 정확도를 기록했습니다. 이처럼, 데이터에 비추어 보았을 때도 당신의 추론 능력은 매우 뛰어난 수준으로 평가됩니다.""",
     ],
-
     # 3. 정서 중심 (Emotion) + 피상적 (Superficial)
     "emotional_surface": [
         """분석이 모두 끝났습니다! 당신의 응답을 살펴보며 여러 번 감탄했습니다. 책임감과 성실함을 관찰 하였고, 고민한 흔적을 느꼈습니다. 뛰어난 학습자와 함께하게 된 것이 저에게는 큰 행운이라고 느껴집니다.""",
         """추론 과제 분석을 마쳤습니다! 차분하게 생각을 정리하고, 논리적으로 접근하려는 모습이 느껴져 매우 인상 깊었습니다. 진지한 태도와 꼼꼼함 때문에, 앞으로의 학습 과정에서도 충분히 좋은 성과를 내실 것이라는 믿음이 생깁니다. 정말 훌륭하게 해내셨습니다.""",
     ],
-
     # 4. 계산 중심 (Calculation) + 피상적 (Superficial)
     "computational_surface": [
         """분석이 모두 끝났습니다. 당신의 응답은 자체 모델 기준에서 최적화된 경로를 따르는 것으로 보입니다. 여러 지표 간의 관계를 파악하는 능력이 뛰어날 것으로 예상됩니다. 데이터 상에서도  정교한 사고 과정을 사용하고 있다는 것으로 보입니다.""",
@@ -1098,10 +1095,9 @@ PRAISE_HIGHLIGHT_TERMS: List[str] = [
 ]
 
 
-def apply_praise_highlights(
-    text: str, extra_terms: Optional[List[str]] = None
-) -> str:
+def apply_praise_highlights(text: str, extra_terms: Optional[List[str]] = None) -> str:
     return text
+
 
 MICRO_FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
     "emotional_specific": [
@@ -1212,7 +1208,9 @@ def top_two_rationales(all_reason_tags: List[str]) -> tuple[str, str]:
     return most[0], most[1]
 
 
-def ensure_rationale_pair(primary: Optional[str], secondary: Optional[str]) -> tuple[str, str]:
+def ensure_rationale_pair(
+    primary: Optional[str], secondary: Optional[str]
+) -> tuple[str, str]:
     """
     Guarantee a readable pair of rationale strings, inserting safe defaults if needed.
     """
@@ -1307,7 +1305,9 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
         summary_text = summary_text.replace("{시제 -na/-tu}", safe_rationale_phrase)
 
     if "{A}" in summary_text or "{B}" in summary_text:
-        summary_text = summary_text.replace("{A}", safe_top_a).replace("{B}", safe_top_b)
+        summary_text = summary_text.replace("{A}", safe_top_a).replace(
+            "{B}", safe_top_b
+        )
 
     micro_entries: List[tuple[str, str]] = []
     micro_templates = MICRO_FEEDBACK_TEMPLATES.get(
@@ -1658,7 +1658,9 @@ MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
         "IE4", "이 과제를 하는 것이 흥미로웠습니다.", category="interest_enjoyment"
     ),
     SurveyQuestion(
-        "IE5", "이 과제를 하면서 시간이 빨리 지나갔습니다.", category="interest_enjoyment"
+        "IE5",
+        "이 과제를 하면서 시간이 빨리 지나갔습니다.",
+        category="interest_enjoyment",
     ),
     SurveyQuestion(
         "IE6", "이 과제에 몰입할 수 있었습니다.", category="interest_enjoyment"
@@ -1680,7 +1682,10 @@ MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
         "PC3", "이 과제를 수행하는 데 능숙했습니다.", category="perceived_competence"
     ),
     SurveyQuestion(
-        "PC4", "이 과제가 너무 어려웠습니다.", reverse=True, category="perceived_competence"
+        "PC4",
+        "이 과제가 너무 어려웠습니다.",
+        reverse=True,
+        category="perceived_competence",
     ),
     SurveyQuestion(
         "PC5",
@@ -2148,7 +2153,9 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
     for step in range(steps + 1):
         progress = int(step / steps * 100)
         ratio = progress / 100 if steps > 0 else 0
-        status_index = min(len(MCP_STATUS_SEQUENCE) - 1, int(ratio * len(MCP_STATUS_SEQUENCE)))
+        status_index = min(
+            len(MCP_STATUS_SEQUENCE) - 1, int(ratio * len(MCP_STATUS_SEQUENCE))
+        )
         status_headline, status_detail = MCP_STATUS_SEQUENCE[status_index]
         if step == steps:
             status_headline = "AI 분석 완료"
@@ -2398,9 +2405,7 @@ def render_demographic() -> None:
                 age_value = candidate
                 age_valid = True
             else:
-                age_error = (
-                    f"{DEMOGRAPHIC_AGE_MIN}에서 {DEMOGRAPHIC_AGE_MAX} 사이의 숫자만 입력해 주세요."
-                )
+                age_error = f"{DEMOGRAPHIC_AGE_MIN}에서 {DEMOGRAPHIC_AGE_MAX} 사이의 숫자만 입력해 주세요."
         else:
             age_error = "숫자만 입력해 주세요."
     if age_error:
@@ -2516,7 +2521,8 @@ def render_paginated_likert(
             st.session_state.payload[responses_key][idx] = int(selected)
 
     page_values = [
-        st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(start_idx, end_idx)
+        st.session_state.get(f"{key_prefix}_val_{idx}")
+        for idx in range(start_idx, end_idx)
     ]
 
     col_prev, col_next = st.columns(2)
@@ -2534,7 +2540,8 @@ def render_paginated_likert(
             else:
                 if page == total_pages:
                     all_values = [
-                        st.session_state.get(f"{key_prefix}_val_{idx}") for idx in range(total)
+                        st.session_state.get(f"{key_prefix}_val_{idx}")
+                        for idx in range(total)
                     ]
                     if any(v is None for v in all_values):
                         st.warning("모든 문항에 응답해 주세요.")
@@ -2610,6 +2617,36 @@ def render_question_card(question: Question, badge: Optional[str] = None) -> Non
     )
 
 
+def get_randomized_option_state(
+    question: Question, state_key: str
+) -> Tuple[List[str], List[int], int]:
+    """Return shuffled options, map to original indices, and displayed correct index."""
+    options_state_key = f"{state_key}_options"
+    if options_state_key not in st.session_state:
+        option_pairs = list(enumerate(question.options))
+        random.shuffle(option_pairs)
+        st.session_state[options_state_key] = option_pairs
+    else:
+        option_pairs = st.session_state[options_state_key]
+
+    original_index_map = [orig_idx for orig_idx, _ in option_pairs]
+    display_options = [opt for _, opt in option_pairs]
+    correct_original_idx = question.answer_idx
+    try:
+        correct_display_idx = next(
+            idx
+            for idx, orig_idx in enumerate(original_index_map)
+            if orig_idx == correct_original_idx
+        )
+    except StopIteration as exc:
+        raise ValueError(
+            f"Correct answer index {correct_original_idx} not found for {question.id}"
+        ) from exc
+
+    st.session_state[f"{state_key}_correct_idx"] = correct_display_idx
+    return display_options, original_index_map, correct_display_idx
+
+
 def render_inuit_training_intro() -> None:
     scroll_top_js()
     st.title("이누이트 문법 학습 안내")
@@ -2639,16 +2676,27 @@ def render_inuit_training_intro() -> None:
 def render_inuit_practice() -> None:
     scroll_top_js()
     st.title("이누이트 문법 연습 문제")
-    st.caption("아래 연습 문항은 점수에 반영되지 않고, 풀이 방법을 익히기 위한 단계입니다.")
+    st.caption(
+        "아래 연습 문항은 점수에 반영되지 않고, 풀이 방법을 익히기 위한 단계입니다."
+    )
 
     with st.expander("핵심 규칙 요약 다시 보기", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
-    practice_question = next((q for q in NOUN_QUESTIONS if q.id == "N4"), NOUN_QUESTIONS[0])
+    practice_question = next(
+        (q for q in NOUN_QUESTIONS if q.id == "N4"), NOUN_QUESTIONS[0]
+    )
     render_question_card(practice_question, badge="연습 문제")
-    st.caption("정답과 추론 근거 태그를 모두 선택하면 즉시 정오답과 간단한 해설이 제공됩니다.")
+    st.caption(
+        "정답과 추론 근거 태그를 모두 선택하면 즉시 정오답과 간단한 해설이 제공됩니다."
+    )
 
-    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(practice_question.options)]
+    practice_state_key = f"practice_{practice_question.id}"
+    practice_options, practice_index_map, practice_correct_idx = (
+        get_randomized_option_state(practice_question, practice_state_key)
+    )
+
+    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(practice_options)]
     selected_answer, answer_valid = radio_required(
         "정답을 선택하세요",
         answer_labels,
@@ -2670,8 +2718,9 @@ def render_inuit_practice() -> None:
     )
 
     if submit_clicked and ready_to_submit:
-        answer_idx = answer_labels.index(selected_answer)
-        correct = answer_idx == practice_question.answer_idx
+        selected_display_idx = answer_labels.index(selected_answer)
+        selected_original_idx = practice_index_map[selected_display_idx]
+        correct = selected_display_idx == practice_correct_idx
         rule_label = REASON_NOUN_LABELS[practice_question.reason_idx]
         correct_text = practice_question.options[practice_question.answer_idx]
         feedback_message = (
@@ -2692,8 +2741,8 @@ def render_inuit_practice() -> None:
         st.session_state.payload["practice_attempt"] = {
             "round": "practice",
             "question_id": practice_question.id,
-            "selected_option_idx": answer_idx,
-            "selected_option_text": practice_question.options[answer_idx],
+            "selected_option_idx": selected_original_idx,
+            "selected_option_text": practice_options[selected_display_idx],
             "selected_reason_text": selected_reason,
             "selected_reason_idx": REASON_NOUN_LABELS.index(selected_reason),
             "correct_idx": practice_question.answer_idx,
@@ -2735,11 +2784,9 @@ def render_inuit_practice_feedback() -> None:
     show_feedback(practice_state.get("message", "연습 결과를 확인했습니다."))
     st.info(practice_state.get("explanation", "규칙 설명을 다시 확인해 주세요."))
 
-    st.markdown("### 예시 칭찬 피드백")
-    st.success(
-        "연습 문항을 잘 푸셨습니다. 문제 풀이 방법을 잘 이해하신 것 같습니다. 추후 진행되는 본 문제도 동일하게 문제를 풀어주세요. 감사합니다."
+    st.info(
+        "연습 문제 풀이가 완료되었습니다. 이제 본 과제에서는 동일한 방식으로 문항을 풀고, 문항 종료 후 AI 칭찬 피드백을 받게 됩니다."
     )
-    st.caption("※ 위 문장은 예시 칭찬으로, 본 과제 응답 후 실제 AI 칭찬 피드백이 제공됩니다.")
 
     if st.button("본 문제 안내로 넘어가기", use_container_width=True):
         set_phase("task_intro")
@@ -2794,6 +2841,10 @@ def render_inference_round(
     question = questions[index]
     st.session_state["round_no"] = index
     current_index = int(st.session_state.get("round_no", 0)) + 1
+    option_state_key = f"{round_key}_{question.id}"
+    display_options, option_index_map, _ = get_randomized_option_state(
+        question, option_state_key
+    )
 
     question_container = st.container()
     with question_container:
@@ -2809,7 +2860,7 @@ def render_inference_round(
         if rs.get("question_start") is None:
             rs["question_start"] = time.perf_counter()
 
-        answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(question.options)]
+        answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(display_options)]
         selected_answer_label, answer_valid = radio_required(
             "정답을 선택하세요",
             answer_labels,
@@ -2856,7 +2907,8 @@ def render_inference_round(
     st.session_state["mcp_active_round_no"] = analysis_round_no
 
     manager: ExperimentManager = st.session_state.manager
-    selected_option_idx = answer_labels.index(selected_answer_label)
+    selected_display_idx = answer_labels.index(selected_answer_label)
+    selected_option_idx = option_index_map[selected_display_idx]
     selected_tag_idx = rationale_tags.index(selected_tag)
     manager.process_inference_response(
         question_id=question.id,
@@ -2871,7 +2923,7 @@ def render_inference_round(
         "gloss": question.gloss,
         "options": question.options,
         "selected_option": int(selected_option_idx),
-        "selected_option_text": question.options[selected_option_idx],
+        "selected_option_text": display_options[selected_display_idx],
         "correct_idx": int(question.answer_idx),
         "correct_text": question.options[question.answer_idx],
         "selected_reason_idx": int(selected_tag_idx),
@@ -3043,9 +3095,7 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
 def render_difficulty_check() -> None:
     scroll_top_js()
     st.title("다음 진행할 과제의 난이도를 선택해주세요")
-    st.write(
-        "다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요."
-    )
+    st.write("다음 라운드에서 진행하기를 원하는 난이도 수준을 선택해 주세요.")
     likert_options = list(range(1, 11))
     prompt = "다음 라운드 난이도는 방금한 과제에 비해 어느 정도 난이도를 원하시나요? (1=매우 쉬움, 10=매우 어려움)"
     try:
@@ -3062,7 +3112,9 @@ def render_difficulty_check() -> None:
             prompt, likert_options, "difficulty_rating_fallback"
         )
     if rating_valid:
-        st.session_state.payload["difficulty_checks"]["after_round1"] = int(rating_value)
+        st.session_state.payload["difficulty_checks"]["after_round1"] = int(
+            rating_value
+        )
     else:
         st.session_state.payload["difficulty_checks"].pop("after_round1", None)
     if st.button("두번째 시작", use_container_width=True):
@@ -3109,7 +3161,9 @@ def render_motivation() -> None:
 def render_manipulation_check() -> None:
     scroll_top_js()
     st.header("방금 피드백을 준 AI에이전트에 대한 평가를 진행해주세요.")
-    st.caption("각 문항은 1(전혀 그렇지 않다) ~ 5(매우 그렇다) 사이에서 선택해 주세요. 모든 문항은 필수입니다.")
+    st.caption(
+        "각 문항은 1(전혀 그렇지 않다) ~ 5(매우 그렇다) 사이에서 선택해 주세요. 모든 문항은 필수입니다."
+    )
     st.markdown(LIKERT5_LEGEND_HTML, unsafe_allow_html=True)
 
     total_items = len(MANIPULATION_CHECK_ITEMS)
@@ -3133,7 +3187,9 @@ def render_manipulation_check() -> None:
     answers: Dict[str, int] = st.session_state.setdefault("manip_check", {})
     options = LIKERT5_NUMERIC_OPTIONS
 
-    for offset, item in enumerate(MANIPULATION_CHECK_ITEMS[start_idx:end_idx], start=start_idx + 1):
+    for offset, item in enumerate(
+        MANIPULATION_CHECK_ITEMS[start_idx:end_idx], start=start_idx + 1
+    ):
         selection = render_likert_numeric(
             item_id=item.id,
             label=f"{offset}. {item.text}",
@@ -3155,9 +3211,7 @@ def render_manipulation_check() -> None:
     st.divider()
     col_prev, col_next = st.columns(2)
     with col_prev:
-        if page > 1 and st.button(
-            "← 이전", use_container_width=True, key="manip_prev"
-        ):
+        if page > 1 and st.button("← 이전", use_container_width=True, key="manip_prev"):
             st.session_state.manip_page = page - 1
             set_phase(st.session_state.phase)
     with col_next:
@@ -3175,7 +3229,10 @@ def render_manipulation_check() -> None:
                     if not complete:
                         st.warning("모든 문항에 응답해 주세요.")
                         return
-                    saved = {item.id: int(answers[item.id]) for item in MANIPULATION_CHECK_ITEMS}
+                    saved = {
+                        item.id: int(answers[item.id])
+                        for item in MANIPULATION_CHECK_ITEMS
+                    }
                     st.session_state.manip_check_saved = saved
                     st.session_state.payload["manipulation_check"] = saved
                     st.session_state.manip_page = 1
@@ -3316,7 +3373,9 @@ def render_summary() -> None:
                     if gcs_msg == "GCS bucket not configured":
                         key = "gcs::not_configured"
                         if not warn_registry.get(key):
-                            st.info("GCS 버킷이 설정되지 않아 JSON 스냅샷 저장을 생략합니다.")
+                            st.info(
+                                "GCS 버킷이 설정되지 않아 JSON 스냅샷 저장을 생략합니다."
+                            )
                             warn_registry[key] = True
                     else:
                         key = f"gcs::{gcs_msg}"
@@ -3349,7 +3408,9 @@ def render_summary() -> None:
     if st.session_state.saved_once:
         st.success("연구가 완료되었습니다. 하단의 종료/제출 버튼을 눌러주세요.")
     elif st.session_state.save_error:
-        st.error("응답 저장 중 오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.")
+        st.error(
+            "응답 저장 중 오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요."
+        )
         if st.button("다시 시도", use_container_width=True):
             st.session_state.save_error = None
             st.rerun()
@@ -3357,7 +3418,9 @@ def render_summary() -> None:
         st.info("응답을 안전하게 저장하는 중입니다. 잠시만 기다려 주세요.")
 
     submit_key = "final_submit_confirmed"
-    if st.button("종료/제출", use_container_width=True, disabled=not st.session_state.saved_once):
+    if st.button(
+        "종료/제출", use_container_width=True, disabled=not st.session_state.saved_once
+    ):
         st.session_state[submit_key] = True
 
     if st.session_state.get(submit_key):
@@ -3433,7 +3496,11 @@ elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
     render_inference_round(
-        "nouns", NOUN_QUESTIONS, REASON_NOUN_LABELS, "analysis_nouns", analysis_round_no=1
+        "nouns",
+        NOUN_QUESTIONS,
+        REASON_NOUN_LABELS,
+        "analysis_nouns",
+        analysis_round_no=1,
     )
 elif phase == "analysis_nouns":
     render_analysis("nouns", 1, "feedback_nouns")
@@ -3443,7 +3510,11 @@ elif phase == "difficulty_check":
     render_difficulty_check()
 elif phase == "inference_verbs":
     render_inference_round(
-        "verbs", VERB_QUESTIONS, REASON_VERB_LABELS, "analysis_verbs", analysis_round_no=2
+        "verbs",
+        VERB_QUESTIONS,
+        REASON_VERB_LABELS,
+        "analysis_verbs",
+        analysis_round_no=2,
     )
 elif phase == "analysis_verbs":
     render_analysis("verbs", 2, "feedback_verbs")
