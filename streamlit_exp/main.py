@@ -667,7 +667,7 @@ MCP_STATUS_SEQUENCE = [
     ("패턴 스캔 중", "[INFO][COVNOX] Parsing rationale tags (single-select)"),
     ("응답 일치도 정렬 중", "추론 근거 태그 분포를 규칙 템플릿과 비교하는 중입니다."),
     ("추론 효율 계산 중", "조건별 비교 지표와 안정도를 재계산하고 있습니다."),
-    ("AI 튜터 리포트 구성 중", "맞춤형 칭찬 메시지를 정교화하고 있습니다."),
+    ("AI 튜터 리포트 구성 중", "맞춤형 메시지를 정교화하고 있습니다."),
 ]
 
 MCP_OVERLAY_TEMPLATE = """
@@ -918,12 +918,12 @@ def get_or_assign_praise_sequence() -> list[int]:
 
 FEEDBACK_TEXTS: Dict[str, List[str]] = {
     "emotional_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 훌륭한 학습자를 만난 것 같아서 기쁨과 뿌듯함을 느끼고 있습니다. 특히 {A}를 적절하게 사용하셨는데 쉽지 않은 과제임에도 놀라운 언어적 능력과 추론 능력보여주신 점이 인상 깊었습니다. 저와 함께 학습을 진행한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n전체 12개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 훌륭한 학습자를 만난 것 같아서 기쁨과 뿌듯함을 느끼고 있습니다. 특히 {A}를 적절하게 사용하셨는데 쉽지 않은 과제임에도 놀라운 언어적 능력과 추론 능력보여주신 점이 인상 깊었습니다. 저와 함께 학습을 진행한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n도전적인 문항에서도 성실하고 깊이 있는 사고가 관찰되었습니다. 특히 {A}와 {B} 사용이 안정적으로 드러났습니다. 계속 함께한다면 큰 성장이 기대됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n응답 전반에서 세심한 판단과 일관성이 확인되었습니다. {A}, {B} 활용이 인상적이었습니다. 훌륭한 학습자의 면모가 보입니다.",
     ],
     "computational_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항을 분석한 결과, 사전 분포 대비 92.3 퍼센타일의 추론 효율 지수를 기록하셨습니다. 이는 응답 시점별 근거 밀도의 분산이 0.14 이내로 수렴한 결과로 해석됩니다. 특히 {A}의 사용 빈도는 라플라스 근사 모델 기준 ΔAIC = −5.28 수준에서 최적 예측변수로 선택되었습니다. 문항당 평균 근거 수는 1.4개로, 비정규성이나 과잉 산포 없이 최적의 정보량을 유지하였습니다. 전체적으로 안정적이고 통계적으로 유의한 추론 패턴을 형성하신 것으로 판단됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n전체 12개 문항을 분석한 결과, 사전 분포 대비 92.3 퍼센타일의 추론 효율 지수를 기록하셨습니다. 이는 응답 시점별 근거 밀도의 분산이 0.14 이내로 수렴한 결과로 해석됩니다. 특히 {A}의 사용 빈도는 라플라스 근사 모델 기준 ΔAIC = −5.28 수준에서 최적 예측변수로 선택되었습니다. 문항당 평균 근거 수는 1.4개로, 비정규성이나 과잉 산포 없이 최적의 정보량을 유지하였습니다. 전체적으로 안정적이고 통계적으로 유의한 추론 패턴을 형성하신 것으로 판단됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n다변량 분석에서 {A}·{B}가 핵심 예측변수로 반복 선택되었고, 응답 시점별 근거 밀도 분산은 0.14 이내로 수렴했습니다. 통계적으로 유의한 안정 패턴입니다.",
         "추론 과제의 분석이 완료되었습니다.\n사전 분포 대비 상위 퍼센타일을 유지했고 ΔAIC 기준에서도 {A}/{B}의 설명력이 확인되었습니다. 문항당 평균 근거 1.4개로 정보량이 최적화되었습니다.",
     ],
@@ -1648,93 +1648,93 @@ ALL_INFERENCE_QUESTIONS = NOUN_QUESTIONS + VERB_QUESTIONS
 
 MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
     SurveyQuestion(
-        "IE1", "이 과제를 하는 동안 즐거웠습니다.", category="interest_enjoyment"
+        "IE1", "이 과제를 하는 동안 즐거웠다.", category="interest_enjoyment"
     ),
-    SurveyQuestion("IE2", "이 과제는 재미있었습니다.", category="interest_enjoyment"),
+    SurveyQuestion("IE2", "이 과제는 재미있었다.", category="interest_enjoyment"),
     SurveyQuestion(
-        "IE3", "이 과제가 지루했습니다.", reverse=True, category="interest_enjoyment"
+        "IE3", "이 과제가 지루했다.", reverse=True, category="interest_enjoyment"
     ),
     SurveyQuestion(
-        "IE4", "이 과제를 하는 것이 흥미로웠습니다.", category="interest_enjoyment"
+        "IE4", "이 과제를 하는 것이 흥미로웠다.", category="interest_enjoyment"
     ),
     SurveyQuestion(
         "IE5",
-        "이 과제를 하면서 시간이 빨리 지나갔습니다.",
+        "이 과제를 하면서 시간이 빨리 지나갔다.",
         category="interest_enjoyment",
     ),
     SurveyQuestion(
-        "IE6", "이 과제에 몰입할 수 있었습니다.", category="interest_enjoyment"
+        "IE6", "이 과제에 몰입할 수 있었다.", category="interest_enjoyment"
     ),
     SurveyQuestion(
         "IE7",
-        "이 과제를 계속 하고 싶다는 생각이 들었습니다.",
+        "이 과제를 계속 하고 싶다는 생각이 들었다.",
         category="interest_enjoyment",
     ),
     SurveyQuestion(
-        "PC1", "이 과제를 잘 수행했다고 생각합니다.", category="perceived_competence"
+        "PC1", "이 과제를 잘 수행했다고 생각한다.", category="perceived_competence"
     ),
     SurveyQuestion(
         "PC2",
-        "이 과제에서 만족스러운 결과를 얻었습니다.",
+        "이 과제에서 만족스러운 결과를 얻었다.",
         category="perceived_competence",
     ),
     SurveyQuestion(
-        "PC3", "이 과제를 수행하는 데 능숙했습니다.", category="perceived_competence"
+        "PC3", "이 과제를 수행하는 데 능숙한 것 같다.", category="perceived_competence"
     ),
     SurveyQuestion(
         "PC4",
-        "이 과제가 너무 어려웠습니다.",
+        "이 과제가 너무 어려웠다.",
         reverse=True,
         category="perceived_competence",
     ),
     SurveyQuestion(
         "PC5",
-        "이 과제를 완수할 수 있다는 자신감이 있었습니다.",
+        "이 과제를 완수할 수 있을 것 같았다.",
         category="perceived_competence",
     ),
     SurveyQuestion(
         "PC6",
-        "이 과제에서 좋은 성과를 낼 수 있었습니다.",
+        "이 과제에서 좋은 성과를 낼 수 있을 것 같았다.",
         category="perceived_competence",
     ),
     SurveyQuestion(
-        "EI1", "이 과제에 많은 노력을 기울였습니다.", category="effort_importance"
+        "EI1", "이 과제에 많은 노력을 기울였다.", category="effort_importance"
     ),
     SurveyQuestion(
-        "EI2", "이 과제를 잘 수행하는 것이 중요했습니다.", category="effort_importance"
+        "EI2", "이 과제를 잘 수행하는 것이 중요했다.", category="effort_importance"
     ),
-    SurveyQuestion("EI3", "이 과제에 최선을 다했습니다.", category="effort_importance"),
+    SurveyQuestion("EI3", "이 과제에 최선을 다했다.", category="effort_importance"),
     SurveyQuestion(
-        "EI4", "이 과제에 집중하려고 노력했습니다.", category="effort_importance"
-    ),
-    SurveyQuestion(
-        "EI5", "이 과제를 대충 했습니다.", reverse=True, category="effort_importance"
+        "EI4", "이 과제에 집중하려고 노력했다.", category="effort_importance"
     ),
     SurveyQuestion(
-        "VU1", "이 과제는 나에게 가치가 있었습니다.", category="value_usefulness"
+        "EI5", "이 과제를 대충했다.", reverse=True, category="effort_importance"
     ),
     SurveyQuestion(
-        "VU2", "이 과제를 통해 유용한 것을 배웠습니다.", category="value_usefulness"
+        "VU1", "이 과제는 나에게 가치가 있었다.", category="value_usefulness"
     ),
     SurveyQuestion(
-        "VU3", "이 과제는 나에게 도움이 되었습니다.", category="value_usefulness"
+        "VU2", "이 과제를 통해 유용한 것을 배웠다.", category="value_usefulness"
     ),
     SurveyQuestion(
-        "VU4", "이 과제는 시간 낭비였습니다.", reverse=True, category="value_usefulness"
+        "VU3", "이 과제는 나에게 도움이 되었다.", category="value_usefulness"
+    ),
+    SurveyQuestion(
+        "VU4", "이 과제는 시간 낭비였다.", reverse=True, category="value_usefulness"
     ),
     SurveyQuestion(
         "AU1",
-        "이 과제를 수행하는 방식을 스스로 선택할 수 있었습니다.",
+        "이 과제를 수행할 때 학습 방식을 스스로 선택할 수 있었다.",
         category="autonomy",
     ),
     SurveyQuestion(
-        "AU2", "이 과제를 하면서 자유롭게 행동할 수 있었습니다.", category="autonomy"
+        "AU2", "이 과제를 하면서 자유롭게 행동하거나 생각 할 수 있었다.", category="autonomy"
     ),
     SurveyQuestion(
-        "PT1", "이 과제를 하는 동안 긴장했습니다.", category="pressure_tension"
+        "PT1", "이 과제를 하는 동안 긴장했다.", category="pressure_tension"
     ),
     SurveyQuestion(
-        "PT2", "이 과제를 하면서 스트레스를 받았습니다.", category="pressure_tension"
+        "PT2", "이 과제를 하면서 스트레스를 받았다.", category="pressure_tension"
     ),
 ]
 
