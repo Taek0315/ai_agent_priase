@@ -32,7 +32,7 @@ LIKERT5_NUMERIC_OPTIONS: List[int] = [1, 2, 3, 4, 5]
 # [CHANGE] Demographic form labels and constraints.
 DEMOGRAPHIC_SEX_LABEL: str = "생물학적 성별을 선택해 주세요."
 DEMOGRAPHIC_SEX_OPTIONS: List[str] = ["남자", "여자"]
-DEMOGRAPHIC_AGE_LABEL: str = "만 나이를 입력해 주세요 (Enter your age in years, international age)."
+DEMOGRAPHIC_AGE_LABEL: str = "만 나이를 입력해 주세요."
 DEMOGRAPHIC_AGE_MIN: int = 1
 DEMOGRAPHIC_AGE_MAX: int = 120
 
