@@ -1340,6 +1340,37 @@ class Question:
     shuffle_options: bool = True
 
 
+# --------------------------------------------------------------------------------------
+# Practice (single trial before main inference tasks)
+# --------------------------------------------------------------------------------------
+
+PRACTICE_BUILDING_HEIGHT_REASON_LABELS: List[str] = [
+    "A. 사람(실루엣) 대비 출입문·창문 높이 비율과 층고를 근거로 추정함",
+    "B. 층별 창문 배열(1층 출입구 + 상부 창 구성)을 통해 층수를 추정함",
+    "C. 벽돌 줄눈/파사드 패턴의 반복 간격을 단서로 높이를 추정함",
+    "D. 주변 환경(보도, 건물 외곽 프레임)과 스케일 단서를 종합해 추정함",
+]
+
+PRACTICE_BUILDING_HEIGHT_QUESTION: Question = Question(
+    id="practice_building_height_01",
+    gloss="아래 이미지를 보고, 화면에 보이는 건물의 높이를 추론해 주세요.",
+    stem="건물 앞에 있는 실루엣 사람과 층별 창문/출입구 구조를 단서로 활용할 수 있습니다.",
+    options=[
+        "A. 약 3–4m (1층 건물 수준)",
+        "B. 약 5–7m (2층 건물 수준)",
+        "C. 약 8–10m (3층 건물 수준)",
+        "D. 약 11–14m (4층 이상 수준)",
+    ],
+    # Correct answer for practice item is C (index 2).
+    answer_idx=2,
+    # Reason correctness is not scored for practice; keep a placeholder.
+    reason_idx=0,
+    category="practice",
+    image_path=str(BASE_DIR / "test_task.png"),
+    shuffle_options=False,
+)
+
+
 # [CHANGE] Default motivation survey scale updated to 5-point Likert.
 @dataclass
 class SurveyQuestion:
@@ -2557,33 +2588,89 @@ def render_visual_training_intro() -> None:
 
 def render_visual_practice() -> None:
     scroll_top_js()
-    st.title("연습: 응답 형식 확인")
-    st.caption("이 단계는 점수에 반영되지 않으며, 응답 형식을 이해하는 데 도움이 됩니다.")
+    st.title("연습 문항: 건물 높이 추론")
+    st.caption("이 연습 문항은 점수에 반영되지 않습니다.")
 
-    with st.expander("과제 개요(다시 보기)", expanded=True):
-        st.markdown(GRAMMAR_INFO_MD)
+    ps = st.session_state.practice_state
+    if ps.get("attempted", False):
+        st.success("연습 문항이 완료되었습니다. 이제 본 과제 안내로 진행합니다.")
+        if st.button(
+            "본 과제 안내로 진행하기",
+            use_container_width=True,
+            key="practice_to_task_intro",
+        ):
+            set_phase("task_intro")
+        return
 
-    st.markdown(
-        """
-다음 내용을 이해했는지 확인해 주세요.
-- 이미지 1장당 **추론 문항 1개**에 응답합니다.
-- 또한, 선택한 답을 설명하는 **추론 근거(이유) 옵션 1개**를 함께 선택합니다.
-        """.strip()
+    question = PRACTICE_BUILDING_HEIGHT_QUESTION
+    render_question_card(question, badge="연습 문항")
+    render_question_image(question)
+    st.markdown("제출하려면 정답과 추론 근거를 모두 선택해야 합니다.")
+
+    answer_labels = list(question.options)
+    selected_answer_label, answer_valid = radio_required(
+        "정답을 선택하세요",
+        answer_labels,
+        key="practice_building_height_answer",
     )
 
-    confirmed = st.checkbox(
-        "이해했으며, 본 과제를 시작할 준비가 되었습니다.",
-        key="practice_confirmed",
+    selected_reason_label, reason_valid = radio_required(
+        "정답을 그렇게 선택한 주요 근거는 무엇인가요?",
+        PRACTICE_BUILDING_HEIGHT_REASON_LABELS,
+        key="practice_building_height_reason",
     )
-    st.session_state.practice_state = {"attempted": bool(confirmed)}
 
-    st.divider()
-    if st.button(
-        "본 과제 안내로 진행하기",
+    can_submit = bool(answer_valid and reason_valid)
+    submitted = st.button(
+        "제출",
         use_container_width=True,
-        disabled=not confirmed,
-    ):
-        set_phase("task_intro")
+        disabled=not can_submit,
+        key="practice_building_height_submit",
+    )
+    if not submitted:
+        return
+    if not can_submit:
+        st.error("정답과 추론 근거 선택은 필수입니다.")
+        return
+
+    def _choice_code(text: str) -> str:
+        if not text:
+            return ""
+        head = text.split(".", 1)[0].strip()
+        return head if len(head) == 1 else head[:1]
+
+    selected_option_idx = int(answer_labels.index(selected_answer_label))
+    is_correct = selected_option_idx == int(question.answer_idx)
+    practice_record: Dict[str, Any] = {
+        "question_id": question.id,
+        "stimulus_image": getattr(question, "image_path", None) or "",
+        "options": list(question.options),
+        "selected_option": selected_option_idx,
+        "selected_option_text": str(selected_answer_label),
+        "selected_option_code": _choice_code(str(selected_answer_label)),
+        "correct_idx": int(question.answer_idx),
+        "correct_option_code": _choice_code(question.options[question.answer_idx]),
+        "is_correct": bool(is_correct),
+        "selected_reason_text": str(selected_reason_label),
+        "selected_reason_code": _choice_code(str(selected_reason_label)),
+        "timestamp": now_utc_iso(),
+    }
+
+    # Store practice response separately: session practice_state + payload.practice_attempt.
+    st.session_state.practice_state = {
+        "attempted": True,
+        "correct": bool(is_correct),
+        "message": "",
+        "explanation": "",
+        "record": practice_record,
+    }
+    st.session_state.payload["practice_attempt"] = practice_record
+
+    # Re-render once into the fixed completion message + continue button.
+    try:
+        st.rerun()
+    except Exception:
+        st.experimental_rerun()
 
 
 def render_task_intro() -> None:
