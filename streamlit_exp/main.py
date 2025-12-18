@@ -1355,10 +1355,10 @@ PRACTICE_BUILDING_HEIGHT_QUESTION: Question = Question(
     gloss="아래 이미지를 보고, 화면에 보이는 건물의 높이를 추론해 주세요. 사람(실루엣)과 층별 창문/출입구 구조를 단서로 활용할 수 있습니다.",
     stem="",
     options=[
-        "A. 약 3–4m (1층 건물 수준)",
-        "B. 약 5–7m (2층 건물 수준)",
-        "C. 약 8–10m (3층 건물 수준)",
-        "D. 약 11–14m (4층 이상 수준)",
+        "A. 약 3–4m",
+        "B. 약 5–7m",
+        "C. 약 8–10m",
+        "D. 약 11–14m",
     ],
     # Correct answer for practice item is C (index 2).
     answer_idx=2,
