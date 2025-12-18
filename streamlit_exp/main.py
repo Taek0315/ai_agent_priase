@@ -918,12 +918,12 @@ def get_or_assign_praise_sequence() -> list[int]:
 
 FEEDBACK_TEXTS: Dict[str, List[str]] = {
     "emotional_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 12개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 훌륭한 학습자를 만난 것 같아서 기쁨과 뿌듯함을 느끼고 있습니다. 특히 {A}를 적절하게 사용하셨는데 쉽지 않은 과제임에도 놀라운 언어적 능력과 추론 능력보여주신 점이 인상 깊었습니다. 저와 함께 학습을 진행한다면 정말 즐겁고 뜻 깊을 것 같아 기대가 됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항이 어려울 수 있음에도 열심히 풀어주신 점에 감사합니다. 각 문항에서 응답한 추론 방식을 볼 때 많은 생각과 깊은 고민을 하시면서 응답하신 걸로 생각됩니다. 특히 {A} 같은 시각적 단서를 적절하게 사용하셨는데 쉽지 않은 과제임에도 관찰력과 추론 능력을 보여주신 점이 인상 깊었습니다. 앞으로의 학습 과정도 기대됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n도전적인 문항에서도 성실하고 깊이 있는 사고가 관찰되었습니다. 특히 {A}와 {B} 사용이 안정적으로 드러났습니다. 계속 함께한다면 큰 성장이 기대됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n응답 전반에서 세심한 판단과 일관성이 확인되었습니다. {A}, {B} 활용이 인상적이었습니다. 훌륭한 학습자의 면모가 보입니다.",
     ],
     "computational_specific": [
-        "추론 과제의 분석이 완료되었습니다.\n전체 12개 문항을 분석한 결과, 사전 분포 대비 92.3 퍼센타일의 추론 효율 지수를 기록하셨습니다. 이는 응답 시점별 근거 밀도의 분산이 0.14 이내로 수렴한 결과로 해석됩니다. 특히 {A}의 사용 빈도는 라플라스 근사 모델 기준 ΔAIC = −5.28 수준에서 최적 예측변수로 선택되었습니다. 문항당 평균 근거 수는 1.4개로, 비정규성이나 과잉 산포 없이 최적의 정보량을 유지하였습니다. 전체적으로 안정적이고 통계적으로 유의한 추론 패턴을 형성하신 것으로 판단됩니다.",
+        "추론 과제의 분석이 완료되었습니다.\n전체 10개 문항을 분석한 결과, 응답 패턴에서 안정적인 추론 경향이 관찰되었습니다. 특히 {A}의 사용 빈도는 모델 기준에서 유의미한 예측 변수로 반복 선택되었습니다. 문항당 평균 근거 수는 1.0~1.4개 수준으로, 과도한 변동 없이 일관된 정보량을 유지하였습니다. 전체적으로 통계적으로 유의한 추론 패턴을 형성하신 것으로 판단됩니다.",
         "추론 과제의 분석이 완료되었습니다.\n다변량 분석에서 {A}·{B}가 핵심 예측변수로 반복 선택되었고, 응답 시점별 근거 밀도 분산은 0.14 이내로 수렴했습니다. 통계적으로 유의한 안정 패턴입니다.",
         "추론 과제의 분석이 완료되었습니다.\n사전 분포 대비 상위 퍼센타일을 유지했고 ΔAIC 기준에서도 {A}/{B}의 설명력이 확인되었습니다. 문항당 평균 근거 1.4개로 정보량이 최적화되었습니다.",
     ],
@@ -948,7 +948,7 @@ MICRO_FEEDBACK: Dict[str, List[str]] = {
         "복잡한 상황에도 {A}/{B}를 흔들림 없이 적용하셨습니다.",
         "추론 경로가 분명합니다. {A}/{B} 판단이 돋보여요.",
         "치밀한 사고가 느껴집니다. {A}/{B} 연결이 매끄럽습니다.",
-        "세부 규칙을 잘 활용했습니다. {A}/{B} 선택이 정교합니다.",
+        "세부 단서를 잘 활용했습니다. {A}/{B} 선택이 정교합니다.",
         "깊은 이해가 전제된 응답입니다. {A}/{B}가 안정적으로 쓰였습니다.",
         "논리 흐름이 탄탄합니다. {A}/{B} 조합이 균형 잡혀 있어요.",
         "설명 가능한 근거가 반복됩니다. {A}/{B}가 중심에 있습니다.",
@@ -1062,13 +1062,13 @@ def typewriter_markdown(
 FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
     # 1. 정서 중심 (Emotion) + 구체성 (Specific)
     "emotional_specific": [
-        """추론 과제에 대한 분석이 완료되었습니다! 10개의 이누이트 문법 문항을 푸시면서 보여주신 깊은 고민과 성실한 태도가 정말 인상적이었습니다. 특히 {시제 -na/-tu}의 미묘한 의미 차이를 스스로 찾아내고 적용하려는 모습이 아주 돋보였습니다. 이렇게 깊이 있게 사고하는 학습자를 만나게 되어 진심으로 기쁘고, 당신의 성장을 곁에서 함께할 수 있다는 생각에 마음이 따뜻해집니다.""",
-        """분석이 모두 완료되었습니다! 10개 문항이 쉽지 않았을 텐데, 끝까지 꼼꼼하게 추론 근거를 찾아가며 답을 선택하신 점이 정말 멋졌습니다. 특히 {시제 -na/-tu}의 용법을 구별할 때 보여주신 섬세한 판단에 감탄하게 되었습니다. 이렇게 진지하게 과제에 임해 주신 당신의 열정이 무척 자랑스럽고, 앞으로의 학습 과정이 더욱 기대됩니다.""",
+        """추론 과제에 대한 분석이 완료되었습니다! 10개의 시각 추론 문항을 풀면서 보여주신 집중력과 성실함이 정말 인상적이었습니다. 특히 표면적인 단서 하나에만 기대지 않고, {A}와 {B} 같은 시각적 근거를 연결해 결론을 내리려는 모습이 돋보였습니다. 이렇게 차분히 관찰하고 이유를 세우는 태도는 앞으로도 큰 강점이 될 거예요.""",
+        """분석이 모두 완료되었습니다! 쉽지 않은 시각 추론 문항을 끝까지 꼼꼼하게 살피며 답과 근거를 함께 선택하신 점이 정말 멋졌습니다. 단순히 '찍기'가 아니라 {A}/{B} 같은 단서를 활용해 스스로 전략을 세운 흔적이 분명히 보였어요. 이런 방식의 사고는 점점 더 어려운 문제에서도 큰 도움이 됩니다.""",
     ],
     # 2. 계산 중심 (Calculation) + 구체성 (Specific)
     "computational_specific": [
-        """10개 문항 분석 결과, 당신의 응답 패턴은 95% 신뢰구간에서 일관된 추론 모델을 사용하는 것으로 추정됩니다. {시제 -na/-tu}의 이항적(binomial) 용법 구분에 대한 예측 정확도는 88%로, 통계적으로 유의미한 변별력을 지니고 있습니다. 이러한 수치는 당신이 높은 수준의 규칙 이해와 적용 능력을 갖춘 학습자라는 점을 객관적으로 잘 보여줍니다.""",
-        """과제 분석을 모두 마쳤습니다. 10개 문항으로 구성된 데이터셋을 기준으로 모형 적합도를 비교한 결과, 당신의 응답 패턴에 기반한 추론 모델이 베이지안 정보 기준(BIC)에서 가장 우수한 적합도를 보였습니다. {시제 -na/-tu} 용법 구분에 대한 결정 트리는 교차 검증에서 92%의 정확도를 기록했습니다. 이처럼, 데이터에 비추어 보았을 때도 당신의 추론 능력은 매우 뛰어난 수준으로 평가됩니다.""",
+        """10개 문항 분석 결과, 당신의 응답은 특정 시각적 근거를 일관되게 활용하는 경향이 확인되었습니다. 특히 {A}/{B} 유형의 근거 선택이 반복적으로 나타나, 동일한 문제 구조에서 안정적인 판단 전략을 적용하고 있음을 시사합니다. 이런 일관성은 무작위 추측이 아니라 ‘단서를 보고 추론하는’ 방식으로 접근하고 있다는 객관적인 신호입니다.""",
+        """과제 분석을 모두 마쳤습니다. 문항별 응답을 종합하면, 당신은 이미지 단서 기반으로 판단을 형성하고(추론), 그 근거를 선택하는(설명) 과정을 비교적 안정적으로 수행했습니다. {A}와 {B} 같은 시각 정보에 주의를 두는 패턴이 뚜렷해, 추론 과정의 재현 가능성이 높게 관찰됩니다.""",
     ],
     # 3. 정서 중심 (Emotion) + 피상적 (Superficial)
     "emotional_surface": [
@@ -1085,8 +1085,8 @@ FEEDBACK_TEMPLATES: Dict[str, List[str]] = {
 PRAISE_HIGHLIGHT_TERMS: List[str] = [
     "분석 결과",
     "추론 효율",
-    "일관된 추론 모델",
-    "높은 수준의 규칙 이해와 적용 능력",
+    "일관된 추론 전략",
+    "시각적 근거",
     "안정적인 수행 패턴",
     "효율적인 추론",
     "깊은 고민과 성실한 태도",
@@ -1218,11 +1218,12 @@ def ensure_rationale_pair(
     second = (secondary or "").strip()
     if not first and second:
         first, second = second, ""
-    display_first = first or "시제 -na"
+    # Safe fallbacks when no rationale tags exist yet (should be rare).
+    display_first = first or "Using visual cues"
     if second:
         display_second = second
     else:
-        display_second = "시제 -tu" if display_first != "시제 -tu" else "시제 -na"
+        display_second = "Careful observation" if display_first != "Careful observation" else "Using visual cues"
     return display_first, display_second
 
 
@@ -1289,21 +1290,6 @@ def generate_feedback(phase_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
     safe_top_a = html.escape(display_top_a)
     safe_top_b = html.escape(display_top_b)
 
-    if (
-        condition in ("emotional_specific", "computational_specific")
-        and "{시제 -na/-tu}" in summary_text
-    ):
-        if top_a and top_b:
-            rationale_phrase = f"{top_a}와 {top_b}"
-        elif top_a:
-            rationale_phrase = top_a
-        elif top_b:
-            rationale_phrase = top_b
-        else:
-            rationale_phrase = "시제 -na/-tu"
-        safe_rationale_phrase = html.escape(rationale_phrase)
-        summary_text = summary_text.replace("{시제 -na/-tu}", safe_rationale_phrase)
-
     if "{A}" in summary_text or "{B}" in summary_text:
         summary_text = summary_text.replace("{A}", safe_top_a).replace(
             "{B}", safe_top_b
@@ -1350,6 +1336,8 @@ class Question:
     answer_idx: int
     reason_idx: int
     category: str = "inference"
+    image_path: Optional[str] = None
+    shuffle_options: bool = True
 
 
 # [CHANGE] Default motivation survey scale updated to 5-point Likert.
@@ -1375,272 +1363,161 @@ class ExperimentData:
 
 
 NOUN_QUESTIONS: List[Question] = [
+    # Visual inference block 1: time of day (shadow length cues)
+    # Note (internal): All figures are non-realistic silhouettes with no facial/identity cues.
     Question(
         id="N1",
-        gloss="이누이트 문법 규칙에 따라, 여러 사람이 함께 기르는 한 마리 개가 사용하는 집을 나타내는 표현으로 빈칸을 채우세요.",
-        stem="'nuk-t ____ taku-na' (사람들이 ____를 본다; 대상은 공동으로 키우는 개의 집입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
+        gloss="Observe the image carefully.",
+        stem="Based on the image, what time of day is most likely?",
         options=[
-            "nuk-t-mi sua-mi ani",
-            "nuk-mi sua-t-mi ani",
-            "nuk-t sua-mi ani",
-            "nuk-mi sua-mi ani",
-            "nuk sua-t-mi ani",
+            "A. Early morning",
+            "B. Late morning",
+            "C. Around noon",
+            "D. Late afternoon",
         ],
         answer_idx=0,
-        reason_idx=1,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "time_task_1.png"),
+        shuffle_options=False,
     ),
     Question(
         id="N2",
-        gloss="이누이트 문법 규칙에 따라, 집과 음식을 모두 목적 표지로 묶어 표현해야 하는 상황입니다. 주어진 문장을 완성해 주세요.",
-        stem="'nuk ____ taku-na' (사람이 ____를 본다; 집과 음식이 모두 목적어입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
+        gloss="Observe the image carefully.",
+        stem="Based on the image, what time of day is most likely?",
         options=[
-            "ani-ka ama pira-ka",
-            "ani-ka ama pira",
-            "ani ama pira-ka",
-            "ani ama pira",
-            "ani-ka ama pira-t",
+            "A. Early morning",
+            "B. Late morning",
+            "C. Around noon",
+            "D. Late afternoon",
         ],
-        answer_idx=0,
+        answer_idx=1,
         reason_idx=2,
+        image_path=str(BASE_DIR / "time_task_2.png"),
+        shuffle_options=False,
     ),
     Question(
         id="N3",
-        gloss="이누이트 문법 규칙에 따라, 한 사람이 기르는 여러 마리 개가 소유한 물그릇을 표현하세요.",
-        stem="'nuk ____ taku-na' (사람이 자신의 개 무리가 차지한 물그릇을 살핀다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
+        gloss="Observe the image carefully.",
+        stem="Based on the image, what time of day is most likely?",
         options=[
-            "nuk-mi sua-t-mi ika",
-            "nuk-t-mi sua-mi ika",
-            "nuk-mi sua-mi ika",
-            "nuk sua-t-mi ika",
-            "nuk-t sua-mi ika",
+            "A. Early morning",
+            "B. Late morning",
+            "C. Around noon",
+            "D. Late afternoon",
         ],
-        answer_idx=0,
-        reason_idx=3,
+        answer_idx=2,
+        reason_idx=1,
+        image_path=str(BASE_DIR / "time_task_3.png"),
+        shuffle_options=False,
     ),
     Question(
         id="N4",
-        gloss="이누이트 문법 규칙에 따라, 특정 개의 여러 집을 올바른 소유 순서로 나타내세요.",
-        stem="'nuk ____ taku-na' (사람이 특정 개의 집 여러 채를 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
+        gloss="Observe the image carefully.",
+        stem="Based on the image, what time of day is most likely?",
         options=[
-            "sua-mi ani-t-mi",
-            "sua-t-mi ani-mi",
-            "sua-mi ani-mi",
-            "sua-t ani-mi",
-            "sua ani-t-mi",
+            "A. Early morning",
+            "B. Late morning",
+            "C. Around noon",
+            "D. Late afternoon",
         ],
-        answer_idx=0,
-        reason_idx=0,
+        answer_idx=3,
+        reason_idx=2,
+        image_path=str(BASE_DIR / "time_task_4.png"),
+        shuffle_options=False,
     ),
     Question(
         id="N5",
-        gloss="이누이트 문법 규칙에 따라, 한 사람이 기르는 여러 마리 개가 함께 사용하는 집을 나타내는 표현을 고르세요.",
-        stem="'nuk ____ taku-na' (사람이 자신의 여러 마리 개가 쓰는 집을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
+        gloss="Observe the image carefully.",
+        stem="Based on the image, what time of day is most likely?",
         options=[
-            "nuk-mi sua-t-mi ani",
-            "nuk-t-mi sua-mi ani",
-            "nuk-mi sua-mi ani",
-            "nuk-t sua-mi ani",
-            "nuk sua-t-mi ani",
+            "A. Early morning",
+            "B. Late morning",
+            "C. Around noon",
+            "D. Late afternoon",
         ],
-        answer_idx=0,
-        reason_idx=1,
-    ),
-    Question(
-        id="N6",
-        gloss="이누이트 문법 규칙에 따라, 사람과 개가 각각 소유한 물을 한 문장 안에서 표현하세요.",
-        stem="'nuk ____ taku-na' (사람이 자신과 개가 각자 쓰는 물을 확인한다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "nuk-mi ama sua-mi ika",
-            "nuk-t-mi ama sua-t-mi ika",
-            "nuk-mi ama sua-t-mi ika",
-            "nuk ama sua ika",
-            "nuk-t ama sua-t ika",
-        ],
-        answer_idx=0,
-        reason_idx=1,
-    ),
-    Question(
-        id="N7",
-        gloss="이누이트 문법 규칙에 따라, 개 무리 자체가 공동으로 소유한 물을 나타내는 표현을 선택하세요.",
-        stem="'nuk ____ taku-na' (사람이 개 무리가 차지한 물을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "sua-t-mi ika",
-            "sua-mi ika",
-            "sua-t ika",
-            "sua ika-mi",
-            "sua ika-t",
-        ],
-        answer_idx=0,
-        reason_idx=2,
-    ),
-    Question(
-        id="N8",
-        gloss="이누이트 문법 규칙에 따라, 사람들이 여러 채의 집과 음식을 동시에 목적 표지로 표현하는 상황을 완성하세요.",
-        stem="'nuk-t ____ taku-na' (사람들이 ____를 본다; 여러 집과 음식이 함께 목적어입니다.)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "ani-t-mi ama pira-ka",
-            "ani-mi ama pira-ka",
-            "ani-t ama pira-ka",
-            "ani-t-mi ama pira",
-            "ani ama pira-ka",
-        ],
-        answer_idx=0,
-        reason_idx=3,
-    ),
-    Question(
-        id="N9",
-        gloss="이누이트 문법 규칙에 따라, 특정 사람이 소유한 바로 그 집을 지칭하는 표현을 고르세요.",
-        stem="'nuk ____ taku-na' (사람이 자신이 소유한 바로 그 집을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "nuk-mi ani na",
-            "nuk-t-mi ani na",
-            "nuk ani na",
-            "nuk-mi ani-t na",
-            "nuk-t ani na",
-        ],
-        answer_idx=0,
+        answer_idx=3,
         reason_idx=0,
-    ),
-    Question(
-        id="N10",
-        gloss="이누이트 문법 규칙에 따라, 개가 소유한 집과 물을 모두 목적 표지로 엮어 표현하세요.",
-        stem="'nuk ____ taku-na' (사람이 개의 집과 물을 동시에 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "sua-mi ani-ka ama ika-ka",
-            "sua-t-mi ani-ka ama ika-ka",
-            "sua-mi ani ama ika",
-            "sua-mi ani-ka ama ika",
-            "sua ani-ka ama ika-ka",
-        ],
-        answer_idx=0,
-        reason_idx=4,
-    ),
-    Question(
-        id="N11",
-        gloss="이누이트 문법 규칙에 따라, 여러 사람이 각각 다른 개를 소유하는 상황을 표현하세요.",
-        stem="'nuk-t ____ taku-na' (사람들이 각자의 개들을 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "nuk-t-mi sua-t-mi",
-            "nuk-mi sua-mi",
-            "nuk-t-mi sua-mi",
-            "nuk-mi sua-t-mi",
-            "nuk-t sua-t",
-        ],
-        answer_idx=0,
-        reason_idx=1,
-    ),
-    Question(
-        id="N12",
-        gloss="이누이트 문법 규칙에 따라, 한 사람이 모든 개의 집들을 한꺼번에 살피는 상황을 표현하세요.",
-        stem="'nuk ____ taku-na' (사람이 여러 마리 개의 집들을 모두 본다)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=[
-            "sua-t-mi ani-t-mi",
-            "sua-mi ani-mi",
-            "sua-t-mi ani-mi",
-            "sua-mi ani-t-mi",
-            "sua-t ani-t",
-        ],
-        answer_idx=0,
-        reason_idx=2,
+        image_path=str(BASE_DIR / "time_task_5.png"),
+        shuffle_options=False,
     ),
 ]
 
 VERB_QUESTIONS: List[Question] = [
+    # Visual inference block 2: walking speed (stride/pose cues)
     Question(
         id="V1",
-        gloss="이누이트 문법 규칙에 따라, 사람이 지금 집을 보고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["taku-li-na", "taku-na", "taku-mu-na", "taku-li-ki", "taku-tu"],
-        answer_idx=0,
-        reason_idx=1,
+        gloss="Observe the image carefully.",
+        stem="How fast is the person most likely moving?",
+        options=[
+            "A. Very slowly",
+            "B. At a normal walking speed",
+            "C. Fast walking",
+            "D. Running",
+        ],
+        answer_idx=1,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "speed_task_1.png"),
+        shuffle_options=False,
     ),
     Question(
         id="V2",
-        gloss="이누이트 문법 규칙에 따라, 사람이 어제 저녁 전에 이미 음식을 만들어 두었던 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["siku-mu-tu", "siku-tu", "siku-li-tu", "siku-mu-na", "siku-ki"],
+        gloss="Observe the image carefully.",
+        stem="How fast is the person most likely moving?",
+        options=[
+            "A. Very slowly",
+            "B. At a normal walking speed",
+            "C. Fast walking",
+            "D. Running",
+        ],
         answer_idx=0,
-        reason_idx=4,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "speed_task_2.png"),
+        shuffle_options=False,
     ),
     Question(
         id="V3",
-        gloss="이누이트 문법 규칙에 따라, 개가 내일까지 물을 모두 먹어 둘 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'sua ika-ka ____' (개가 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-mu-ki", "niri-ki", "niri-li-ki", "niri-mu-na", "niri-tu"],
-        answer_idx=0,
-        reason_idx=1,
+        gloss="Observe the image carefully.",
+        stem="How fast is the person most likely moving?",
+        options=[
+            "A. Very slowly",
+            "B. At a normal walking speed",
+            "C. Fast walking",
+            "D. Running",
+        ],
+        answer_idx=2,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "speed_task_3.png"),
+        shuffle_options=False,
     ),
     Question(
         id="V4",
-        gloss="이누이트 문법 규칙에 따라, 개가 어제 음식을 먹은 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'sua pira-ka ____' (개가 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=0,
+        gloss="Observe the image carefully.",
+        stem="How fast is the person most likely moving?",
+        options=[
+            "A. Very slowly",
+            "B. At a normal walking speed",
+            "C. Fast walking",
+            "D. Running",
+        ],
+        answer_idx=2,
+        reason_idx=1,
+        image_path=str(BASE_DIR / "speed_task_4.png"),
+        shuffle_options=False,
     ),
     Question(
         id="V5",
-        gloss="이누이트 문법 규칙에 따라, 사람이 이미 물을 본 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["taku-mu-na", "taku-na", "taku-tu", "taku-li-na", "taku-mu-tu"],
-        answer_idx=0,
+        gloss="Observe the image carefully.",
+        stem="How fast is the person most likely moving?",
+        options=[
+            "A. Very slowly",
+            "B. At a normal walking speed",
+            "C. Fast walking",
+            "D. Running",
+        ],
+        answer_idx=3,
         reason_idx=1,
-    ),
-    Question(
-        id="V6",
-        gloss="이누이트 문법 규칙에 따라, 사람과 개가 곧 음식을 보는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ama sua pira-ka ____' (사람과 개가 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["taku-li-ki", "taku-ki", "taku-li-na", "taku-mu-ki", "taku-tu"],
-        answer_idx=0,
-        reason_idx=0,
-    ),
-    Question(
-        id="V7",
-        gloss="이누이트 문법 규칙에 따라, 개가 지금 집을 보고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'sua ani-ka ____' (개가 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["taku-li-na", "taku-na-li", "li-taku-na", "taku-na", "taku-li-tu"],
-        answer_idx=0,
-        reason_idx=2,
-    ),
-    Question(
-        id="V8",
-        gloss="이누이트 문법 규칙에 따라, 사람이 그때까지 음식을 모두 먹어 둘 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk pira-ka ____' (사람이 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-mu-ki", "niri-li-ki", "niri-ki", "niri-mu-tu", "niri-na"],
-        answer_idx=0,
-        reason_idx=3,
-    ),
-    Question(
-        id="V9",
-        gloss="이누이트 문법 규칙에 따라, 사람이 항상 물을 마시는 습관을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ika-ka ____' (사람이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-na", "niri-li-na", "niri-mu-na", "niri-tu", "niri-ki"],
-        answer_idx=0,
-        reason_idx=0,
-    ),
-    Question(
-        id="V10",
-        gloss="이누이트 문법 규칙에 따라, 집을 본 뒤에 음식을 먹은 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'(ani-ka taku-mu-tu) ama pira-ka ____' (집을 본 뒤에 음식을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-tu", "niri-mu-tu", "niri-li-tu", "niri-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=4,
-    ),
-    Question(
-        id="V11",
-        gloss="이누이트 문법 규칙에 따라, 개들이 동시에 물을 마시고 있는 상황을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'sua-t-mi ika-ka ____' (개들이 물을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["niri-li-na", "niri-na", "niri-li-tu", "niri-mu-na", "niri-ki"],
-        answer_idx=0,
-        reason_idx=1,
-    ),
-    Question(
-        id="V12",
-        gloss="이누이트 문법 규칙에 따라, 사람이 내일 아침까지 집을 완성해 놓을 계획을 가장 잘 나타내는 올바른 표현을 선택하세요.",
-        stem="'nuk ani-ka ____' (사람이 집을 ____)에서 빈 칸에 들어갈 올바른 표현은 무엇입니까?",
-        options=["siku-mu-ki", "siku-ki", "siku-li-ki", "siku-mu-tu", "siku-na"],
-        answer_idx=0,
-        reason_idx=3,
+        image_path=str(BASE_DIR / "speed_task_5.png"),
+        shuffle_options=False,
     ),
 ]
 
@@ -1994,38 +1871,29 @@ PRIVACY_HTML = """
 """
 
 GRAMMAR_INFO_MD = r"""
-**어휘 예시**  
-- *ani* = 집,  *nuk* = 사람,  *sua* = 개,  *ika* = 물,  *pira* = 음식  
-- *taku* = 보다,  *niri* = 먹다,  *siku* = 만들다
+You will complete **visual inference tasks** based on static images.
 
-**소유·표지 규칙 (1차 문항 참고)**  
-- 소유: 명사 뒤 `-mi` (예: *nuk-mi ani* = 사람의 집)  
-- 복수: `-t`; 복수+소유는 `-t-mi`  
-- 목적 표지: 표현 오른쪽 끝에 `-ka` (등위 구조에서도 마지막 항만)  
-- 어순: 바깥 소유자 → 안쪽 소유자 → 머리 명사  
-- 정관 `-ri`: 표현 말단, `-ka` 앞 위치
+In each question you will:
+- **Observe the image carefully**
+- Answer a **multiple-choice inference question** (e.g., time of day or walking speed)
+- Select the **reasoning option** that best explains how you reached your answer
 
-**시제·상(TAM) 규칙 (2차 문항 참고)**  
-- 시제: `-na`(현재), `-tu`(과거), `-ki`(미래)  
-- 상: `-mu`(완료), `-li`(진행)  
-- 순서: 어간 + 상 + 시제 (예: *niri-mu-tu*)  
-- 맥락 단서: 이미/항상/어제/내일까지 등으로 시제·상을 결정
+Important:
+- There is **no single obvious surface cue** or explicit label in the images.
+- The task requires **careful observation and reasoning** using indirect visual cues.
+- **Guessing without reasoning** may make later questions harder, because the task depends on consistently noticing relevant cues.
 """
 
 REASON_NOUN_LABELS = [
-    "소유 연쇄 어순(바깥→안쪽→머리)",
-    "복수·소유 결합(…-t-mi)",
-    "우측 결합 목적 표지(-ka)",
-    "정관(-ri) 위치",
-    "등위 구조에서의 표지 배치",
+    "A. The shadow is very long and angled, suggesting a low sun position",
+    "B. The shadow is short and close to the figure, suggesting the sun is overhead",
+    "C. The shadow direction and length are intermediate",
 ]
 
 REASON_VERB_LABELS = [
-    "시제 단서 해석(어제/내일/항상)",
-    "상(완료·진행) 단서 해석(이미/…하는 중)",
-    "형태소 순서: 동사+상+시제",
-    "‘…까지/후/전’ 단서에 따른 완료 선택",
-    "연결문에서 시제 일관성 유지",
+    "A. The distance between the feet and stride length",
+    "B. The angle of the legs and body lean",
+    "C. The surrounding environment",
 ]
 
 # --------------------------------------------------------------------------------------
@@ -2145,8 +2013,8 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
 
     steps = max(1, int(seconds * 20))
     round_label_map = {
-        "nouns": "이누이트 문법 추론 과제 1차",
-        "verbs": "이누이트 문법 추론 과제 2차",
+        "nouns": "Visual inference · Block 1 (Time of day)",
+        "verbs": "Visual inference · Block 2 (Walking speed)",
     }
     round_label = round_label_map.get(round_key, "추론 과제")
 
@@ -2268,8 +2136,8 @@ def set_phase(next_phase: str) -> None:
         "instructions",
         "anthro",
         "achive",
-        "inuit_training_intro",
-        "inuit_practice",
+        "visual_training_intro",
+        "visual_practice",
         "task_intro",
         "inference_nouns",
         "analysis_nouns",
@@ -2440,18 +2308,18 @@ def render_instructions() -> None:
         """
 ### 연구 참여에 앞서 안내드립니다
 
-이 설문은 **새로운 외국어(이누이트 언어)를 학습하고**, 이에 대한 **AI의 피드백**, 그리고 그 경험에 대해 **여러분의 생각**을 알아보는 과정으로 이루어져있습니다.
-연구는 아래와 이루어져 있습니다. 학습 내용 테스트와 AI의 피드백은 각각 2회 진행됩니다.
+이 설문은 **시각 추론 과제(정적 이미지 기반)**를 수행하고, 이에 대한 **AI의 피드백**, 그리고 그 경험에 대해 **여러분의 생각**을 알아보는 과정으로 이루어져 있습니다.
+연구는 아래와 같이 진행됩니다. 시각 추론 과제와 AI 피드백은 각각 2회 진행됩니다.
 
 1. 간단한 인적 사항에 응답하기
 2. 질문지 응답하기
-3. 이누이트 언어 학습하기  
-4. 학습 내용 테스트  
-5. AI의 피드백 받기  
+3. 시각 추론 과제 안내(연습 포함)  
+4. 시각 추론 과제(2회)  
+5. AI의 피드백 받기(2회)  
 6. 학습 경험과 피드백 느낌에 대해 응답하기  
 
-이누이트 언어를 얼마나 잘 알고 있는지에 대한 정답을 모두 맞히는 것보다 **새로운 언어를 어떻게 이해하는지 그리고 과정에서의 나타나는 느낌과 생각**이 더 중요합니다. 
-부담 없이, 떠오르는 생각에 가깝게 응답해 주시면 됩니다.
+이 연구에서는 정답 자체뿐 아니라 **어떤 단서를 보고 어떻게 추론했는지(과정)**가 중요합니다.
+부담 없이, 떠오르는 판단과 그 근거에 가깝게 응답해 주시면 됩니다.
 
 전체 소요 시간은 약 10~15분 정도이며, 응답 내용은 연구 목적 외에는 사용되지 않으며 익명으로 처리됩니다.
 """
@@ -2595,10 +2463,16 @@ def render_achive() -> None:
     )
     if done:
         st.session_state.achive_page = 1
-        set_phase("inuit_training_intro")
+        set_phase("visual_training_intro")
 
 
 def render_question_card(question: Question, badge: Optional[str] = None) -> None:
+    if getattr(question, "image_path", None):
+        try:
+            st.image(question.image_path, use_container_width=True)
+        except Exception:
+            # Fail gracefully if the image cannot be loaded.
+            pass
     gloss_html = html.escape(question.gloss)
     stem_html = html.escape(question.stem)
     badge_html = f'<div class="question-badge">{badge}</div>' if badge else ""
@@ -2623,7 +2497,8 @@ def get_randomized_option_state(
     options_state_key = f"{state_key}_options"
     if options_state_key not in st.session_state:
         option_pairs = list(enumerate(question.options))
-        random.shuffle(option_pairs)
+        if question.shuffle_options:
+            random.shuffle(option_pairs)
         st.session_state[options_state_key] = option_pairs
     else:
         option_pairs = st.session_state[options_state_key]
@@ -2646,148 +2521,94 @@ def get_randomized_option_state(
     return display_options, original_index_map, correct_display_idx
 
 
-def render_inuit_training_intro() -> None:
+def render_visual_training_intro() -> None:
     scroll_top_js()
-    st.title("이누이트 문법 학습 안내")
+    st.title("Visual Inference Task (Practice 안내)")
     st.markdown(
         """
-### 이누이트어 연습 과제를 시작합니다
+### You will do visual inference from static images
 
-지금부터는 **이누이트(Inuit) 언어 규칙을 익히기 위한 연습 문제**를 진행합니다. 화면에 제시되는 예시 문장과 단어를 보면서,
+In this study, you will complete **visual inference tasks based on images**.
+Rather than reading text or labels, you will infer **hidden properties** (e.g., *time of day* or *walking speed*) from **indirect visual cues**.
 
-- 어떤 단어가 어떤 뜻을 가지는지  
-- 어떤 규칙으로 형태가 바뀌는지  
+For each image you must:
+- **Observe carefully**
+- Choose one **multiple-choice answer**
+- Choose the **reasoning option** that best explains how you decided
 
-를 살펴본 뒤 **빈칸에 들어갈 알맞은 표현과 그 근거가 되는 태그를 선택**해 주시면 됩니다.
-
-이번 연습 단계는 **문제를 푸는 방법을 익히고 규칙을 감각적으로 이해하기 위한 과정**이며, 결과는 본 과제의 최종 점수에 반영되지 않습니다. 차분히 규칙을 익힌다는 마음으로 응답해 주세요.
+Important:
+- There is **no single obvious surface cue**.
+- Careful observation and reasoning are required.
+- **Guessing without reasoning** may make later questions harder.
         """
     )
-    st.info("연습 단계에서 익힌 풀이 방식이 이후 본 과제를 수행할 때 큰 도움이 됩니다.")
+    st.info("This practice step helps you get used to the response format.")
 
-    with st.expander("핵심 규칙 요약 다시 보기", expanded=True):
+    with st.expander("Task overview (read again)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
-    if st.button("연습 문제 시작하기", use_container_width=True):
-        set_phase("inuit_practice")
+    if st.button("Continue to practice", use_container_width=True):
+        set_phase("visual_practice")
 
 
-def render_inuit_practice() -> None:
+def render_visual_practice() -> None:
     scroll_top_js()
-    st.title("이누이트 문법 연습 문제")
-    st.caption(
-        "아래 연습 문항은 점수에 반영되지 않고, 풀이 방법을 익히기 위한 단계입니다."
-    )
+    st.title("Practice: response format")
+    st.caption("This step is not scored. It only helps you understand the format.")
 
-    with st.expander("핵심 규칙 요약 다시 보기", expanded=True):
+    with st.expander("Task overview (read again)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
-    practice_question = next(
-        (q for q in NOUN_QUESTIONS if q.id == "N4"), NOUN_QUESTIONS[0]
-    )
-    render_question_card(practice_question, badge="연습 문제")
-    st.caption(
-        "정답과 추론 근거 태그를 모두 선택하면 즉시 정오답과 간단한 해설이 제공됩니다."
-    )
-
-    practice_state_key = f"practice_{practice_question.id}"
-    practice_options, practice_index_map, practice_correct_idx = (
-        get_randomized_option_state(practice_question, practice_state_key)
+    st.markdown(
+        """
+To move on, please confirm that you understand:
+- You will answer **one inference question** per image.
+- You will also choose **one reasoning option** that best explains your answer.
+        """.strip()
     )
 
-    answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(practice_options)]
-    selected_answer, answer_valid = radio_required(
-        "정답을 선택하세요",
-        answer_labels,
-        key="practice_answer",
+    confirmed = st.checkbox(
+        "I understand and I am ready to start the main task.",
+        key="practice_confirmed",
     )
-
-    selected_reason, reason_valid = radio_required(
-        "추론 근거 태그를 선택하세요 (필수)",
-        REASON_NOUN_LABELS,
-        key="practice_reason",
-    )
-
-    ready_to_submit = bool(answer_valid and reason_valid)
-    submit_clicked = st.button(
-        "연습 문제 채점하기",
-        use_container_width=True,
-        disabled=not ready_to_submit,
-        key="practice_submit_button",
-    )
-
-    if submit_clicked and ready_to_submit:
-        selected_display_idx = answer_labels.index(selected_answer)
-        selected_original_idx = practice_index_map[selected_display_idx]
-        correct = selected_display_idx == practice_correct_idx
-        rule_label = REASON_NOUN_LABELS[practice_question.reason_idx]
-        correct_text = practice_question.options[practice_question.answer_idx]
-        feedback_message = (
-            "정답입니다! 핵심 규칙을 잘 적용하셨어요."
-            if correct
-            else f"아쉽지만 오답입니다. 정답은 '{correct_text}' 입니다."
-        )
-        rationale_hint = (
-            f"이 문항은 '{rule_label}' 규칙을 확인합니다. "
-            "소유 순서와 표지를 끝까지 적용하며 목적 표지 위치를 살펴보세요."
-        )
-        st.session_state.practice_state = {
-            "attempted": True,
-            "correct": correct,
-            "message": feedback_message,
-            "explanation": rationale_hint,
-        }
-        st.session_state.payload["practice_attempt"] = {
-            "round": "practice",
-            "question_id": practice_question.id,
-            "selected_option_idx": selected_original_idx,
-            "selected_option_text": practice_options[selected_display_idx],
-            "selected_reason_text": selected_reason,
-            "selected_reason_idx": REASON_NOUN_LABELS.index(selected_reason),
-            "correct_idx": practice_question.answer_idx,
-            "correct_text": correct_text,
-            "is_correct": correct,
-            "timestamp": now_utc_iso(),
-        }
-
-    practice_state = st.session_state.practice_state
-    if practice_state.get("attempted"):
-        show_feedback = st.success if practice_state.get("correct") else st.error
-        show_feedback(practice_state.get("message", "응답이 기록되었습니다."))
-        st.info(practice_state.get("explanation", "규칙 설명을 확인해 주세요."))
+    st.session_state.practice_state = {"attempted": bool(confirmed)}
 
     st.divider()
-    proceed_disabled = not practice_state.get("attempted")
-    if proceed_disabled:
-        st.info("연습 문제를 채점하면 다음 단계로 이동할 수 있습니다.")
     if st.button(
-        "본 문제 안내로 넘어가기",
+        "Proceed to main task instructions",
         use_container_width=True,
-        disabled=proceed_disabled,
+        disabled=not confirmed,
     ):
         set_phase("task_intro")
 
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("이누이트 문법 추론 과제 안내")
+    st.title("Visual Inference Task (Main)")
     st.markdown(
         """
-### 본 이누이트 문법 추론 과제를 시작합니다
+### You will now start the main visual inference task
 
-이제부터는 방금 연습에서 익힌 방법을 바탕으로 **본 이누이트 문법 추론 과제**를 진행합니다.  
-문제를 푸는 방식은 연습 문제와 동일합니다. 각 문항에서 알맞은 표현을 선택하고, 그 선택의 근거가 되는 태그를 함께 선택해 주시면 됩니다.
+You will complete visual inference tasks based on static images.
+You will infer hidden properties (e.g., time of day, walking speed) using **indirect visual cues**, not explicit labels or text.
 
-본 과제에서의 응답과 추론 과정은 이후에 제공될 **AI 피드백**을 생성하는 데 사용됩니다.  
-연습에서 익힌 풀이 방법을 떠올리면서 차분하게 문항을 풀어 주시면 됩니다.
+For each image you must:
+- Observe the image carefully
+- Answer a multiple-choice inference question
+- Select the reasoning option that best explains your answer
+
+Important:
+- There is **no single obvious surface cue**.
+- Careful observation and reasoning are required.
+- Guessing without reasoning may make later questions difficult.
         """
     )
     st.markdown(
         """
-이 과제를 마치면 실제 AI가 여러분의 응답과 학습 과정을 바탕으로 맞춤형 피드백을 제공한 뒤, 이 경험에 대한 설문이 간단히 이어집니다. 지금처럼 차분한 마음으로 응답해 주세요.
+After each block, the AI tutor will generate feedback based on your response patterns, followed by brief surveys.
         """
     )
-    with st.expander("📘 규칙 다시 보기", expanded=True):
+    with st.expander("Task overview (read again)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
     if st.button("본 문제 시작하기", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
@@ -2804,10 +2625,10 @@ def render_inference_round(
 ) -> None:
     scroll_top_js()
     round_title_map = {
-        "nouns": "이누이트 문법 첫번째 추론 과제",
-        "verbs": "이누이트 문법 두번째 추론 과제",
+        "nouns": "Visual inference (Block 1): Time of day",
+        "verbs": "Visual inference (Block 2): Walking speed",
     }
-    st.title(round_title_map.get(round_key, "이누이트 문법 추론 과제"))
+    st.title(round_title_map.get(round_key, "Visual inference task"))
     rs = st.session_state.round_state
     payload = st.session_state.payload
     index = rs.get(f"{round_key}_index", 0)
@@ -2824,28 +2645,34 @@ def render_inference_round(
 
     question_container = st.container()
     with question_container:
-        st.header(f"추론 과제 12문항 중 {current_index}번째")
+        st.header(f"Question {current_index} of {len(questions)}")
         round_badge = (
-            "이누이트 문법을 추론해주세요."
+            "Time inference (use shadow cues)"
             if round_key == "nouns"
-            else "이누이트 문법을 추론해주세요."
+            else "Speed inference (use stride/pose cues)"
         )
         render_question_card(question, badge=round_badge)
-        st.markdown("정답과 추론 근거 태그를 모두 선택해야 제출할 수 있습니다.")
+        st.markdown("You must select both an answer and a reasoning option to submit.")
 
         if rs.get("question_start") is None:
             rs["question_start"] = time.perf_counter()
 
-        answer_labels = [f"{idx + 1}. {opt}" for idx, opt in enumerate(display_options)]
+        # Keep lettered options readable (A/B/C/D) by not adding numeric prefixes.
+        answer_labels = list(display_options)
         selected_answer_label, answer_valid = radio_required(
-            "정답을 선택하세요",
+            "Select your answer",
             answer_labels,
             key=f"{round_key}_answer_{index}",
         )
 
         rationale_tags = reason_labels
+        rationale_prompt = (
+            "What was the main reason for your answer?"
+            if round_key == "nouns"
+            else "What visual information most influenced your judgment?"
+        )
         selected_tag, tag_valid = radio_required(
-            "추론 근거 태그를 하나 선택하세요 (필수)",
+            rationale_prompt,
             rationale_tags,
             key=f"{round_key}_tag_{index}",
         )
@@ -2886,12 +2713,20 @@ def render_inference_round(
     selected_display_idx = answer_labels.index(selected_answer_label)
     selected_option_idx = option_index_map[selected_display_idx]
     selected_tag_idx = rationale_tags.index(selected_tag)
+
+    def _choice_code(text: str) -> str:
+        if not text:
+            return ""
+        head = text.split(".", 1)[0].strip()
+        return head if len(head) == 1 else head[:1]
+
     manager.process_inference_response(
         question_id=question.id,
         selected_option=selected_option_idx,
         selected_reason=selected_tag,
         response_time=response_time,
     )
+    is_correct = int(selected_option_idx) == int(question.answer_idx)
     detail = {
         "round": round_key,
         "question_id": question.id,
@@ -2900,13 +2735,21 @@ def render_inference_round(
         "options": question.options,
         "selected_option": int(selected_option_idx),
         "selected_option_text": display_options[selected_display_idx],
+        "selected_option_code": _choice_code(display_options[selected_display_idx]),
         "correct_idx": int(question.answer_idx),
         "correct_text": question.options[question.answer_idx],
+        "correct_option_code": _choice_code(question.options[question.answer_idx]),
+        "is_correct": bool(is_correct),
         "selected_reason_idx": int(selected_tag_idx),
         "selected_reason_text": selected_tag,
+        "selected_reason_code": _choice_code(selected_tag),
         "correct_reason_idx": int(question.reason_idx),
+        "correct_reason_code": _choice_code(
+            reason_labels[question.reason_idx] if 0 <= question.reason_idx < len(reason_labels) else ""
+        ),
         "response_time": response_time,
         "timestamp": now_utc_iso(),
+        "stimulus_image": getattr(question, "image_path", None) or "",
     }
     payload.setdefault("inference_details", []).append(detail)
     condition = normalize_condition(get_or_assign_praise_condition())
@@ -2952,8 +2795,8 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "nouns": "이누이트 문법 첫번째 추론 과제",
-        "verbs": "이누이트 문법 두번째 추론 과제",
+        "nouns": "Visual inference · Block 1 (Time of day)",
+        "verbs": "Visual inference · Block 2 (Walking speed)",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -3009,10 +2852,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     summary_text = feedback_payload.get("summary_text", "")
 
     hero_subtitle_map = {
-        "nouns": "이누이트 문법 첫번째 추론 과제 분석 리포트",
-        "verbs": "이누이트 문법 두번째 추론 과제 분석 리포트",
+        "nouns": "Visual inference · Block 1 report (Time of day)",
+        "verbs": "Visual inference · Block 2 report (Walking speed)",
     }
-    hero_subtitle = hero_subtitle_map.get(round_key, "이누이트어 추론 과제 피드백")
+    hero_subtitle = hero_subtitle_map.get(round_key, "Visual inference feedback")
 
     with st.container():
         st.markdown(
@@ -3462,10 +3305,10 @@ elif phase == "anthro":
     render_anthro()
 elif phase == "achive":
     render_achive()
-elif phase == "inuit_training_intro":
-    render_inuit_training_intro()
-elif phase == "inuit_practice":
-    render_inuit_practice()
+elif phase == "visual_training_intro":
+    render_visual_training_intro()
+elif phase == "visual_practice":
+    render_visual_practice()
 elif phase == "task_intro":
     render_task_intro()
 elif phase == "inference_nouns":
