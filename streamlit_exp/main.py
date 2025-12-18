@@ -1348,13 +1348,13 @@ PRACTICE_BUILDING_HEIGHT_REASON_LABELS: List[str] = [
     "A. 사람(실루엣) 대비 출입문·창문 높이 비율과 층고를 근거로 추정함",
     "B. 층별 창문 배열(1층 출입구 + 상부 창 구성)을 통해 층수를 추정함",
     "C. 벽돌 줄눈/파사드 패턴의 반복 간격을 단서로 높이를 추정함",
-    "D. 주변 환경(보도, 건물 외곽 프레임)과 스케일 단서를 종합해 추정함",
+    "D. 주변 환경(보도, 외곽 프레임)과 스케일 단서를 종합해 추정함",
 ]
 
 PRACTICE_BUILDING_HEIGHT_QUESTION: Question = Question(
     id="practice_building_height_01",
-    gloss="아래 이미지를 보고, 화면에 보이는 건물의 높이를 추론해 주세요.",
-    stem="건물 앞에 있는 실루엣 사람과 층별 창문/출입구 구조를 단서로 활용할 수 있습니다.",
+    gloss="아래 이미지를 보고, 화면에 보이는 건물의 높이를 추론해 주세요. 사람(실루엣)과 층별 창문/출입구 구조를 단서로 활용할 수 있습니다.",
+    stem="",
     options=[
         "A. 약 3–4m (1층 건물 수준)",
         "B. 약 5–7m (2층 건물 수준)",
@@ -2168,6 +2168,7 @@ def set_phase(next_phase: str) -> None:
         "anthro",
         "achive",
         "visual_training_intro",
+        "practice_building_height",
         "visual_practice",
         "task_intro",
         "inference_nouns",
@@ -2558,7 +2559,7 @@ def get_randomized_option_state(
 
 def render_visual_training_intro() -> None:
     scroll_top_js()
-    st.title("시각 추론 과제 안내(연습)")
+    st.title("연습: 응답 형식 확인")
     st.markdown(
         """
 ### 정적 이미지로 시각 추론을 수행합니다
@@ -2582,8 +2583,110 @@ def render_visual_training_intro() -> None:
     with st.expander("과제 개요(다시 보기)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
-    if st.button("연습으로 계속하기", use_container_width=True):
-        set_phase("visual_practice")
+    understood = st.checkbox(
+        "위 안내사항을 읽었으며 이해했습니다.",
+        key="practice_instructions_understood",
+    )
+    if st.button(
+        "본 과제 안내로 진행하기",
+        use_container_width=True,
+        disabled=not understood,
+        key="practice_instructions_to_practice",
+    ):
+        set_phase("practice_building_height")
+
+
+def render_practice_building_height() -> None:
+    scroll_top_js()
+    st.title("연습 문항: 건물 높이 추론")
+
+    st.markdown(
+        "아래 이미지를 보고, 화면에 보이는 건물의 높이를 추론해 주세요. 사람(실루엣)과 층별 창문/출입구 구조를 단서로 활용할 수 있습니다."
+    )
+
+    # Use the same image loading convention (absolute path under BASE_DIR).
+    st.image(str(BASE_DIR / "test_task.png"), use_container_width=True)
+
+    ps = st.session_state.practice_state
+    if ps.get("attempted", False):
+        if ps.get("correct", False):
+            st.success("연습 문항 제출이 완료되었습니다.")
+        else:
+            st.info(
+                "연습 문항 제출이 완료되었습니다. 본 문항에서 단서를 더 주의 깊게 관찰해 주세요."
+            )
+        if st.button(
+            "본 문항 시작하기",
+            use_container_width=True,
+            key="practice_building_height_to_main",
+        ):
+            set_phase("task_intro")
+        return
+
+    answer_labels = list(PRACTICE_BUILDING_HEIGHT_QUESTION.options)
+    selected_answer_label, answer_valid = radio_required(
+        "정답을 선택하세요",
+        answer_labels,
+        key="practice_building_height_answer",
+    )
+    selected_reason_label, reason_valid = radio_required(
+        "정답을 그렇게 선택한 주요 근거는 무엇인가요?",
+        PRACTICE_BUILDING_HEIGHT_REASON_LABELS,
+        key="practice_building_height_reason",
+    )
+
+    can_submit = bool(answer_valid and reason_valid)
+    if not st.button(
+        "제출하기",
+        use_container_width=True,
+        disabled=not can_submit,
+        key="practice_building_height_submit",
+    ):
+        return
+    if not can_submit:
+        st.error("정답과 추론 근거 선택은 필수입니다.")
+        return
+
+    def _choice_code(text: str) -> str:
+        if not text:
+            return ""
+        head = text.split(".", 1)[0].strip()
+        return head if len(head) == 1 else head[:1]
+
+    selected_option_idx = int(answer_labels.index(selected_answer_label))
+    is_correct = selected_option_idx == int(PRACTICE_BUILDING_HEIGHT_QUESTION.answer_idx)
+    practice_record: Dict[str, Any] = {
+        "question_id": PRACTICE_BUILDING_HEIGHT_QUESTION.id,
+        "stimulus_image": str(BASE_DIR / "test_task.png"),
+        "options": list(PRACTICE_BUILDING_HEIGHT_QUESTION.options),
+        "selected_option": selected_option_idx,
+        "selected_option_text": str(selected_answer_label),
+        "selected_option_code": _choice_code(str(selected_answer_label)),
+        "correct_idx": int(PRACTICE_BUILDING_HEIGHT_QUESTION.answer_idx),
+        "correct_option_code": _choice_code(
+            PRACTICE_BUILDING_HEIGHT_QUESTION.options[
+                PRACTICE_BUILDING_HEIGHT_QUESTION.answer_idx
+            ]
+        ),
+        "is_correct": bool(is_correct),
+        "selected_reason_text": str(selected_reason_label),
+        "selected_reason_code": _choice_code(str(selected_reason_label)),
+        "timestamp": now_utc_iso(),
+    }
+
+    # Save separately from main inference dataset.
+    st.session_state.practice_state = {
+        "attempted": True,
+        "correct": bool(is_correct),
+        "record": practice_record,
+    }
+    st.session_state.payload["practice_attempt"] = practice_record
+
+    # Re-render into the post-submit message + start button.
+    try:
+        st.rerun()
+    except Exception:
+        st.experimental_rerun()
 
 
 def render_visual_practice() -> None:
@@ -3399,6 +3502,8 @@ elif phase == "achive":
     render_achive()
 elif phase == "visual_training_intro":
     render_visual_training_intro()
+elif phase == "practice_building_height":
+    render_practice_building_height()
 elif phase == "visual_practice":
     render_visual_practice()
 elif phase == "task_intro":
