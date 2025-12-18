@@ -1367,13 +1367,13 @@ NOUN_QUESTIONS: List[Question] = [
     # Note (internal): All figures are non-realistic silhouettes with no facial/identity cues.
     Question(
         id="N1",
-        gloss="Observe the image carefully.",
-        stem="Based on the image, what time of day is most likely?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이미지를 바탕으로, 하루 중 어느 시간대일 가능성이 가장 높나요?",
         options=[
-            "A. Early morning",
-            "B. Late morning",
-            "C. Around noon",
-            "D. Late afternoon",
+            "A. 이른 아침",
+            "B. 늦은 아침",
+            "C. 정오 무렵",
+            "D. 늦은 오후",
         ],
         answer_idx=0,
         reason_idx=0,
@@ -1382,13 +1382,13 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N2",
-        gloss="Observe the image carefully.",
-        stem="Based on the image, what time of day is most likely?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이미지를 바탕으로, 하루 중 어느 시간대일 가능성이 가장 높나요?",
         options=[
-            "A. Early morning",
-            "B. Late morning",
-            "C. Around noon",
-            "D. Late afternoon",
+            "A. 이른 아침",
+            "B. 늦은 아침",
+            "C. 정오 무렵",
+            "D. 늦은 오후",
         ],
         answer_idx=1,
         reason_idx=2,
@@ -1397,13 +1397,13 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N3",
-        gloss="Observe the image carefully.",
-        stem="Based on the image, what time of day is most likely?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이미지를 바탕으로, 하루 중 어느 시간대일 가능성이 가장 높나요?",
         options=[
-            "A. Early morning",
-            "B. Late morning",
-            "C. Around noon",
-            "D. Late afternoon",
+            "A. 이른 아침",
+            "B. 늦은 아침",
+            "C. 정오 무렵",
+            "D. 늦은 오후",
         ],
         answer_idx=2,
         reason_idx=1,
@@ -1412,13 +1412,13 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N4",
-        gloss="Observe the image carefully.",
-        stem="Based on the image, what time of day is most likely?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이미지를 바탕으로, 하루 중 어느 시간대일 가능성이 가장 높나요?",
         options=[
-            "A. Early morning",
-            "B. Late morning",
-            "C. Around noon",
-            "D. Late afternoon",
+            "A. 이른 아침",
+            "B. 늦은 아침",
+            "C. 정오 무렵",
+            "D. 늦은 오후",
         ],
         answer_idx=3,
         reason_idx=2,
@@ -1427,13 +1427,13 @@ NOUN_QUESTIONS: List[Question] = [
     ),
     Question(
         id="N5",
-        gloss="Observe the image carefully.",
-        stem="Based on the image, what time of day is most likely?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이미지를 바탕으로, 하루 중 어느 시간대일 가능성이 가장 높나요?",
         options=[
-            "A. Early morning",
-            "B. Late morning",
-            "C. Around noon",
-            "D. Late afternoon",
+            "A. 이른 아침",
+            "B. 늦은 아침",
+            "C. 정오 무렵",
+            "D. 늦은 오후",
         ],
         answer_idx=3,
         reason_idx=0,
@@ -1446,13 +1446,13 @@ VERB_QUESTIONS: List[Question] = [
     # Visual inference block 2: walking speed (stride/pose cues)
     Question(
         id="V1",
-        gloss="Observe the image carefully.",
-        stem="How fast is the person most likely moving?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
         options=[
-            "A. Very slowly",
-            "B. At a normal walking speed",
-            "C. Fast walking",
-            "D. Running",
+            "A. 매우 천천히",
+            "B. 보통 걸음",
+            "C. 빠른 걸음",
+            "D. 달리는 중",
         ],
         answer_idx=1,
         reason_idx=0,
@@ -1461,13 +1461,13 @@ VERB_QUESTIONS: List[Question] = [
     ),
     Question(
         id="V2",
-        gloss="Observe the image carefully.",
-        stem="How fast is the person most likely moving?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
         options=[
-            "A. Very slowly",
-            "B. At a normal walking speed",
-            "C. Fast walking",
-            "D. Running",
+            "A. 매우 천천히",
+            "B. 보통 걸음",
+            "C. 빠른 걸음",
+            "D. 달리는 중",
         ],
         answer_idx=0,
         reason_idx=0,
@@ -1476,13 +1476,13 @@ VERB_QUESTIONS: List[Question] = [
     ),
     Question(
         id="V3",
-        gloss="Observe the image carefully.",
-        stem="How fast is the person most likely moving?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
         options=[
-            "A. Very slowly",
-            "B. At a normal walking speed",
-            "C. Fast walking",
-            "D. Running",
+            "A. 매우 천천히",
+            "B. 보통 걸음",
+            "C. 빠른 걸음",
+            "D. 달리는 중",
         ],
         answer_idx=2,
         reason_idx=0,
@@ -1491,13 +1491,13 @@ VERB_QUESTIONS: List[Question] = [
     ),
     Question(
         id="V4",
-        gloss="Observe the image carefully.",
-        stem="How fast is the person most likely moving?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
         options=[
-            "A. Very slowly",
-            "B. At a normal walking speed",
-            "C. Fast walking",
-            "D. Running",
+            "A. 매우 천천히",
+            "B. 보통 걸음",
+            "C. 빠른 걸음",
+            "D. 달리는 중",
         ],
         answer_idx=2,
         reason_idx=1,
@@ -1506,13 +1506,13 @@ VERB_QUESTIONS: List[Question] = [
     ),
     Question(
         id="V5",
-        gloss="Observe the image carefully.",
-        stem="How fast is the person most likely moving?",
+        gloss="이미지를 주의 깊게 관찰하세요.",
+        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
         options=[
-            "A. Very slowly",
-            "B. At a normal walking speed",
-            "C. Fast walking",
-            "D. Running",
+            "A. 매우 천천히",
+            "B. 보통 걸음",
+            "C. 빠른 걸음",
+            "D. 달리는 중",
         ],
         answer_idx=3,
         reason_idx=1,
@@ -1871,29 +1871,29 @@ PRIVACY_HTML = """
 """
 
 GRAMMAR_INFO_MD = r"""
-You will complete **visual inference tasks** based on static images.
+정적 이미지에 기반한 **시각 추론 과제**를 수행하게 됩니다.
 
-In each question you will:
-- **Observe the image carefully**
-- Answer a **multiple-choice inference question** (e.g., time of day or walking speed)
-- Select the **reasoning option** that best explains how you reached your answer
+각 문항에서는 다음을 수행합니다.
+- **이미지를 주의 깊게 관찰하기**
+- **객관식 추론 문항**에 응답하기 (예: 시간대, 보행 속도)
+- 선택한 답을 설명하는 **추론 근거(이유) 옵션** 1개를 고르기
 
-Important:
-- There is **no single obvious surface cue** or explicit label in the images.
-- The task requires **careful observation and reasoning** using indirect visual cues.
-- **Guessing without reasoning** may make later questions harder, because the task depends on consistently noticing relevant cues.
+중요:
+- 이미지에는 **명확한 표면 단서**나 **직접적인 라벨**이 없습니다.
+- 간접적인 시각 단서를 바탕으로 **주의 깊은 관찰과 추론**이 필요합니다.
+- **근거 없이 추측만 하면**, 이후 문항에서 필요한 단서를 일관되게 포착하기 어려워 과제가 더 어렵게 느껴질 수 있습니다.
 """
 
 REASON_NOUN_LABELS = [
-    "A. The shadow is very long and angled, suggesting a low sun position",
-    "B. The shadow is short and close to the figure, suggesting the sun is overhead",
-    "C. The shadow direction and length are intermediate",
+    "A. 그림자가 매우 길고 비스듬해, 태양 고도가 낮음을 시사함",
+    "B. 그림자가 짧고 인물 가까이에 있어, 태양이 머리 위에 있음을 시사함",
+    "C. 그림자 방향과 길이가 중간 수준임",
 ]
 
 REASON_VERB_LABELS = [
-    "A. The distance between the feet and stride length",
-    "B. The angle of the legs and body lean",
-    "C. The surrounding environment",
+    "A. 발 사이 거리와 보폭(스트라이드) 길이",
+    "B. 다리 각도와 몸의 기울기(전진 자세)",
+    "C. 주변 환경(장소/상황 단서)",
 ]
 
 # --------------------------------------------------------------------------------------
@@ -1947,7 +1947,7 @@ def radio_required(
     except TypeError:
         if horizontal:
             return _render_horizontal_radio_stack(label, options, key)
-        placeholder = "— Select one —"
+        placeholder = "— 하나를 선택하세요 —"
         opts = [placeholder] + options
         choice = st.radio(label, opts, index=0, key=key)
         return (None, False) if choice == placeholder else (choice, True)
@@ -2013,8 +2013,8 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
 
     steps = max(1, int(seconds * 20))
     round_label_map = {
-        "nouns": "Visual inference · Block 1 (Time of day)",
-        "verbs": "Visual inference · Block 2 (Walking speed)",
+        "nouns": "시각 추론 · 1단계(시간 추론)",
+        "verbs": "시각 추론 · 2단계(이동 속도 추론)",
     }
     round_label = round_label_map.get(round_key, "추론 과제")
 
@@ -2467,12 +2467,6 @@ def render_achive() -> None:
 
 
 def render_question_card(question: Question, badge: Optional[str] = None) -> None:
-    if getattr(question, "image_path", None):
-        try:
-            st.image(question.image_path, use_container_width=True)
-        except Exception:
-            # Fail gracefully if the image cannot be loaded.
-            pass
     gloss_html = html.escape(question.gloss)
     stem_html = html.escape(question.stem)
     badge_html = f'<div class="question-badge">{badge}</div>' if badge else ""
@@ -2488,6 +2482,16 @@ def render_question_card(question: Question, badge: Optional[str] = None) -> Non
 """,
         unsafe_allow_html=True,
     )
+
+
+def render_question_image(question: Question) -> None:
+    """Render question image (if present) after the instruction/problem card."""
+    if getattr(question, "image_path", None):
+        try:
+            st.image(question.image_path, use_container_width=True)
+        except Exception:
+            # Fail gracefully if the image cannot be loaded.
+            pass
 
 
 def get_randomized_option_state(
@@ -2523,59 +2527,59 @@ def get_randomized_option_state(
 
 def render_visual_training_intro() -> None:
     scroll_top_js()
-    st.title("Visual Inference Task (Practice 안내)")
+    st.title("시각 추론 과제 안내(연습)")
     st.markdown(
         """
-### You will do visual inference from static images
+### 정적 이미지로 시각 추론을 수행합니다
 
-In this study, you will complete **visual inference tasks based on images**.
-Rather than reading text or labels, you will infer **hidden properties** (e.g., *time of day* or *walking speed*) from **indirect visual cues**.
+이 연구에서는 **이미지 기반 시각 추론 과제**를 수행합니다.  
+텍스트나 라벨을 읽는 것이 아니라, 이미지 속 **간접적인 시각 단서**를 활용해 *(예: 시간대, 보행 속도)*와 같은 **숨겨진 속성**을 추론하게 됩니다.
 
-For each image you must:
-- **Observe carefully**
-- Choose one **multiple-choice answer**
-- Choose the **reasoning option** that best explains how you decided
+각 이미지마다 다음을 수행해 주세요.
+- **주의 깊게 관찰하기**
+- **객관식 정답** 1개 선택하기
+- 선택한 답을 설명하는 **추론 근거(이유) 옵션** 1개 선택하기
 
-Important:
-- There is **no single obvious surface cue**.
-- Careful observation and reasoning are required.
-- **Guessing without reasoning** may make later questions harder.
+중요:
+- 이미지에는 **단번에 알 수 있는 명확한 단서**가 없습니다.
+- **주의 깊은 관찰과 추론**이 필요합니다.
+- **근거 없이 추측만 하면**, 이후 문항에서 중요한 단서를 놓치기 쉬워 더 어려워질 수 있습니다.
         """
     )
-    st.info("This practice step helps you get used to the response format.")
+    st.info("이 연습 단계는 응답 형식에 익숙해지기 위한 것입니다.")
 
-    with st.expander("Task overview (read again)", expanded=True):
+    with st.expander("과제 개요(다시 보기)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
-    if st.button("Continue to practice", use_container_width=True):
+    if st.button("연습으로 계속하기", use_container_width=True):
         set_phase("visual_practice")
 
 
 def render_visual_practice() -> None:
     scroll_top_js()
-    st.title("Practice: response format")
-    st.caption("This step is not scored. It only helps you understand the format.")
+    st.title("연습: 응답 형식 확인")
+    st.caption("이 단계는 점수에 반영되지 않으며, 응답 형식을 이해하는 데 도움이 됩니다.")
 
-    with st.expander("Task overview (read again)", expanded=True):
+    with st.expander("과제 개요(다시 보기)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
 
     st.markdown(
         """
-To move on, please confirm that you understand:
-- You will answer **one inference question** per image.
-- You will also choose **one reasoning option** that best explains your answer.
+다음 내용을 이해했는지 확인해 주세요.
+- 이미지 1장당 **추론 문항 1개**에 응답합니다.
+- 또한, 선택한 답을 설명하는 **추론 근거(이유) 옵션 1개**를 함께 선택합니다.
         """.strip()
     )
 
     confirmed = st.checkbox(
-        "I understand and I am ready to start the main task.",
+        "이해했으며, 본 과제를 시작할 준비가 되었습니다.",
         key="practice_confirmed",
     )
     st.session_state.practice_state = {"attempted": bool(confirmed)}
 
     st.divider()
     if st.button(
-        "Proceed to main task instructions",
+        "본 과제 안내로 진행하기",
         use_container_width=True,
         disabled=not confirmed,
     ):
@@ -2584,31 +2588,31 @@ To move on, please confirm that you understand:
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("Visual Inference Task (Main)")
+    st.title("시각 추론 과제(본 과제)")
     st.markdown(
         """
-### You will now start the main visual inference task
+### 이제 본 시각 추론 과제를 시작합니다
 
-You will complete visual inference tasks based on static images.
-You will infer hidden properties (e.g., time of day, walking speed) using **indirect visual cues**, not explicit labels or text.
+정적 이미지를 바탕으로 시각 추론 과제를 수행합니다.  
+이미지에 있는 명시적 라벨이나 텍스트가 아니라, **간접적인 시각 단서**를 활용해 *(예: 시간대, 보행 속도)*와 같은 숨겨진 속성을 추론합니다.
 
-For each image you must:
-- Observe the image carefully
-- Answer a multiple-choice inference question
-- Select the reasoning option that best explains your answer
+각 이미지마다 다음을 수행해 주세요.
+- 이미지를 주의 깊게 관찰하기
+- 객관식 추론 문항에 정답 1개 선택하기
+- 선택한 답을 가장 잘 설명하는 추론 근거(이유) 옵션 1개 선택하기
 
-Important:
-- There is **no single obvious surface cue**.
-- Careful observation and reasoning are required.
-- Guessing without reasoning may make later questions difficult.
+중요:
+- 단번에 알 수 있는 **명확한 표면 단서**가 없습니다.
+- **주의 깊은 관찰과 추론**이 필요합니다.
+- 근거 없이 추측만 하면 이후 문항이 더 어렵게 느껴질 수 있습니다.
         """
     )
     st.markdown(
         """
-After each block, the AI tutor will generate feedback based on your response patterns, followed by brief surveys.
+각 단계(블록)가 끝난 뒤에는, AI 튜터가 응답 패턴을 바탕으로 피드백을 제공하며 이후 간단한 설문이 이어집니다.
         """
     )
-    with st.expander("Task overview (read again)", expanded=True):
+    with st.expander("과제 개요(다시 보기)", expanded=True):
         st.markdown(GRAMMAR_INFO_MD)
     if st.button("본 문제 시작하기", use_container_width=True):
         st.session_state.round_state["nouns_index"] = 0
@@ -2625,10 +2629,10 @@ def render_inference_round(
 ) -> None:
     scroll_top_js()
     round_title_map = {
-        "nouns": "Visual inference (Block 1): Time of day",
-        "verbs": "Visual inference (Block 2): Walking speed",
+        "nouns": "시각 추론 (1단계): 시간 추론",
+        "verbs": "시각 추론 (2단계): 이동 속도 추론",
     }
-    st.title(round_title_map.get(round_key, "Visual inference task"))
+    st.title(round_title_map.get(round_key, "시각 추론 과제"))
     rs = st.session_state.round_state
     payload = st.session_state.payload
     index = rs.get(f"{round_key}_index", 0)
@@ -2645,14 +2649,15 @@ def render_inference_round(
 
     question_container = st.container()
     with question_container:
-        st.header(f"Question {current_index} of {len(questions)}")
+        st.header(f"문항 {current_index} / {len(questions)}")
         round_badge = (
-            "Time inference (use shadow cues)"
+            "시간 추론 (그림자 단서 활용)"
             if round_key == "nouns"
-            else "Speed inference (use stride/pose cues)"
+            else "속도 추론 (보폭/자세 단서 활용)"
         )
         render_question_card(question, badge=round_badge)
-        st.markdown("You must select both an answer and a reasoning option to submit.")
+        render_question_image(question)
+        st.markdown("제출하려면 정답과 추론 근거를 모두 선택해야 합니다.")
 
         if rs.get("question_start") is None:
             rs["question_start"] = time.perf_counter()
@@ -2660,16 +2665,16 @@ def render_inference_round(
         # Keep lettered options readable (A/B/C/D) by not adding numeric prefixes.
         answer_labels = list(display_options)
         selected_answer_label, answer_valid = radio_required(
-            "Select your answer",
+            "정답을 선택하세요",
             answer_labels,
             key=f"{round_key}_answer_{index}",
         )
 
         rationale_tags = reason_labels
         rationale_prompt = (
-            "What was the main reason for your answer?"
+            "정답을 그렇게 선택한 주요 근거는 무엇인가요?"
             if round_key == "nouns"
-            else "What visual information most influenced your judgment?"
+            else "판단에 가장 큰 영향을 준 시각 정보는 무엇인가요?"
         )
         selected_tag, tag_valid = radio_required(
             rationale_prompt,
@@ -2694,7 +2699,7 @@ def render_inference_round(
             return
 
     if not can_submit:
-        st.error("정답과 추론 태그 선택은 필수입니다.")
+        st.error("정답과 추론 근거 선택은 필수입니다.")
         return
 
     start_time = rs.get("question_start")
@@ -2795,8 +2800,8 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "nouns": "Visual inference · Block 1 (Time of day)",
-        "verbs": "Visual inference · Block 2 (Walking speed)",
+        "nouns": "시각 추론 · 1단계(시간 추론)",
+        "verbs": "시각 추론 · 2단계(이동 속도 추론)",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -2852,10 +2857,10 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
     summary_text = feedback_payload.get("summary_text", "")
 
     hero_subtitle_map = {
-        "nouns": "Visual inference · Block 1 report (Time of day)",
-        "verbs": "Visual inference · Block 2 report (Walking speed)",
+        "nouns": "시각 추론 · 1단계 리포트(시간 추론)",
+        "verbs": "시각 추론 · 2단계 리포트(이동 속도 추론)",
     }
-    hero_subtitle = hero_subtitle_map.get(round_key, "Visual inference feedback")
+    hero_subtitle = hero_subtitle_map.get(round_key, "시각 추론 피드백")
 
     with st.container():
         st.markdown(
