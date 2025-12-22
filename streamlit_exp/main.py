@@ -1554,96 +1554,72 @@ VERB_QUESTIONS: List[Question] = [
 ALL_INFERENCE_QUESTIONS = NOUN_QUESTIONS + VERB_QUESTIONS
 
 MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
-    SurveyQuestion(
-        "IE1", "이 과제를 하는 동안 즐거웠다.", category="interest_enjoyment"
-    ),
-    SurveyQuestion("IE2", "이 과제는 재미있었다.", category="interest_enjoyment"),
-    SurveyQuestion(
-        "IE3", "이 과제가 지루했다.", reverse=True, category="interest_enjoyment"
-    ),
-    SurveyQuestion(
-        "IE4", "이 과제를 하는 것이 흥미로웠다.", category="interest_enjoyment"
-    ),
-    SurveyQuestion(
-        "IE5",
-        "이 과제를 하면서 시간이 빨리 지나갔다.",
-        category="interest_enjoyment",
-    ),
-    SurveyQuestion(
-        "IE6", "이 과제에 몰입할 수 있었다.", category="interest_enjoyment"
-    ),
-    SurveyQuestion(
-        "IE7",
-        "이 과제를 계속 하고 싶다는 생각이 들었다.",
-        category="interest_enjoyment",
-    ),
-    SurveyQuestion(
-        "PC1", "이 과제를 잘 수행했다고 생각한다.", category="perceived_competence"
-    ),
-    SurveyQuestion(
-        "PC2",
-        "이 과제에서 만족스러운 결과를 얻었다.",
-        category="perceived_competence",
-    ),
-    SurveyQuestion(
-        "PC3", "이 과제를 수행하는 데 능숙한 것 같다.", category="perceived_competence"
-    ),
-    SurveyQuestion(
-        "PC4",
-        "이 과제가 너무 어려웠다.",
-        reverse=True,
-        category="perceived_competence",
-    ),
-    SurveyQuestion(
-        "PC5",
-        "이 과제를 완수할 수 있을 것 같았다.",
-        category="perceived_competence",
-    ),
-    SurveyQuestion(
-        "PC6",
-        "이 과제에서 좋은 성과를 낼 수 있을 것 같았다.",
-        category="perceived_competence",
-    ),
-    SurveyQuestion(
-        "EI1", "이 과제에 많은 노력을 기울였다.", category="effort_importance"
-    ),
-    SurveyQuestion(
-        "EI2", "이 과제를 잘 수행하는 것이 중요했다.", category="effort_importance"
-    ),
-    SurveyQuestion("EI3", "이 과제에 최선을 다했다.", category="effort_importance"),
-    SurveyQuestion(
-        "EI4", "이 과제에 집중하려고 노력했다.", category="effort_importance"
-    ),
-    SurveyQuestion(
-        "EI5", "이 과제를 대충했다.", reverse=True, category="effort_importance"
-    ),
-    SurveyQuestion(
-        "VU1", "이 과제는 나에게 가치가 있었다.", category="value_usefulness"
-    ),
-    SurveyQuestion(
-        "VU2", "이 과제를 통해 유용한 것을 배웠다.", category="value_usefulness"
-    ),
-    SurveyQuestion(
-        "VU3", "이 과제는 나에게 도움이 되었다.", category="value_usefulness"
-    ),
-    SurveyQuestion(
-        "VU4", "이 과제는 시간 낭비였다.", reverse=True, category="value_usefulness"
-    ),
-    SurveyQuestion(
-        "AU1",
-        "이 과제를 수행할 때 학습 방식을 스스로 선택할 수 있었다.",
-        category="autonomy",
-    ),
-    SurveyQuestion(
-        "AU2", "이 과제를 하면서 자유롭게 행동하거나 생각 할 수 있었다.", category="autonomy"
-    ),
-    SurveyQuestion(
-        "PT1", "이 과제를 하는 동안 긴장했다.", category="pressure_tension"
-    ),
-    SurveyQuestion(
-        "PT2", "이 과제를 하면서 스트레스를 받았다.", category="pressure_tension"
-    ),
+    # =========================================================
+    # Persistence Intention Index (과제 지속성 / 난이도 증가 의도)
+    # =========================================================
+    SurveyQuestion("PII1", "다음 시도에서는 더 어려운 문항을 선택해 보고 싶다.", category="persistence_intention"),
+    SurveyQuestion("PII2", "이 과제를 추가 시간을 들여 더 풀어보고 싶다.", category="persistence_intention"),
+    SurveyQuestion("PII3", "틀렸던 문항을 다시 시도해 보고 싶다.", category="persistence_intention"),
+    SurveyQuestion("PII4", "오늘 과제를 끝낸 뒤에도 자발적으로 연습할 생각이 있다.", category="persistence_intention"),
+    SurveyQuestion("PII5", "더 어려운 규칙이 나오면 도전해 보고 싶다.", category="persistence_intention"),
+    SurveyQuestion("PII6", "이 과제에 대한 추가 학습 자료를 찾아볼 의향이 있다.", category="persistence_intention"),
+
+    # =========================================================
+    # IMI - Interest / Enjoyment (관심/즐거움)
+    # =========================================================
+    SurveyQuestion("INT1", "이 과제는 재미있다.", category="interest_enjoyment"),
+    SurveyQuestion("INT2", "이 과제를 하는 동안 즐거움을 느꼈다.", category="interest_enjoyment"),
+    SurveyQuestion("INT3", "시간이 빨리 지나간 느낌이었다.", category="interest_enjoyment"),
+    SurveyQuestion("INT4", "이 과제를 더 하고 싶다.", category="interest_enjoyment"),
+    SurveyQuestion("INT5", "이 과제는 흥미롭다.", category="interest_enjoyment"),
+
+    # =========================================================
+    # IMI - Perceived Competence (지각된 유능감)
+    # =========================================================
+    SurveyQuestion("PC1", "이 과제를 잘 해낼 수 있을 것 같다.", category="perceived_competence"),
+    SurveyQuestion("PC2", "이 과제는 내 능력에 맞다고 느꼈다.", category="perceived_competence"),
+    SurveyQuestion("PC3", "이 과제에서 나는 유능하다고 느꼈다.", category="perceived_competence"),
+    SurveyQuestion("PC4", "이 과제의 규칙을 이해했다고 느낀다.", category="perceived_competence"),
+
+    # =========================================================
+    # IMI - Effort / Importance (노력/중요성)
+    # =========================================================
+    SurveyQuestion("EF1", "이 과제에 상당한 노력을 기울였다.", category="effort_importance"),
+    SurveyQuestion("EF2", "이 과제는 나에게 중요했다.", category="effort_importance"),
+    SurveyQuestion("EF3", "더 잘하기 위해 의도적으로 노력했다.", category="effort_importance"),
+
+    # =========================================================
+    # IMI - Value / Usefulness (가치/유용성)
+    # =========================================================
+    SurveyQuestion("VA1", "이 과제는 학습에 도움이 된다.", category="value_usefulness"),
+    SurveyQuestion("VA2", "이 과제는 가치가 있다고 느낀다.", category="value_usefulness"),
+    SurveyQuestion("VA3", "이 과제는 유용하다.", category="value_usefulness"),
+
+    # =========================================================
+    # IMI - Perceived Choice (자율성 지각/선택감)
+    # =========================================================
+    SurveyQuestion("CH1", "나는 이 과제를 내가 원해서 했다.", category="perceived_choice"),
+    SurveyQuestion("CH2", "과제 수행 방식은 내가 선택할 수 있었다.", category="perceived_choice"),
+    SurveyQuestion("CH3", "이 과제를 하면서 자율성을 느꼈다.", category="perceived_choice"),
+
+    # =========================================================
+    # IMI - Pressure / Tension (압박/긴장)
+    # * 코드북 reverse_scored = Y 를 그대로 반영
+    # =========================================================
+    SurveyQuestion("PT1", "이 과제를 하며 긴장을 많이 느꼈다.", reverse=True, category="pressure_tension"),
+    SurveyQuestion("PT2", "수행 중 압박감을 느꼈다.", reverse=True, category="pressure_tension"),
+    SurveyQuestion("PT3", "불안해서 집중하기 어려웠다.", reverse=True, category="pressure_tension"),
+
+    # =========================================================
+    # Learning Motivation (학습동기 자기보고)
+    # =========================================================
+    SurveyQuestion("LM1", "시각 추론 과제에서 사용되는 규칙이나 단서를 더 잘 이해하고 싶다.", category="learning_motivation"),
+    SurveyQuestion("LM2", "시각적 단서를 해석하는 나만의 추론 전략을 정리할 의향이 있다.", category="learning_motivation"),
+    SurveyQuestion("LM3", "추론 과정에서 부족하다고 느낀 점을 보완하고 싶다.", category="learning_motivation"),
+    SurveyQuestion("LM4", "다음에 비슷한 과제가 주어진다면 추론 방식을 개선할 방법을 고민해보고 싶다.", category="learning_motivation"),
+    SurveyQuestion("LM5", "비슷한 시각 정보에서 규칙을 더 정확히 찾아내는 능력을 키우고 싶다.", category="learning_motivation"),
 ]
+
 
 MOTIVATION_BY_ID = {q.id: q for q in MOTIVATION_QUESTIONS}
 
