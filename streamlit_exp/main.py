@@ -1473,80 +1473,100 @@ NOUN_QUESTIONS: List[Question] = [
 ]
 
 VERB_QUESTIONS: List[Question] = [
-    # Visual inference block 2: walking speed (stride/pose cues)
+    # Visual inference block 2: time_task2 (panel-based earliest-time inference)
     Question(
         id="V1",
-        gloss="이미지를 주의 깊게 관찰하세요.",
-        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
+        gloss=(
+            "아래 그림은 비슷한 시간대의 서로 다른 장면을 보여줍니다.\n"
+            "각 장면에는 그림자와 빛의 방향, 밝기 등에 미세한 차이가 있습니다.\n\n"
+            "세 장면(A, B, C) 중\n"
+            "가장 이른 시간의 장면을 하나 선택해 주세요."
+        ),
+        stem="다음 그림 중 시간이 가장 이른 장면은 무엇입니까?",
         options=[
-            "A. 매우 천천히",
-            "B. 보통 걸음",
-            "C. 빠른 걸음",
-            "D. 달리는 중",
+            "A",
+            "B",
+            "C",
         ],
-        answer_idx=1,
+        answer_idx=0,
         reason_idx=0,
-        image_path=str(BASE_DIR / "speed_task_1.png"),
+        image_path=str(BASE_DIR / "time_task2_1.png"),
         shuffle_options=False,
     ),
     Question(
         id="V2",
-        gloss="이미지를 주의 깊게 관찰하세요.",
-        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
+        gloss=(
+            "아래 그림은 비슷한 시간대의 서로 다른 장면을 보여줍니다.\n"
+            "각 장면에는 그림자와 빛의 방향, 밝기 등에 미세한 차이가 있습니다.\n\n"
+            "세 장면(A, B, C) 중\n"
+            "가장 이른 시간의 장면을 하나 선택해 주세요."
+        ),
+        stem="다음 그림 중 시간이 가장 이른 장면은 무엇입니까?",
         options=[
-            "A. 매우 천천히",
-            "B. 보통 걸음",
-            "C. 빠른 걸음",
-            "D. 달리는 중",
+            "A",
+            "B",
+            "C",
         ],
         answer_idx=0,
         reason_idx=0,
-        image_path=str(BASE_DIR / "speed_task_2.png"),
+        image_path=str(BASE_DIR / "time_task2_2.png"),
         shuffle_options=False,
     ),
     Question(
         id="V3",
-        gloss="이미지를 주의 깊게 관찰하세요.",
-        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
+        gloss=(
+            "아래 그림은 비슷한 시간대의 서로 다른 장면을 보여줍니다.\n"
+            "각 장면에는 그림자와 빛의 방향, 밝기 등에 미세한 차이가 있습니다.\n\n"
+            "세 장면(A, B, C) 중\n"
+            "가장 이른 시간의 장면을 하나 선택해 주세요."
+        ),
+        stem="다음 그림 중 시간이 가장 이른 장면은 무엇입니까?",
         options=[
-            "A. 매우 천천히",
-            "B. 보통 걸음",
-            "C. 빠른 걸음",
-            "D. 달리는 중",
+            "A",
+            "B",
+            "C",
         ],
-        answer_idx=2,
+        answer_idx=0,
         reason_idx=0,
-        image_path=str(BASE_DIR / "speed_task_3.png"),
+        image_path=str(BASE_DIR / "time_task2_3.png"),
         shuffle_options=False,
     ),
     Question(
         id="V4",
-        gloss="이미지를 주의 깊게 관찰하세요.",
-        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
+        gloss=(
+            "아래 그림은 비슷한 시간대의 서로 다른 장면을 보여줍니다.\n"
+            "각 장면에는 그림자와 빛의 방향, 밝기 등에 미세한 차이가 있습니다.\n\n"
+            "세 장면(A, B, C) 중\n"
+            "가장 이른 시간의 장면을 하나 선택해 주세요."
+        ),
+        stem="다음 그림 중 시간이 가장 이른 장면은 무엇입니까?",
         options=[
-            "A. 매우 천천히",
-            "B. 보통 걸음",
-            "C. 빠른 걸음",
-            "D. 달리는 중",
+            "A",
+            "B",
+            "C",
         ],
-        answer_idx=2,
-        reason_idx=1,
-        image_path=str(BASE_DIR / "speed_task_4.png"),
+        answer_idx=0,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "time_task2_4.png"),
         shuffle_options=False,
     ),
     Question(
         id="V5",
-        gloss="이미지를 주의 깊게 관찰하세요.",
-        stem="이 사람은 얼마나 빠르게 이동하고 있는 것으로 보이나요?",
+        gloss=(
+            "아래 그림은 비슷한 시간대의 서로 다른 장면을 보여줍니다.\n"
+            "각 장면에는 그림자와 빛의 방향, 밝기 등에 미세한 차이가 있습니다.\n\n"
+            "세 장면(A, B, C) 중\n"
+            "가장 이른 시간의 장면을 하나 선택해 주세요."
+        ),
+        stem="다음 그림 중 시간이 가장 이른 장면은 무엇입니까?",
         options=[
-            "A. 매우 천천히",
-            "B. 보통 걸음",
-            "C. 빠른 걸음",
-            "D. 달리는 중",
+            "A",
+            "B",
+            "C",
         ],
-        answer_idx=3,
-        reason_idx=1,
-        image_path=str(BASE_DIR / "speed_task_5.png"),
+        answer_idx=0,
+        reason_idx=0,
+        image_path=str(BASE_DIR / "time_task2_5.png"),
         shuffle_options=False,
     ),
 ]
@@ -1881,7 +1901,7 @@ GRAMMAR_INFO_MD = r"""
 
 각 문항에서는 다음을 수행합니다.
 - **이미지를 주의 깊게 관찰하기**
-- **객관식 추론 문항**에 응답하기 (예: 시간대, 보행 속도)
+- **객관식 추론 문항**에 응답하기 (예: 시간대, 시간의 상대적 순서)
 - 선택한 답을 설명하는 **추론 근거(이유) 옵션** 1개를 고르기
 
 중요:
@@ -1891,15 +1911,17 @@ GRAMMAR_INFO_MD = r"""
 """
 
 REASON_NOUN_LABELS = [
-    "A. 그림자의 길이와 생성 각도",
-    "B. 주변 건물과 환경의 밝기",
-    "C. 태양으로 나오는 빛의 각도",
+    "A. 그림자의 길이와 방향",
+    "B. 건물 벽면에 비친 빛의 밝기",
+    "C. 햇빛이 바닥에 닿는 각도",
+    "D. 주변 공간 전반의 명암 대비",
 ]
 
 REASON_VERB_LABELS = [
-    "A. 보폭과 횡단보도 간격 차이",
-    "B. 다리 각도와 몸의 기울기",
-    "C. 팔의 움직임 각도",
+    "A. 그림자가 얼마나 길고 어느 방향으로 형성되어 있는지를 살펴보았다",
+    "B. 건물 외벽이나 바닥의 밝기 차이를 비교했다",
+    "C. 햇빛이 비추는 방향과 각도를 기준으로 판단했다",
+    "D. 장면 전체의 빛과 어둠의 분포를 종합적으로 고려했다",
 ]
 
 # --------------------------------------------------------------------------------------
@@ -2020,7 +2042,7 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
     steps = max(1, int(seconds * 20))
     round_label_map = {
         "nouns": "시각 추론 · 1단계(시간 추론)",
-        "verbs": "시각 추론 · 2단계(이동 속도 추론)",
+        "verbs": "시각 추론 · 2단계(시간 추론2)",
     }
     round_label = round_label_map.get(round_key, "추론 과제")
 
@@ -2540,7 +2562,7 @@ def render_visual_training_intro() -> None:
 ### 이미지를 보고 시각 추론을 수행합니다.
 
 이 연구에서는 **이미지 기반 시각 추론 과제**를 수행합니다.  
-텍스트나 라벨을 읽는 것이 아니라, 이미지 속 **간접적인 시각 단서**를 활용해 *(예: 시간대, 보행 속도)*와 같은 **숨겨진 속성**을 추론하게 됩니다.
+텍스트나 라벨을 읽는 것이 아니라, 이미지 속 **간접적인 시각 단서**를 활용해 *(예: 시간대, 시간의 상대적 순서)*와 같은 **숨겨진 속성**을 추론하게 됩니다.
 
 각 이미지마다 다음을 수행해 주세요.
 - **주의 깊게 관찰하기**
@@ -2759,7 +2781,7 @@ def render_task_intro() -> None:
 ### 이제 본 시각 추론 과제를 시작합니다
 
 이미지를 보고 시각 추론 과제를 수행합니다.  
-이미지에 있는 명시적 라벨이나 텍스트가 아니라, **간접적인 시각 단서**를 활용해 *(예: 시간대, 보행 속도)*와 같은 숨겨진 속성을 추론합니다.
+이미지에 있는 명시적 라벨이나 텍스트가 아니라, **간접적인 시각 단서**를 활용해 *(예: 시간대, 시간의 상대적 순서)*와 같은 숨겨진 속성을 추론합니다.
 
 각 이미지마다 다음을 수행해 주세요.
 - 이미지를 주의 깊게 관찰하기
@@ -2795,7 +2817,7 @@ def render_inference_round(
     scroll_top_js()
     round_title_map = {
         "nouns": "시각 추론 (1단계): 시간 추론",
-        "verbs": "시각 추론 (2단계): 이동 속도 추론",
+        "verbs": "시각 추론 (2단계): 시간 추론2",
     }
     st.title(round_title_map.get(round_key, "시각 추론 과제"))
     rs = st.session_state.round_state
@@ -2818,7 +2840,7 @@ def render_inference_round(
         round_badge = (
             "시간 추론"
             if round_key == "nouns"
-            else "속도 추론"
+            else "시간 추론2"
         )
         render_question_card(question, badge=round_badge)
         render_question_image(question)
@@ -2966,7 +2988,7 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 
     round_label_map = {
         "nouns": "시각 추론 · 1단계(시간 추론)",
-        "verbs": "시각 추론 · 2단계(이동 속도 추론)",
+        "verbs": "시각 추론 · 2단계(시간 추론2)",
     }
     round_label = round_label_map.get(round_key, "추론 라운드")
     subtitle = "AI 튜터가 추론 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 상세 피드백을 확인해 주세요."
@@ -3023,7 +3045,7 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
 
     hero_subtitle_map = {
         "nouns": "시각 추론 · 1단계 리포트(시간 추론)",
-        "verbs": "시각 추론 · 2단계 리포트(이동 속도 추론)",
+        "verbs": "시각 추론 · 2단계 리포트(시간 추론2)",
     }
     hero_subtitle = hero_subtitle_map.get(round_key, "시각 추론 피드백")
 
