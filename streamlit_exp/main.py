@@ -1800,7 +1800,7 @@ COMMON_CSS = """
 
 CONSENT_HTML = """
 <div class="consent-wrap">
-  <h1>연구대상자 설명문</h1>
+  <h1>연구 소개</h1>
   <div class="subtitle"><strong>제목: </strong>인공지능 에이전트의 피드백 방식이 학습에 미치는 영향 탐색 연구</div>
   <h2>1. 연구 목적</h2>
   <p>과학기술의 발전과 함께 인공지능(AI)은 교육, 상담, 서비스 등 다양한 환경에서 폭넓게 활용되고 있습니다. 
@@ -2234,7 +2234,7 @@ def render_consent() -> None:
     scroll_top_js()
     st.markdown(COMMON_CSS, unsafe_allow_html=True)
     if st.session_state.consent_step == "explain":
-        st.title("연구대상자 설명문")
+        st.title("연구 소개")
         st.markdown(CONSENT_HTML, unsafe_allow_html=True)
         if st.button("다음", use_container_width=True):
             st.session_state.consent_step = "agree"
@@ -2337,7 +2337,7 @@ def render_instructions() -> None:
         """
 ### 연구 참여에 앞서 안내드립니다
 
-이 설문은 **시각 추론 과제(정적 이미지 기반)**를 수행하고, 이에 대한 **AI의 피드백**, 그리고 그 경험에 대해 **여러분의 생각**을 알아보는 과정으로 이루어져 있습니다.
+이 설문은 시각 추론 과제를 수행하고, 이에 대한 AI의 피드백, 그리고 그 경험에 대해 여러분의 생각을 알아보는 과정으로 이루어져 있습니다.
 연구는 아래와 같이 진행됩니다. 시각 추론 과제와 AI 피드백은 각각 2회 진행됩니다.
 
 1. 간단한 인적 사항에 응답하기
@@ -2347,7 +2347,7 @@ def render_instructions() -> None:
 5. AI의 피드백 받기(2회)  
 6. 학습 경험과 피드백 느낌에 대해 응답하기  
 
-이 연구에서는 정답 자체뿐 아니라 **어떤 단서를 보고 어떻게 추론했는지(과정)**가 중요합니다.
+이 연구에서는 정답 자체뿐 아니라 어떤 단서를 보고 어떻게 추론했는지(과정)가 중요합니다.
 부담 없이, 떠오르는 판단과 그 근거에 가깝게 응답해 주시면 됩니다.
 
 전체 소요 시간은 약 10~15분 정도이며, 응답 내용은 연구 목적 외에는 사용되지 않으며 익명으로 처리됩니다.
