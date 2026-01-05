@@ -1,6 +1,7 @@
-streamlit==1.40.0
-gspread==6.1.2
-google-auth==2.35.0
-pandas==2.2.3
-google-cloud-storage==2.18.2
-altair==6.0.0
+streamlit>=1.40,<1.41
+gspread>=6.1,<7
+google-auth>=2.35,<3
+pandas>=2.2,<2.3
+google-cloud-storage>=2.18,<3
+# altair는 streamlit이 알아서 맞춰 설치하도록 두거나,
+altair>=5,<6
