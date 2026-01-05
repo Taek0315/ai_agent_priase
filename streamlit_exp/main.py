@@ -1677,8 +1677,8 @@ CONSENT_HTML = """
   <p>만 18세 이상 한국어 사용자를 대상으로 하며, 문장 이해가 어려운 경우 제외될 수 있습니다.</p>
   <h2>3. 연구 방법</h2>
   <p>연구 참여에 동의하신다면 다음과 같은 과정을 통해 연구가 진행됩니다. 
-  <br> 일반적인 의인화 경향성을 알아보는 문항과 성취목표지향성에 대한 문항 총 56개를 진행한 뒤, <strong>NCS 스타일의 문제 해결 과제</strong>를 수행합니다.
-  <br> 문제 해결 과제는 <strong>문장/표/그래프 등 제시된 정보를 해석</strong>하고, <strong>조건을 확인</strong>하며, <strong>규칙 적용·수치/자원 계산</strong>을 통해 결론을 선택하는 형식입니다. 이를 통해 <strong>문제 해결 능력</strong>, <strong>상황 판단</strong>, <strong>자원(시간/예산 등) 관리</strong>와 관련된 수행을 살펴봅니다.
+  <br> 일반적인 의인화 경향성을 알아보는 문항과 성취목표지향성에 대한 문항 총 56개를 진행한 뒤, <strong>문제 해결 과제</strong>를 수행합니다.
+  <br> 문제 해결 과제는 <strong>문장/표/그래프 등 제시된 정보를 해석</strong>하고, <strong>조건을 확인</strong>하며, <strong>규칙 적용·수치/자원 계산</strong>을 통해 결론을 선택하는 형식입니다. 이를 통해 <strong>문제 해결 능력</strong>, <strong>상황 판단 과제</strong>, <strong>자원 관리 판단 과제</strong>와 관련된 수행을 살펴봅니다.
   <br> 과제는 총 3세션(각 5문항)으로 진행되며, 세션 1과 세션 2가 끝난 뒤에는 AI 에이전트의 피드백을 한 번씩 확인합니다. 마지막으로 과제 경험 및 동기에 관한 문항에 응답하며 연구 참여가 종료됩니다. 약 10~15분 소요됩니다.</p>
   <h2>4. 연구 참여 기간</h2>
   <p>링크가 활성화된 기간 내 1회 참여 가능합니다.</p>
@@ -1763,7 +1763,7 @@ PRIVACY_HTML = """
 """
 
 GRAMMAR_INFO_MD = r"""
-이 연구에서는 **NCS 스타일의 문제 해결 과제**를 수행하게 됩니다.
+이 연구에서는 **문제 해결 과제**를 수행하게 됩니다.
 
 각 문항에서는 다음을 수행합니다.
 - 제시된 **문장/표/그래프**의 정보를 정확히 읽기
@@ -1893,8 +1893,8 @@ def render_mcp_animation(round_key: str, round_no: int, seconds: float = 2.5) ->
 
     steps = max(1, int(seconds * 20))
     round_label_map = {
-        "session1": "NCS 과제 · 세션 1",
-        "session2": "NCS 과제 · 세션 2",
+        "session1": "문제 해결 과제 · 세션 1",
+        "session2": "문제 해결 과제 · 세션 2",
     }
     round_label = round_label_map.get(round_key, "문제 해결 과제")
 
@@ -2214,7 +2214,7 @@ def render_instructions() -> None:
         """
 ### 연구 참여에 앞서 안내드립니다
 
-이 설문은 **NCS 스타일의 문제 해결 과제**를 수행하고, 이에 대한 AI의 피드백(2회), 그리고 그 경험에 대해 여러분의 생각을 알아보는 과정으로 이루어져 있습니다.
+이 설문은 **문제 해결 과제**를 수행하고, 이에 대한 AI의 피드백(2회), 그리고 그 경험에 대해 여러분의 생각을 알아보는 과정으로 이루어져 있습니다.
 문제 해결 과제는 **문장/표/그래프**의 정보를 해석하고 **조건을 확인**하며, **규칙 적용 및 수치/자원(시간/예산 등) 관리**를 바탕으로 정답을 선택하는 형식입니다.
 
 1. 간단한 인적 사항에 응답하기
@@ -2436,9 +2436,9 @@ def render_visual_training_intro() -> None:
     st.title("연습: 응답 형식 확인")
     st.markdown(
         """
-### NCS 스타일의 문제 해결 과제에 응답합니다.
+### 문제 해결 과제에 응답합니다.
 
-이 연구에서는 **NCS 스타일의 문제 해결 과제**를 수행합니다.  
+이 연구에서는 **문제 해결 과제**를 수행합니다.  
 문항에 제시된 **문장/표/그래프**의 정보를 읽고, **조건과 제약**을 확인한 뒤, 필요한 **규칙 적용 및 수치/자원 계산**을 통해 **객관식 정답 1개**를 선택하게 됩니다.
 
 이 연습 단계는 **응답 형식에 익숙해지기 위한 것**이며, 점수에 반영되지 않습니다.
@@ -2607,11 +2607,11 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     """
     scroll_top_js()
     title_map = {
-        1: "NCS 과제 · 세션 1 (1–5)",
-        2: "NCS 과제 · 세션 2 (6–10)",
-        3: "NCS 과제 · 세션 3 (11–15)",
+        1: "문제 해결 과제 · 세션 1 (1–5)",
+        2: "문제 해결 과제 · 세션 2 (6–10)",
+        3: "문제 해결 과제 · 세션 3 (11–15)",
     }
-    st.title(title_map.get(int(session_id), "NCS 과제"))
+    st.title(title_map.get(int(session_id), "문제 해결 과제"))
 
     items_map = {
         1: NCS_SESSION1_ITEMS,
@@ -2757,10 +2757,10 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
     st.markdown(ANALYSIS_COMPLETE_CSS, unsafe_allow_html=True)
 
     round_label_map = {
-        "session1": "NCS 과제 · 세션 1",
-        "session2": "NCS 과제 · 세션 2",
+        "session1": "문제 해결 과제 · 세션 1",
+        "session2": "문제 해결 과제 · 세션 2",
     }
-    round_label = round_label_map.get(round_key, "문제 해결 세션")
+    round_label = round_label_map.get(round_key, "문제 해결 과제")
     subtitle = "AI 에이전트가 응답 패턴 분석을 마쳤습니다. 아래 버튼을 눌러 피드백을 확인해 주세요."
     meta_line = f"리포트 준비 완료 · {round_label} 피드백 확인 대기 중"
     status_line = "맞춤형 요약과 피드백을 전달할 준비가 되었습니다."
@@ -2827,8 +2827,8 @@ def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) 
         feedback_messages[legacy_key].append(summary_text)
 
     hero_subtitle_map = {
-        "session1": "NCS 과제 · 세션 1 리포트",
-        "session2": "NCS 과제 · 세션 2 리포트",
+        "session1": "문제 해결 과제 · 세션 1 리포트",
+        "session2": "문제 해결 과제 · 세션 2 리포트",
     }
     hero_subtitle = hero_subtitle_map.get(round_key, "문제 해결 과제 피드백")
 
