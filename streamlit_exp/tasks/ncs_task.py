@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import time
+import re
+import textwrap
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -66,7 +68,7 @@ def _validate_no_authoring_placeholders(items: List[Dict[str, Any]]) -> None:
         for token in _PLACEHOLDER_SUBSTRINGS:
             if token and token in value:
                 raise ValueError(
-                    f"[NCS] Authoring placeholder detected: item={item_id} field={field} token={token!r} value={value!r}"
+                    f"[TASK] Authoring placeholder detected: item={item_id} field={field} token={token!r} value={value!r}"
                 )
 
     for it in items:
@@ -523,22 +525,82 @@ def render_ncs_item(
         st.markdown(f"**{question_text}**")
 
     options: Dict[str, str] = dict(item.get("options") or {})
-    option_labels = [f"{k}) {v}" for k, v in options.items()]
-    label_to_key = {f"{k}) {v}": k for k, v in options.items()}
+    option_keys = list(options.keys())
+
+    _allocation_token_re = re.compile(r"([A-G])\s*([0-9]+)")
+
+    def _format_option_value_for_display(raw: str) -> str:
+        """
+        Improve readability of long/structured options without changing content.
+        - Keeps semantics identical (adds only line breaks/spacing).
+        - Special-cases resource allocation patterns like: "A200 B200 ... (잔여 100만 원)".
+        """
+        text = str(raw or "").strip()
+        if not text:
+            return ""
+        if "\n" in text:
+            return text
+
+        # Allocation-style option (e.g., Session 2 item 10).
+        tokens = _allocation_token_re.findall(text)
+        token_map = {k: v for k, v in tokens}
+        if len(tokens) >= 5 and {"A", "B", "C"}.issubset(set(token_map.keys())):
+            tail_note = ""
+            m = re.search(r"\(([^)]*)\)\s*$", text)
+            if m:
+                tail_note = m.group(1).strip()
+
+            # Align amounts for faster visual scanning.
+            amount_by_letter: Dict[str, str] = {}
+            for letter in "ABCDEFG":
+                if letter in token_map:
+                    try:
+                        amount = int(token_map[letter])
+                        amount_by_letter[letter] = f"{amount:,}"
+                    except Exception:
+                        amount_by_letter[letter] = str(token_map[letter])
+            width = max((len(v) for v in amount_by_letter.values()), default=0)
+
+            lines: List[str] = []
+            for letter in "ABCDEFG":
+                if letter in amount_by_letter:
+                    amt = amount_by_letter[letter].rjust(width)
+                    lines.append(f"{letter}: {amt}만 원")
+            if tail_note:
+                if tail_note.startswith("잔여") and not tail_note.startswith("잔여:"):
+                    tail_note = tail_note.replace("잔여", "잔여:", 1)
+                lines.append(tail_note)
+            return "\n".join(lines)
+
+        # Generic long-text wrapping (keeps wording; adds line breaks only).
+        if len(text) >= 55:
+            return textwrap.fill(
+                text,
+                width=34,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+
+        return text
 
     inputs_disabled = bool(st.session_state.get("in_mcp", False)) or bool(
         st.session_state.get("ncs_inputs_disabled", False)
     )
 
-    selected_label = st.radio(
+    selected_key = st.radio(
         "정답을 선택하세요",
-        options=option_labels,
+        options=option_keys,
         index=None,
+        format_func=lambda k: (
+            f"{k})\n{_format_option_value_for_display(options.get(str(k), ''))}"
+            if "\n" in _format_option_value_for_display(options.get(str(k), ""))
+            else f"{k}) {_format_option_value_for_display(options.get(str(k), ''))}"
+        ),
         key=f"{ss_prefix}_answer",
         disabled=inputs_disabled,
     )
-    selected_key = label_to_key.get(selected_label) if selected_label else None
-    answer_valid = selected_key is not None
+    selected_key = str(selected_key) if selected_key is not None else None
+    answer_valid = bool(selected_key) and selected_key in options
 
     # NOTE: Rationale selection is intentionally removed for NCS-style tasks.
     # Keep return signature stable (selected_rationales stays empty) so callers can
