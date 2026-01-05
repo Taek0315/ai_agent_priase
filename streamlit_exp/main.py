@@ -41,6 +41,14 @@ from utils.feedback_guard import get_feedback_once
 from utils.ui_helpers import all_answered, render_likert_numeric
 from utils.persistence import now_utc_iso
 
+# [CHANGE] NCS multi-session task (15 items) module.
+from tasks.ncs_task import (
+    build_ncs_payload,
+    compute_ncs_results,
+    load_ncs_items,
+    render_ncs_item,
+)
+
 # --------------------------------------------------------------------------------------
 # Streamlit page config & global styling
 # --------------------------------------------------------------------------------------
@@ -1573,6 +1581,18 @@ VERB_QUESTIONS: List[Question] = [
 
 ALL_INFERENCE_QUESTIONS = NOUN_QUESTIONS + VERB_QUESTIONS
 
+# --------------------------------------------------------------------------------------
+# NCS multi-session task (15 items): used to replace the legacy inference task content.
+# We keep the global phase flow intact by mapping:
+# - inference_nouns: items 1–10 (sessions 1–2, with per-item feedback)
+# - inference_verbs: items 11–15 (session 3, no feedback)
+# --------------------------------------------------------------------------------------
+
+NCS_ITEMS: List[Dict[str, Any]] = load_ncs_items()
+NCS_NOUNS_ITEMS: List[Dict[str, Any]] = NCS_ITEMS[:10]
+NCS_VERBS_ITEMS: List[Dict[str, Any]] = NCS_ITEMS[10:]
+NCS_TOTAL_ITEMS: int = len(NCS_ITEMS)
+
 MOTIVATION_QUESTIONS: List[SurveyQuestion] = [
     # =========================================================
     # Persistence Intention Index (과제 지속성 / 난이도 증가 의도)
@@ -2106,12 +2126,26 @@ def ensure_session_state() -> None:
         }
     if "manager" not in ss:
         ss.manager = ExperimentManager()
+    # [CHANGE] Legacy wide-format export compatibility (older pipeline).
+    if "inference_answers" not in ss:
+        ss.inference_answers = []
+    if "inference_duration_sec" not in ss:
+        ss.inference_duration_sec = None
+    if "inference_score" not in ss:
+        ss.inference_score = None
     if "round_state" not in ss:
         ss.round_state = {
             "nouns_index": 0,
             "verbs_index": 0,
             "question_start": None,
             "last_micro_feedback": None,
+            # [CHANGE] NCS per-item submit/next state (prevents feedback regeneration).
+            "ncs_submitted_item_id": None,
+            "ncs_processing": False,
+            "ncs_processing_item_id": None,
+            "ncs_processing_session_id": None,
+            "ncs_pending_auto_advance": False,
+            "ncs_item_feedback": None,
         }
     if "practice_state" not in ss:
         ss.practice_state = {
@@ -2124,6 +2158,9 @@ def ensure_session_state() -> None:
         ss.analysis_seen = {"nouns": False, "verbs": False}
     if "in_mcp" not in ss:
         ss.in_mcp = False
+    # [CHANGE] Disable NCS inputs while processing/after submit.
+    if "ncs_inputs_disabled" not in ss:
+        ss.ncs_inputs_disabled = False
     if "mcp_active_round" not in ss:
         ss.mcp_active_round = None
     if "mcp_active_round_no" not in ss:
@@ -2809,161 +2846,235 @@ def render_task_intro() -> None:
 
 def render_inference_round(
     round_key: str,
-    questions: List[Question],
+    questions: List[Any],
     reason_labels: List[str],
     next_phase: str,
     analysis_round_no: int,
 ) -> None:
     scroll_top_js()
     round_title_map = {
-        "nouns": "시각 추론 (1단계): 시간 추론",
-        "verbs": "시각 추론 (2단계): 시간 추론2",
+        "nouns": "NCS 과제 (세션 1–2)",
+        "verbs": "NCS 과제 (세션 3)",
     }
-    st.title(round_title_map.get(round_key, "시각 추론 과제"))
+    st.title(round_title_map.get(round_key, "NCS 과제"))
     rs = st.session_state.round_state
     payload = st.session_state.payload
     index = rs.get(f"{round_key}_index", 0)
     if index >= len(questions):
         set_phase(next_phase)
         return
-    question = questions[index]
-    st.session_state["round_no"] = index
-    current_index = int(st.session_state.get("round_no", 0)) + 1
-    option_state_key = f"{round_key}_{question.id}"
-    display_options, option_index_map, _ = get_randomized_option_state(
-        question, option_state_key
-    )
+    item = questions[index] or {}
+    item_id = str(item.get("id") or f"{round_key}_{index+1}")
+    session_id = int(item.get("session_id") or (1 if round_key == "nouns" else 3))
 
-    question_container = st.container()
-    with question_container:
-        st.header(f"문항 {current_index} / {len(questions)}")
-        round_badge = (
-            "시간 추론"
-            if round_key == "nouns"
-            else "시간 추론2"
-        )
-        render_question_card(question, badge=round_badge)
-        render_question_image(question)
-        st.markdown("제출하려면 정답과 추론 근거를 모두 선택해야 합니다.")
+    total_items = NCS_TOTAL_ITEMS
+    global_offset = 0 if round_key == "nouns" else len(NCS_NOUNS_ITEMS)
+    global_index = global_offset + index
 
-        if rs.get("question_start") is None:
-            rs["question_start"] = time.perf_counter()
+    # While processing (animation), block background input and prevent re-submits.
+    if rs.get("ncs_processing") and rs.get("ncs_processing_item_id") == item_id:
+        render_mcp_animation(round_key, analysis_round_no, seconds=1.0)
+        rs["ncs_processing"] = False
+        rs["ncs_processing_item_id"] = None
+        rs["ncs_processing_session_id"] = None
+        st.session_state["in_mcp"] = False
 
-        # Keep lettered options readable (A/B/C/D) by not adding numeric prefixes.
-        answer_labels = list(display_options)
-        selected_answer_label, answer_valid = radio_required(
-            "정답을 선택하세요",
-            answer_labels,
-            key=f"{round_key}_answer_{index}",
-        )
-
-        rationale_tags = reason_labels
-        rationale_prompt = (
-            "정답을 그렇게 선택한 주요 근거는 무엇인가요?"
-            if round_key == "nouns"
-            else "판단에 가장 큰 영향을 준 시각 정보는 무엇인가요?"
-        )
-        selected_tag, tag_valid = radio_required(
-            rationale_prompt,
-            rationale_tags,
-            key=f"{round_key}_tag_{index}",
-        )
-
-        can_submit = bool(answer_valid and tag_valid)
-        submit_btn = st.button(
-            "응답 제출",
-            key=f"{round_key}_submit_{index}",
-            disabled=not can_submit,
-        )
-
-        if not submit_btn:
-            if SHOW_PER_ITEM_INLINE_FEEDBACK:
-                last_micro = rs.get("last_micro_feedback")
-                if last_micro:
-                    st.markdown(f"✅ {last_micro}")
-                    st.success(last_micro)
-                    rs["last_micro_feedback"] = None
+        # Session 3: no feedback; after processing, auto-advance immediately.
+        if rs.get("ncs_pending_auto_advance"):
+            rs["ncs_pending_auto_advance"] = False
+            rs["ncs_submitted_item_id"] = None
+            rs["ncs_item_feedback"] = None
+            st.session_state.ncs_inputs_disabled = False
+            rs["question_start"] = None
+            rs[f"{round_key}_index"] = index + 1
+            if rs[f"{round_key}_index"] >= len(questions):
+                set_phase(next_phase)
+            else:
+                set_phase(st.session_state.phase)
             return
 
-    if not can_submit:
-        st.error("정답과 추론 근거 선택은 필수입니다.")
+        try:
+            st.rerun()
+        except Exception:
+            st.experimental_rerun()
         return
 
-    start_time = rs.get("question_start")
-    if start_time is None:
-        start_time = time.perf_counter()
-    response_time = round(time.perf_counter() - start_time, 2)
-    rs["question_start"] = None
+    is_submitted = rs.get("ncs_submitted_item_id") == item_id
+    if not is_submitted and rs.get("question_start") is None:
+        rs["question_start"] = time.perf_counter()
 
-    question_container.empty()
-    st.session_state["in_mcp"] = True
-    st.session_state.setdefault("mcp_done", {}).pop(analysis_round_no, None)
-    st.session_state["mcp_active_round"] = round_key
-    st.session_state["mcp_active_round_no"] = analysis_round_no
-
-    manager: ExperimentManager = st.session_state.manager
-    selected_display_idx = answer_labels.index(selected_answer_label)
-    selected_option_idx = option_index_map[selected_display_idx]
-    selected_tag_idx = rationale_tags.index(selected_tag)
-
-    def _choice_code(text: str) -> str:
-        if not text:
-            return ""
-        head = text.split(".", 1)[0].strip()
-        return head if len(head) == 1 else head[:1]
-
-    manager.process_inference_response(
-        question_id=question.id,
-        selected_option=selected_option_idx,
-        selected_reason=selected_tag,
-        response_time=response_time,
+    # Render NCS item (text/table/chart) with stable widget keys.
+    selected_key, selected_rationales, meta = render_ncs_item(
+        item=item, item_index=global_index, total_items=total_items
     )
-    is_correct = int(selected_option_idx) == int(question.answer_idx)
-    detail = {
-        "round": round_key,
-        "question_id": question.id,
-        "stem": question.stem,
-        "gloss": question.gloss,
-        "options": question.options,
-        "selected_option": int(selected_option_idx),
-        "selected_option_text": display_options[selected_display_idx],
-        "selected_option_code": _choice_code(display_options[selected_display_idx]),
-        "correct_idx": int(question.answer_idx),
-        "correct_text": question.options[question.answer_idx],
-        "correct_option_code": _choice_code(question.options[question.answer_idx]),
-        "is_correct": bool(is_correct),
-        "selected_reason_idx": int(selected_tag_idx),
-        "selected_reason_text": selected_tag,
-        "selected_reason_code": _choice_code(selected_tag),
-        "correct_reason_idx": int(question.reason_idx),
-        "correct_reason_code": _choice_code(
-            reason_labels[question.reason_idx] if 0 <= question.reason_idx < len(reason_labels) else ""
-        ),
-        "response_time": response_time,
-        "timestamp": now_utc_iso(),
-        "stimulus_image": getattr(question, "image_path", None) or "",
-    }
-    payload.setdefault("inference_details", []).append(detail)
-    condition = normalize_condition(get_or_assign_praise_condition())
-    completed_tags = [
-        d.get("selected_reason_text")
-        for d in payload["inference_details"]
-        if d["round"] == round_key
-    ]
-    top_a, top_b = top_two_rationales(completed_tags)
-    micro_a, micro_b = ensure_rationale_pair(top_a, top_b)
-    micro_text = get_next_micro_feedback(condition, micro_a, micro_b)
-    if SHOW_PER_ITEM_INLINE_FEEDBACK:
-        rs["last_micro_feedback"] = micro_text
-    else:
-        rs["last_micro_feedback"] = None
-    payload["feedback_messages"][round_key].append(micro_text)
-    rs[f"{round_key}_index"] = index + 1
 
-    if rs[f"{round_key}_index"] >= len(questions):
-        set_phase(next_phase)
-    else:
+    answer_valid = bool(meta.get("answer_valid"))
+    rationale_valid = bool(meta.get("rationale_valid"))
+    can_submit = bool(answer_valid and rationale_valid and not is_submitted) and not bool(
+        st.session_state.get("in_mcp", False)
+    )
+
+    # Submit / Next buttons (feedback must not regenerate on Next).
+    submit_clicked = st.button(
+        "응답 제출",
+        key=f"{round_key}_submit_{index}",
+        disabled=not can_submit,
+        use_container_width=True,
+    )
+
+    if submit_clicked:
+        if not (answer_valid and rationale_valid):
+            st.error("정답과 추론 근거 선택은 필수입니다.")
+            return
+
+        start_time = rs.get("question_start") or time.perf_counter()
+        response_time = round(time.perf_counter() - start_time, 2)
+        rs["question_start"] = None
+
+        options_dict: Dict[str, str] = dict(item.get("options") or {})
+        correct_key = str(item.get("answer_key") or "")
+        is_correct = bool(selected_key and correct_key and selected_key == correct_key)
+
+        rationale_text_map = {
+            "A": "핵심 조건/수치를 먼저 확인했다",
+            "B": "문장/규정을 그대로 적용했다",
+            "C": "필요한 계산/비교를 수행했다",
+            "D": "다른 보기와의 모순 여부를 점검했다",
+        }
+        selected_rationale_texts = [
+            rationale_text_map.get(key, key) for key in (selected_rationales or [])
+        ]
+        primary_rationale_key = (selected_rationales or [""])[0]
+        primary_rationale_text = (
+            rationale_text_map.get(primary_rationale_key, "") if primary_rationale_key else ""
+        )
+        primary_rationale_label = (
+            f"{primary_rationale_key}) {primary_rationale_text}".strip()
+            if primary_rationale_key
+            else ""
+        )
+
+        # Keep legacy fields for downstream persistence, but also store the full NCS schema
+        # inside the JSON detail payload to avoid column drift.
+        detail: Dict[str, Any] = {
+            "round": round_key,
+            "question_id": item_id,  # legacy key name
+            "item_id": item_id,
+            "session_id": int(item.get("session_id") or session_id),
+            "item_number": int(item.get("item_number") or (global_index + 1)),
+            "domain": str(item.get("domain") or ""),
+            "instruction": str(item.get("instruction") or ""),
+            "prompt": str(item.get("question") or ""),
+            "stimulus_type": str(item.get("stimulus_type") or "text"),
+            "stimulus_text": str(item.get("stimulus_text") or ""),
+            "choice_options": dict(options_dict),
+            "correct_answer_key": correct_key,
+            "participant_selected_key": str(selected_key or ""),
+            "is_correct": bool(is_correct),
+            "response_time": float(response_time),  # seconds (legacy convention)
+            "response_time_ms": int(round(float(response_time) * 1000.0)),
+            "timestamp": now_utc_iso(),
+            # legacy fields expected by existing summaries/export
+            "stem": str(item.get("question") or ""),
+            "gloss": str(item.get("instruction") or ""),
+            "options": [options_dict.get(str(k), "") for k in range(1, 6)],
+            "selected_option": int(selected_key) - 1 if selected_key else "",
+            "selected_option_text": options_dict.get(str(selected_key), "") if selected_key else "",
+            "correct_idx": int(correct_key) - 1 if correct_key else "",
+            "correct_text": options_dict.get(correct_key, "") if correct_key else "",
+            "stimulus_image": "",
+            # rationale (store list max2 + keep a stable single-string for legacy)
+            "selected_rationales": list(selected_rationales or [])[:2],
+            "selected_rationale_texts": list(selected_rationale_texts or [])[:2],
+            "selected_reason_text": primary_rationale_label,
+            "selected_reason_code": primary_rationale_key,
+        }
+
+        # Record into the existing manager payload (backward compatible).
+        manager: ExperimentManager = st.session_state.manager
+        manager.process_inference_response(
+            question_id=item_id,
+            selected_option=int(selected_key) - 1 if selected_key else 0,
+            selected_reason=primary_rationale_label,
+            response_time=response_time,
+        )
+        payload.setdefault("inference_details", []).append(detail)
+
+        # Legacy wide-format export (first 10 only, preserved behavior).
+        if len(st.session_state.inference_answers) < INFERENCE_EXPORT_COUNT:
+            st.session_state.inference_answers.append(
+                {
+                    "selected_idx": int(selected_key) if selected_key else "",
+                    "correct_idx": int(correct_key) if correct_key else "",
+                    "rationales": list(selected_rationales or [])[:2],
+                }
+            )
+
+        # Compute per-item feedback once and store it (no regeneration on Next).
+        if session_id in (1, 2):
+            if is_correct:
+                feedback_text = "정답입니다."
+            else:
+                answer_text = options_dict.get(correct_key, "")
+                feedback_text = f"오답입니다. 정답: {correct_key}) {answer_text}".strip()
+            rs["ncs_item_feedback"] = {
+                "is_correct": bool(is_correct),
+                "text": feedback_text,
+            }
+            payload["feedback_messages"][round_key].append(feedback_text)
+            rs["ncs_submitted_item_id"] = item_id
+            st.session_state.ncs_inputs_disabled = True
+            rs["ncs_pending_auto_advance"] = False
+        else:
+            # Session 3: no feedback UI; advance automatically after processing.
+            rs["ncs_item_feedback"] = None
+            rs["ncs_submitted_item_id"] = item_id
+            st.session_state.ncs_inputs_disabled = True
+            rs["ncs_pending_auto_advance"] = True
+            try:
+                st.toast("저장되었습니다.")
+            except Exception:
+                pass
+
+        # Processing/animation phase (blocks background interactions).
+        rs["ncs_processing"] = True
+        rs["ncs_processing_item_id"] = item_id
+        rs["ncs_processing_session_id"] = session_id
+        st.session_state.setdefault("mcp_done", {}).pop(analysis_round_no, None)
+        st.session_state["mcp_active_round"] = round_key
+        st.session_state["mcp_active_round_no"] = analysis_round_no
+        st.session_state["in_mcp"] = True
+
         set_phase(st.session_state.phase)
+        return
+
+    if is_submitted and session_id in (1, 2):
+        fb = rs.get("ncs_item_feedback") or {}
+        fb_text = str(fb.get("text") or "")
+        fb_ok = bool(fb.get("is_correct"))
+        if fb_text:
+            if fb_ok:
+                st.success(fb_text)
+            else:
+                st.error(fb_text)
+
+        next_clicked = st.button(
+            "다음",
+            key=f"{round_key}_next_{index}",
+            use_container_width=True,
+            disabled=bool(st.session_state.get("in_mcp", False)),
+        )
+        if next_clicked:
+            rs["ncs_submitted_item_id"] = None
+            rs["ncs_item_feedback"] = None
+            st.session_state.ncs_inputs_disabled = False
+            rs["question_start"] = None
+            rs[f"{round_key}_index"] = index + 1
+            if rs[f"{round_key}_index"] >= len(questions):
+                set_phase(next_phase)
+            else:
+                set_phase(st.session_state.phase)
+        return
 
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
@@ -3034,6 +3145,26 @@ def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
 def render_feedback(round_key: str, _reason_labels: List[str], next_phase: str) -> None:
     scroll_top_js()
     st.markdown(FEEDBACK_UI_CSS, unsafe_allow_html=True)
+
+    # [CHANGE] Session 3 (mapped to verbs) must show NO feedback.
+    if round_key == "verbs":
+        st.markdown(
+            """
+<div class="feedback-page">
+  <div class="feedback-card feedback-comment-card">
+    <div class="feedback-comment-title">
+      <span class="feedback-comment-icon">📌</span>
+      저장 완료
+    </div>
+    <p class="feedback-comment-subtitle">응답이 저장되었습니다. 다음 단계로 이동해 주세요.</p>
+  </div>
+</div>
+            """.strip(),
+            unsafe_allow_html=True,
+        )
+        if st.button("다음 단계", use_container_width=True, key="verbs_no_feedback_next"):
+            set_phase(next_phase)
+        return
 
     feedback_payload = get_feedback_once(
         round_key,
@@ -3357,6 +3488,75 @@ def render_summary() -> None:
     payload["praise_condition"] = condition
     record.condition = condition
 
+    # [CHANGE] Attach a single JSON payload containing all 15 NCS responses/results.
+    # This preserves backward compatibility with existing sheet columns by storing new
+    # fields inside existing JSON blob columns (payload_full_json / inference_details_json).
+    try:
+        details = list(payload.get("inference_details", []) or [])
+        ncs_items = list(NCS_ITEMS)
+
+        ncs_responses: List[Dict[str, Any]] = []
+        for d in details:
+            item_id = d.get("item_id") or d.get("question_id")
+            if not item_id:
+                continue
+            ncs_responses.append(
+                {
+                    "item_id": item_id,
+                    "session_id": d.get("session_id"),
+                    "item_number": d.get("item_number"),
+                    "domain": d.get("domain"),
+                    "instruction": d.get("instruction"),
+                    "prompt": d.get("prompt"),
+                    "stimulus_type": d.get("stimulus_type"),
+                    "choice_options": d.get("choice_options"),
+                    "correct_answer_key": d.get("correct_answer_key"),
+                    "participant_selected_key": d.get("participant_selected_key"),
+                    "is_correct": d.get("is_correct"),
+                    "response_time": d.get("response_time"),
+                    "response_time_ms": d.get("response_time_ms"),
+                    "selected_rationales": d.get("selected_rationales"),
+                    "selected_rationale_texts": d.get("selected_rationale_texts"),
+                }
+            )
+
+        score, accuracy, per_item_correct, summary = compute_ncs_results(
+            ncs_responses, ncs_items
+        )
+        task_total_duration = sum(
+            float(r.get("response_time") or 0.0) for r in ncs_responses
+        )
+        session_duration: Dict[str, float] = {"1": 0.0, "2": 0.0, "3": 0.0}
+        for r in ncs_responses:
+            sid = str(r.get("session_id") or "")
+            if sid in session_duration:
+                session_duration[sid] += float(r.get("response_time") or 0.0)
+
+        payload["inference_ncs_payload"] = build_ncs_payload(
+            responses=ncs_responses,
+            results=(score, accuracy, per_item_correct, summary),
+            timing={
+                "task_total_duration_sec": round(task_total_duration, 3),
+                "session_duration_sec": {k: round(v, 3) for k, v in session_duration.items()},
+            },
+            session_meta={
+                "sessions": {
+                    "1": {"items": [1, 2, 3, 4, 5], "feedback": True},
+                    "2": {"items": [6, 7, 8, 9, 10], "feedback": True},
+                    "3": {"items": [11, 12, 13, 14, 15], "feedback": False},
+                },
+                "total_items": len(ncs_items),
+            },
+        )
+
+        # Legacy keys (used by older export pipelines).
+        payload["inference_score"] = int(score)
+        payload["inference_duration_sec"] = round(task_total_duration, 3)
+        st.session_state.inference_score = int(score)
+        st.session_state.inference_duration_sec = round(task_total_duration, 3)
+    except Exception:
+        pass
+
     storage_record = build_storage_record(payload, record)
     sheet_row = build_sheet_row(storage_record)
     if not st.session_state.saved_once and st.session_state.save_error is None:
@@ -3508,7 +3708,7 @@ elif phase == "task_intro":
 elif phase == "inference_nouns":
     render_inference_round(
         "nouns",
-        NOUN_QUESTIONS,
+        NCS_NOUNS_ITEMS,
         REASON_NOUN_LABELS,
         "analysis_nouns",
         analysis_round_no=1,
@@ -3522,7 +3722,7 @@ elif phase == "difficulty_check":
 elif phase == "inference_verbs":
     render_inference_round(
         "verbs",
-        VERB_QUESTIONS,
+        NCS_VERBS_ITEMS,
         REASON_VERB_LABELS,
         "analysis_verbs",
         analysis_round_no=2,
