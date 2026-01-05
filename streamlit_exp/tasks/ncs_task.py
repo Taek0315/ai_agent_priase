@@ -8,14 +8,6 @@ import pandas as pd
 import streamlit as st
 
 
-RATIONALE_OPTIONS: List[Dict[str, str]] = [
-    {"key": "A", "text": "핵심 조건/수치를 먼저 확인했다"},
-    {"key": "B", "text": "문장/규정을 그대로 적용했다"},
-    {"key": "C", "text": "필요한 계산/비교를 수행했다"},
-    {"key": "D", "text": "다른 보기와의 모순 여부를 점검했다"},
-]
-
-
 def _options_dict(*texts: str) -> Dict[str, str]:
     return {str(i + 1): text for i, text in enumerate(texts)}
 
@@ -393,7 +385,7 @@ def render_ncs_item(
 
     Returns:
       - selected_option_key: "1".."5" or None
-      - selected_rationales: list[str] (max 2)
+      - selected_rationales: list[str] (always empty; rationale selection removed)
       - response_meta: dict with timing + validity flags
     """
     # Stable per-item keys (avoid collisions across reruns)
@@ -467,23 +459,11 @@ def render_ncs_item(
     selected_key = label_to_key.get(selected_label) if selected_label else None
     answer_valid = selected_key is not None
 
-    rationale_choices = [f'{r["key"]}) {r["text"]}' for r in RATIONALE_OPTIONS]
-    selected_rationale_labels: List[str] = st.multiselect(
-        "정답을 그렇게 선택한 주요 근거는 무엇인가요? (최대 2개)",
-        options=rationale_choices,
-        default=st.session_state.get(f"{ss_prefix}_rats", []),
-        key=f"{ss_prefix}_rats",
-        disabled=inputs_disabled,
-    )
-    selected_rationales = [label.split(")", 1)[0] for label in selected_rationale_labels]
-    rationale_valid = 1 <= len(selected_rationales) <= 2
-
-    if len(selected_rationales) > 2:
-        st.warning("근거는 최대 2개까지 선택할 수 있습니다.")
-
-    return selected_key, selected_rationales[:2], {
+    # NOTE: Rationale selection is intentionally removed for NCS-style tasks.
+    # Keep return signature stable (selected_rationales stays empty) so callers can
+    # safely persist legacy fields as blanks without changing storage schema.
+    return selected_key, [], {
         "answer_valid": bool(answer_valid),
-        "rationale_valid": bool(rationale_valid),
     }
 
 
