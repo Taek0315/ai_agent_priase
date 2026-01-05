@@ -61,7 +61,21 @@ st.set_page_config(
 
 COMPACT_CSS = """
  <style>
-   :root { --fs-base: 16px; --lh-base: 1.65; }
+   :root {
+     --fs-base: 16px;
+     --lh-base: 1.65;
+     --bg: #0b1220;
+     --fg: #f1f5f9;
+     --muted: rgba(241, 245, 249, 0.78);
+     --muted-2: rgba(241, 245, 249, 0.62);
+     --card: rgba(15, 23, 42, 0.78);
+     --card-2: rgba(15, 23, 42, 0.62);
+     --border: rgba(148, 163, 184, 0.28);
+     --border-2: rgba(148, 163, 184, 0.18);
+     --accent: #93c5fd;
+     --accent-2: #a5b4fc;
+     --warning: #fbbf24;
+   }
    #MainMenu, header, footer, [data-testid="stToolbar"] { display: none !important; }
    [data-testid="stSidebar"], section[data-testid="stSidebar"] { display: none !important; }
    [data-testid="stSidebarCollapseButton"],
@@ -71,7 +85,11 @@ COMPACT_CSS = """
      font-size: var(--fs-base);
      line-height: var(--lh-base);
      overflow-x: hidden !important;
+     background: var(--bg) !important;
+     color: var(--fg) !important;
    }
+   a, a:visited { color: var(--accent) !important; }
+   ::selection { background: rgba(147, 197, 253, 0.22); }
    *, *::before, *::after {
      box-sizing: border-box;
    }
@@ -140,44 +158,50 @@ COMPACT_CSS = """
          overflow-y: visible;
          padding: 1.25rem 1.5rem;
          border-radius: 0.75rem;
-         background-color: #20252b;
-         color: #f5f5f5;
+         background-color: rgba(15, 23, 42, 0.72);
+         color: var(--fg);
+         border: 1px solid var(--border);
          box-sizing: border-box;
        }
+   .stCaption, [data-testid="stCaptionContainer"] {
+     color: var(--muted) !important;
+     font-weight: 600;
+   }
    .question-card {
      width: 100%;
      max-width: 100%;
      border-radius: 16px;
-     border: 1px solid #dfe4f0;
-     background: #f6f7fb;
+     border: 1px solid var(--border);
+     background: var(--card);
      padding: 18px 20px;
      margin: 12px 0 18px;
      overflow: hidden;
+     box-shadow: 0 18px 46px -34px rgba(0, 0, 0, 0.75);
    }
    .question-badge {
      display: inline-flex;
      padding: 4px 12px;
      border-radius: 999px;
-     background: #dde1fb;
-     color: #3941a4;
-     font-size: 0.85rem;
-     font-weight: 600;
+     background: rgba(99, 102, 241, 0.18);
+     color: rgba(224, 231, 255, 0.95);
+     font-size: 0.9rem;
+     font-weight: 700;
      margin-bottom: 10px;
+     border: 1px solid rgba(165, 180, 252, 0.26);
    }
    .question-label {
-     font-size: 0.85rem;
-     letter-spacing: 0.02em;
-     text-transform: uppercase;
-     color: #6c7390;
-     font-weight: 600;
+     font-size: 0.98rem;
+     letter-spacing: 0.01em;
+     color: var(--accent);
+     font-weight: 800;
      margin-bottom: 4px;
    }
    .question-stem,
    .question-stem-text {
-     font-weight: 700;
+     font-weight: 650;
      font-size: 1.08rem;
      margin: 0 0 8px;
-     color: #1f2433;
+     color: var(--fg);
      line-height: 1.65;
      white-space: normal;
      word-break: keep-all;
@@ -204,7 +228,12 @@ COMPACT_CSS = """
    .stRadio label {
      white-space: normal !important;
      align-items: flex-start !important;
-     font-weight: 500;
+     font-weight: 600;
+     color: var(--fg) !important;
+   }
+   .stRadio div[role="radiogroup"] > label > div,
+   .stRadio div[role="radiogroup"] > label > div * {
+     color: var(--fg) !important;
    }
    /* -------------------------
       NCS task readability blocks
@@ -212,30 +241,37 @@ COMPACT_CSS = """
    .task-section-title {
      margin: 6px 0 10px;
      font-weight: 800;
-     color: #1f2433;
-     font-size: 0.95rem;
+     color: var(--fg);
+     font-size: 1.02rem;
      letter-spacing: 0.01em;
+     display: inline-flex;
+     align-items: center;
+     gap: 8px;
+     padding: 6px 12px;
+     border-radius: 999px;
+     background: rgba(59, 130, 246, 0.12);
+     border: 1px solid rgba(147, 197, 253, 0.22);
    }
    .task-block {
      width: 100%;
      max-width: 100%;
      border-radius: 14px;
-     border: 1px solid #e2e6f3;
-     background: #ffffff;
+     border: 1px solid var(--border-2);
+     background: var(--card-2);
      padding: 12px 14px;
      margin: 10px 0;
      overflow: hidden;
    }
    .task-block-title {
      font-weight: 800;
-     color: #2b3147;
-     font-size: 0.95rem;
+     color: var(--fg);
+     font-size: 1.02rem;
      margin: 0 0 8px;
    }
    .task-block-body {
      margin: 0;
-     color: #1f2433;
-     font-size: 0.98rem;
+      color: var(--fg);
+      font-size: 1rem;
      line-height: 1.65;
    }
    .task-bullets {
@@ -248,22 +284,23 @@ COMPACT_CSS = """
    .task-quote {
      padding: 10px 12px;
      border-radius: 12px;
-     background: #f6f7fb;
-     border: 1px solid #e6e9f5;
+     background: rgba(30, 41, 59, 0.55);
+     border: 1px solid rgba(148, 163, 184, 0.22);
+     color: var(--fg);
    }
    .task-table-caption {
      margin: 2px 0 8px;
      font-weight: 700;
-     color: #4b5575;
-     font-size: 0.9rem;
+     color: var(--muted);
+     font-size: 0.95rem;
    }
    .task-table-wrap {
      width: 100%;
      overflow-x: auto;
      -webkit-overflow-scrolling: touch;
      border-radius: 12px;
-     border: 1px solid #e6e9f5;
-     background: #ffffff;
+     border: 1px solid rgba(148, 163, 184, 0.18);
+     background: rgba(15, 23, 42, 0.55);
    }
    table.task-table {
      width: 100%;
@@ -280,12 +317,12 @@ COMPACT_CSS = """
      word-break: keep-all;
    }
    table.task-table th {
-     background: #f6f7fb;
+     background: rgba(30, 41, 59, 0.62);
      font-weight: 800;
-     color: #2b3147;
+     color: var(--fg);
    }
    table.task-table td {
-     color: #1f2433;
+     color: var(--fg);
    }
    @media (max-width: 768px) {
      table.task-table th,
