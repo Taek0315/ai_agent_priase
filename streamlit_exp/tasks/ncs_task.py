@@ -136,7 +136,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 1,
             "session_id": 1,
             "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "다음은 오늘 처리해야 할 업무 목록이다. 우선순위 규칙에 따라 물음에 답하시오.",
+            "instruction": "당신은 오늘 처리해야 할 업무를 정리하고 있다. 아래 우선순위 규칙에 따라 ‘지금 가장 먼저’ 처리할 업무를 선택하시오.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
@@ -158,7 +158,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     },
                 },
             ],
-            "question": "규칙에 따라 가장 먼저 처리해야 할 업무는 무엇인가?",
+            "question": "규칙에 따라 지금 가장 먼저 처리해야 할 업무는 무엇인가?",
             "options": _options_dict(
                 "업무 A",
                 "업무 B",
@@ -173,7 +173,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 2,
             "session_id": 1,
             "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "다음은 발주처별 ‘납품까지 남은 일수’를 나타낸 막대그래프이다.",
+            "instruction": "당신은 납품 지연을 막기 위해 ‘가장 먼저 확인/대응해야 할 발주처’를 찾고 있다. 아래 그래프는 발주처별 ‘납품까지 남은 일수’이다.",
             "stimulus_type": "chart",
             "stimulus_text": "",
             "chart_spec": {
@@ -188,7 +188,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                 "y": "남은일수",
                 "title": "발주처별 납품까지 남은 일수",
             },
-            "question": "그래프를 보고 납품까지 남은 일수가 가장 적은 발주처는 어디인가?",
+            "question": "그래프 기준으로, 지금 가장 먼저 확인/대응해야 할 발주처는 어디인가?",
             "options": _options_dict("A사", "B사", "C사", "D사", "E사"),
             "answer_key": "2",
         },
@@ -231,12 +231,12 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 4,
             "session_id": 1,
             "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "다음 표는 외주 업체의 제안 조건이다. 아래 필수 조건을 만족하는 업체를 고르시오.",
+            "instruction": "당신은 외주 업체를 선정해야 한다. 아래 ‘필수 조건’을 만족하는 업체를 선택하시오.",
             "stimulus_type": "table",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "Required conditions",
+                    "title": "필수 조건",
                     "bullets": ["A/S 기간이 ‘18개월 이상’인 업체만 선택한다. (18개월은 포함됨)"],
                 }
             ],
@@ -259,7 +259,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 5,
             "session_id": 1,
             "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "다음 표는 한 팀의 주간 업무 처리 시간이다.",
+            "instruction": "당신은 주간 보고서에 업무 처리 시간을 정리하려 한다. 다음 표는 한 팀의 업무 처리 시간이다.",
             "stimulus_type": "table",
             "stimulus_text": "",
             "table_spec": {
@@ -269,7 +269,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     ["업무 B", "30분", "25분"],
                 ],
             },
-            "question": "업무 A의 월요일과 화요일 처리 시간의 합계는 얼마인가?",
+            "question": "보고서에 기록할 ‘업무 A의 월요일+화요일 총 처리 시간’은 얼마인가?",
             "options": _options_dict(
                 "70분",
                 "75분",
@@ -289,9 +289,8 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "자원관리능력 · 상황판단",
             "instruction": "\n".join(
                 [
-                    "당신은 팀 회의 일정을 확정해야 한다.",
-                    "아래의 ‘참석 가능 시간’, ‘회의실 사용 가능 시간’, ‘예산(참석 비용)’ 조건이 동시에 적용된다.",
-                    "선택지 중에서 모든 조건을 한 번에 만족하는 1개 일정(시간/회의실/참석자 구성)을 고르시오.",
+                    "당신은 팀 회의 일정을 오늘 안에 확정해야 한다.",
+                    "아래 제약을 모두 만족하는 ‘시간/회의실/참석자(4명)’ 조합을 선택하시오.",
                 ]
             ),
             "stimulus_type": "text",
@@ -307,11 +306,11 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                 {
                     "title": "제약(반드시 만족)",
                     "bullets": [
-                        "최소 참석 인원: 4명 이상",
+                        "참석 인원: 4명(예산상 최대 4명까지 가능)",
                         "회의실 A: 오전만 사용 가능",
                         "회의실 B: 오후만 사용 가능",
                         "참석 1인당 비용: 12만 원",
-                        "총 비용: 50만 원 초과 불가",
+                        "총 비용: 50만 원 초과 불가 (4명 참석 시 48만 원)",
                     ],
                 },
                 {
@@ -328,11 +327,8 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     },
                 },
                 {
-                    "title": "추가 규칙(조건이 상호작용하는 부분)",
-                    "bullets": [
-                        "총 비용 ≤ 50만 원이고 1인당 12만 원이므로, 참석 인원은 최대 4명까지 가능하다(5명 전원 참석은 불가).",
-                        "최소 참석 인원이 4명이므로, 이 문항에서는 참석 인원은 정확히 4명이어야 한다.",
-                    ],
+                    "title": "결정 목표",
+                    "bullets": ["제약을 모두 만족하는 조합 1개를 고른다."],
                 },
             ],
             "question": "조건을 모두 만족하는 일정은 무엇인가?",
@@ -352,9 +348,8 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "자원관리능력 · 상황판단",
             "instruction": "\n".join(
                 [
-                    "당신은 후보지 3곳(A, B, C) 중 한 곳을 선택해야 한다.",
-                    "아래 표의 점수(1~10점)에 가중치를 반영하여 ‘종합점수’가 가장 높은 후보지를 고르시오.",
-                    "종합점수는 (각 항목 점수 × 해당 가중치)의 합으로 계산한다.",
+                    "당신은 신규 사무공간 후보지 3곳(A, B, C) 중 한 곳을 최종 추천해야 한다.",
+                    "회사 기준(가중치)을 반영한 ‘종합점수’가 가장 높은 후보지를 선택하시오.",
                 ]
             ),
             "stimulus_type": "table",
@@ -381,6 +376,18 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                         "임대료는 “낮을수록 유리”이므로, 표의 ‘임대료 점수’는 이미 “낮을수록 높은 점수”로 환산된 값이다(그대로 사용)."
                     ],
                 },
+                {
+                    "title": "종합점수(가중치 반영·계산됨)",
+                    "table": {
+                        "columns": ["후보지", "종합점수"],
+                        "rows": [
+                            ["A", "6.90"],
+                            ["B", "7.30"],
+                            ["C", "6.70"],
+                        ],
+                        "caption": "※ 계산 과정은 생략하고 결과만 제시합니다.",
+                    },
+                },
             ],
             "table_spec": {
                 "columns": ["후보지", "임대료 점수", "접근성", "공간 크기"],
@@ -390,7 +397,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     ["C", 8, 5, 7],
                 ],
             },
-            "question": "가중치를 반영한 종합점수가 가장 높은 후보지는?",
+            "question": "기준에 따라 최종 추천할 후보지는 어디인가?",
             "options": _options_dict("A", "B", "C", "A와 C", "모두 동일"),
             "answer_key": "2",
         },
@@ -401,8 +408,8 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "자원관리능력 · 상황판단",
             "instruction": "\n".join(
                 [
-                    "A, B, C, D는 각각 ‘참/거짓’으로 판단되는 문장이다.",
-                    "아래의 조건이 모두 동시에 성립하도록 만들 때, 가능한 판단(선택지)을 고르시오.",
+                    "당신은 서비스 점검 공지를 배포하려 한다.",
+                    "아래 내부 커뮤니케이션 규정을 확인한 뒤, 지금 가장 적절한 다음 조치를 선택하시오.",
                 ]
             ),
             "stimulus_type": "text",
@@ -410,32 +417,38 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "info_blocks": [
                 {
                     "title": "상황",
-                    "bullets": ["A, B, C, D의 참/거짓을 결정해야 한다."],
+                    "bullets": [
+                        "오늘 오후 4시에 서비스 점검 공지를 배포해야 한다.",
+                        "현재 작성된 공지 초안에는 ‘점검 시간 확정’ 문구가 포함되어 있다.",
+                    ],
                 },
                 {
-                    "title": "제약(조건: 모두 동시에 만족)",
+                    "title": "규정(반드시 준수)",
                     "table": {
-                        "columns": ["번호", "조건"],
+                        "columns": ["규정", "내용"],
                         "rows": [
-                            ["1", "A가 참이면 B는 거짓이다."],
-                            ["2", "B가 거짓이면 C는 참이다."],
-                            ["3", "C가 참이면 D는 거짓이다."],
-                            ["4", "D는 참이다."],
+                            ["1", "공지에 고객 영향(다운타임/중단)이 포함되면 ‘법무 검토’ 후 배포한다."],
+                            ["2", "법무 검토가 불가능한 경우, 공지는 ‘임시 안내’로만 배포한다."],
+                            ["3", "임시 안내에는 ‘점검 시간 확정’ 문구를 포함할 수 없다."],
+                            ["4", "오늘은 법무 검토를 받을 수 없다."],
                         ],
                     },
                 },
                 {
-                    "title": "추가 규칙",
-                    "bullets": ["조건을 하나라도 위반하면 정답이 될 수 없다(모두 만족해야 함)."],
+                    "title": "결정 목표",
+                    "bullets": [
+                        "규정을 위반하지 않으면서도 혼선을 최소화하는 다음 조치를 고른다.",
+                        "규정을 충족할 수 없는 상태라면, 배포를 멈추고 즉시 보고/조정한다.",
+                    ],
                 },
             ],
-            "question": "위 조건을 모두 만족하는 판단은 무엇인가?",
+            "question": "지금 가장 적절한 다음 조치는 무엇인가?",
             "options": _options_dict(
-                "A는 참이다",
-                "B는 참이다",
-                "C는 참이다",
-                "A와 C는 모두 참이다",
-                "만족하는 조건이 없다",
+                "초안을 그대로 ‘공지’로 배포한다(법무 검토 없이 진행).",
+                "법무 검토가 불가능하더라도 ‘공지’로 배포한다(예외 처리).",
+                "‘임시 안내’로 배포하되, ‘점검 시간 확정’ 문구를 그대로 포함한다.",
+                "‘공지’와 ‘임시 안내’를 동시에 배포해 혼선을 줄인다.",
+                "규정 충족이 불가능하므로 배포를 중단하고 즉시 보고/조정한다.",
             ),
             "answer_key": "5",
         },
@@ -447,8 +460,8 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "instruction": "\n".join(
                 [
                     "다음은 회사 출장비 지급 규정이다.",
-                    "아래 사례 중에서 ‘예외적으로 사후 지급이 허용되는 경우’를 고르시오.",
-                    "예외는 제시된 조건을 모두 만족해야 한다.",
+                    "아래 사례 중에서 ‘예외적으로 사후 지급이 허용되는 경우’를 선택하시오.",
+                    "예외는 제시된 조건을 모두 만족해야 한다(하나라도 빠지면 예외 인정 불가).",
                 ]
             ),
             "stimulus_type": "text",
@@ -477,7 +490,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     "bullets": ["예외는 (i)와 (ii)를 모두 만족해야 하며, 하나만 만족하면 예외로 인정되지 않는다."],
                 },
             ],
-            "question": "다음 중 예외 지급 대상에 해당하는 사례는 무엇인가?",
+            "question": "규정에 따라 ‘예외 사후 지급’을 승인할 수 있는 사례는 무엇인가?",
             "options": _options_dict(
                 "개인 일정 변경으로 당일 출장으로 변경(승인 없이 출발)",
                 "사전 승인 후 출장(정상 절차)",
@@ -495,7 +508,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "instruction": "\n".join(
                 [
                     "당신은 총 예산 1,000만 원을 7개 사업(A~G)에 배분해야 한다.",
-                    "아래의 필수/선택 조건을 모두 만족하는 배분안 중에서, 잔여 예산이 최소가 되도록(= 가능한 한 많이 집행하도록) 하는 선택지를 고르시오.",
+                    "규정을 만족하는 배분안 중에서, 예산을 가능한 한 많이 집행하는 안(= 잔여 예산이 최소인 안)을 선택하시오.",
                 ]
             ),
             "stimulus_type": "text",
@@ -522,10 +535,10 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                 },
                 {
                     "title": "추가 규칙(목표)",
-                    "bullets": ["예산을 ‘가능한 한 많이’ 집행하여 잔여 예산이 최소가 되도록 한다."],
+                    "bullets": ["먼저 ‘규정 충족 여부’를 확인한 뒤, 충족한다면 잔여 예산이 최소인 안을 고른다."],
                 },
             ],
-            "question": "가능한 배분안 중 잔여 예산이 가장 적은 것은?",
+            "question": "규정을 만족하면서 잔여 예산이 가장 적은 배분안은 무엇인가?",
             "options": _options_dict(
                 "A200 B200 C200 D50 E50 F100 G100 (잔여 100만 원)",
                 "A250 B200 C200 D50 E50 F100 G100 (잔여 50만 원)",
@@ -543,10 +556,10 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 11,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음 대화를 읽고 논리적 오류가 포함된 발언을 고르시오.",
+            "instruction": "회의에서 프로젝트 결과를 두고 의견이 오가고 있다. 아래 발언 중, 사실 확인 없이 결론을 일반화해 판단을 흐릴 수 있는 발언을 고르시오.",
             "stimulus_type": "text",
             "stimulus_text": "",
-            "question": "논리적 오류가 포함된 발언을 고르시오.",
+            "question": "당신이 바로잡아야 할 발언은 무엇인가?",
             "options": _options_dict(
                 "“이번 프로젝트가 실패했으니, 앞으로도 우리는 항상 실패할 것이다.”",
                 "“자료가 부족하니 추가 조사가 필요하다.”",
@@ -561,7 +574,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 12,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음은 최근 5년간 매출 변화이다.",
+            "instruction": "당신은 내년 매출 목표(전망)를 제안해야 한다. 다음은 최근 5년간 매출 변화이다.",
             "stimulus_type": "chart",
             "stimulus_text": "",
             "chart_spec": {
@@ -576,7 +589,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                 "y": "매출(억원)",
                 "title": "최근 5년간 매출 변화",
             },
-            "question": "현재 추세가 유지될 경우, 다음 해에 가장 합리적으로 예측되는 결과는?",
+            "question": "현재 추세가 유지될 경우, 다음 해에 가장 합리적으로 예상되는 변화는 무엇인가?",
             "options": _options_dict(
                 "급격한 감소",
                 "변화 없음",
@@ -591,7 +604,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 13,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음 업무 중 처리 우선순위를 정하려 한다.",
+            "instruction": "당신은 제한된 시간 안에 처리할 업무 순서를 정해야 한다. 아래 정보를 바탕으로 가장 합리적인 처리 순서를 선택하시오.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
@@ -607,7 +620,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     },
                 }
             ],
-            "question": "가장 합리적인 처리 순서는?",
+            "question": "마감과 영향도를 함께 고려할 때, 가장 합리적인 처리 순서는 무엇인가?",
             "options": _options_dict(
                 "C → A → B",
                 "A → C → B",
@@ -622,7 +635,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 14,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음은 사업 실패 요약 보고서이다.",
+            "instruction": "당신은 실패 요인을 정리해 다음 프로젝트에 반영하려 한다. 다음은 사업 실패 요약 보고서(발췌)이다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
@@ -631,7 +644,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     "text": "“시장 조사 부족과 일정 관리 미흡으로 목표를 달성하지 못함.”",
                 }
             ],
-            "question": "위 보고서에서 제시된 핵심 원인으로 가장 적절한 것은?",
+            "question": "다음 프로젝트에서 우선적으로 개선해야 할 ‘핵심 원인’으로 가장 적절한 것은 무엇인가?",
             "options": _options_dict(
                 "인력 부족",
                 "예산 부족",
@@ -646,7 +659,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 15,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음 상황을 읽고 부작용을 최소화할 대안을 고르시오.",
+            "instruction": "신규 시스템 도입을 앞두고 부작용(혼란)을 최소화하려 한다. 다음 상황에서 가장 적절한 다음 조치를 선택하시오.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
@@ -655,7 +668,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     "text": "“신규 시스템 도입으로 일부 직원의 업무 혼란이 예상된다.”",
                 }
             ],
-            "question": "가장 적절한 대응 방안은?",
+            "question": "부작용을 최소화하기 위해 지금 해야 할 가장 적절한 대응은 무엇인가?",
             "options": _options_dict(
                 "즉시 전면 도입",
                 "도입 계획 철회",
