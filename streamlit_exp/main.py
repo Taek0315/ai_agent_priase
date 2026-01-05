@@ -2746,10 +2746,22 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     items = list(items_map.get(int(session_id), []))
     rs = st.session_state.round_state
     payload = st.session_state.payload
+
+    # Instant UX feedback (set by submit callback on the *same* rerun as the click).
+    toast_msg = rs.pop("ncs_toast", None)
+    if toast_msg:
+        try:
+            st.toast(str(toast_msg))
+        except Exception:
+            st.success(str(toast_msg))
+    error_msg = rs.pop("ncs_submit_error", None)
+    if error_msg:
+        st.warning(str(error_msg))
+
     idx_key = f"ncs_s{int(session_id)}_index"
     index = int(rs.get(idx_key, 0) or 0)
     if index >= len(items):
-        set_phase(next_phase)
+        st.session_state.phase = next_phase
         return
 
     item = dict(items[index] or {})
@@ -2767,24 +2779,25 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     answer_valid = bool(meta.get("answer_valid"))
     can_submit = not bool(st.session_state.get("in_mcp", False))
 
-    submit_clicked = st.button(
-        "응답 제출",
-        key=f"ncs_s{session_id}_submit_{index}",
-        disabled=not can_submit,
-        use_container_width=True,
-    )
-    if submit_clicked:
-        if not answer_valid:
-            st.warning("정답 선택은 필수입니다.")
+    options_dict: Dict[str, str] = dict(item.get("options") or {})
+    answer_state_key = f"ncs_{item_id}_answer"
+
+    def _on_submit_current_item() -> None:
+        # Read from session_state (callbacks run before script execution on the click rerun).
+        selected_raw = st.session_state.get(answer_state_key)
+        selected = str(selected_raw) if selected_raw is not None else None
+        if not selected or selected not in options_dict:
+            rs["ncs_submit_error"] = "정답 선택은 필수입니다."
             return
 
         start_time = rs.get("question_start") or time.perf_counter()
-        response_time = round(time.perf_counter() - start_time, 2)
-        rs["question_start"] = None
+        try:
+            response_time = round(time.perf_counter() - float(start_time), 2)
+        except Exception:
+            response_time = 0.0
 
-        options_dict: Dict[str, str] = dict(item.get("options") or {})
         correct_key = str(item.get("answer_key") or "")
-        is_correct = bool(selected_key and correct_key and str(selected_key) == correct_key)
+        is_correct = bool(correct_key and selected == correct_key)
 
         # Keep legacy fields/keys stable for downstream storage, but store rationale as blanks.
         detail: Dict[str, Any] = {
@@ -2800,7 +2813,7 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
             "stimulus_text": str(item.get("stimulus_text") or ""),
             "choice_options": dict(options_dict),
             "correct_answer_key": correct_key,
-            "participant_selected_key": str(selected_key or ""),
+            "participant_selected_key": str(selected or ""),
             "is_correct": bool(is_correct),
             "response_time": float(response_time),  # seconds (legacy convention)
             "response_time_ms": int(round(float(response_time) * 1000.0)),
@@ -2809,8 +2822,8 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
             "stem": str(item.get("question") or ""),
             "gloss": str(item.get("instruction") or ""),
             "options": [options_dict.get(str(k), "") for k in range(1, 6)],
-            "selected_option": int(selected_key) - 1 if selected_key else "",
-            "selected_option_text": options_dict.get(str(selected_key), "") if selected_key else "",
+            "selected_option": int(selected) - 1 if selected else "",
+            "selected_option_text": options_dict.get(str(selected), "") if selected else "",
             "correct_idx": int(correct_key) - 1 if correct_key else "",
             "correct_text": options_dict.get(correct_key, "") if correct_key else "",
             "stimulus_image": "",
@@ -2824,9 +2837,9 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
         manager: ExperimentManager = st.session_state.manager
         manager.process_inference_response(
             question_id=item_id,
-            selected_option=int(selected_key) - 1 if selected_key else 0,
+            selected_option=int(selected) - 1 if selected else 0,
             selected_reason="",
-            response_time=response_time,
+            response_time=float(response_time),
         )
         _append_inference_detail(detail)
 
@@ -2834,31 +2847,30 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
         if len(st.session_state.inference_answers) < INFERENCE_EXPORT_COUNT:
             st.session_state.inference_answers.append(
                 {
-                    "selected_idx": int(selected_key) if selected_key else "",
+                    "selected_idx": int(selected) if selected else "",
                     "correct_idx": int(correct_key) if correct_key else "",
                     "rationales": [],
                 }
             )
 
-        # Reset per-item UI state immediately (no "다음" click required).
+        # Reset per-item UI state + advance.
         rs["ncs_submitted_item_id"] = None
         rs["ncs_active_item_id"] = None
-        st.session_state.ncs_inputs_disabled = False
-        try:
-            st.toast("응답이 저장되었습니다.")
-        except Exception:
-            pass
         rs["question_start"] = None
+        st.session_state.ncs_inputs_disabled = False
+        rs["ncs_toast"] = "응답이 저장되었습니다."
+
         rs[idx_key] = index + 1
         if rs[idx_key] >= len(items):
-            set_phase(next_phase)
-        else:
-            set_phase(st.session_state.phase)
-        try:
-            st.rerun()
-        except Exception:
-            st.experimental_rerun()
-        return
+            st.session_state.phase = next_phase
+
+    st.button(
+        "응답 제출",
+        key=f"ncs_s{session_id}_submit_{index}",
+        disabled=not can_submit,
+        use_container_width=True,
+        on_click=_on_submit_current_item,
+    )
 
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
