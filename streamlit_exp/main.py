@@ -2631,10 +2631,8 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     item_id = str(item.get("id") or f"ncs_s{session_id}_{index+1}")
     global_index = (int(session_id) - 1) * 5 + index
 
-    is_submitted = rs.get("ncs_submitted_item_id") == item_id
-    if not is_submitted and (
-        rs.get("question_start") is None or rs.get("ncs_active_item_id") != item_id
-    ):
+    # Auto-advance flow: "응답 제출" saves + immediately moves to the next item.
+    if rs.get("question_start") is None or rs.get("ncs_active_item_id") != item_id:
         rs["question_start"] = time.perf_counter()
         rs["ncs_active_item_id"] = item_id
 
@@ -2642,9 +2640,7 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
         item=item, item_index=global_index, total_items=NCS_TOTAL_ITEMS
     )
     answer_valid = bool(meta.get("answer_valid"))
-    can_submit = bool(answer_valid and not is_submitted) and not bool(
-        st.session_state.get("in_mcp", False)
-    )
+    can_submit = not bool(st.session_state.get("in_mcp", False))
 
     submit_clicked = st.button(
         "응답 제출",
@@ -2654,7 +2650,7 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     )
     if submit_clicked:
         if not answer_valid:
-            st.error("정답 선택은 필수입니다.")
+            st.warning("정답 선택은 필수입니다.")
             return
 
         start_time = rs.get("question_start") or time.perf_counter()
@@ -2719,48 +2715,25 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
                 }
             )
 
-        rs["ncs_submitted_item_id"] = item_id
-        st.session_state.ncs_inputs_disabled = True
+        # Reset per-item UI state immediately (no "다음" click required).
+        rs["ncs_submitted_item_id"] = None
+        rs["ncs_active_item_id"] = None
+        st.session_state.ncs_inputs_disabled = False
         try:
             st.toast("응답이 저장되었습니다.")
         except Exception:
             pass
-        set_phase(st.session_state.phase)
-        return
-
-    if not is_submitted:
-        return
-
-    st.success("응답이 저장되었습니다.")
-    is_last = index >= (len(items) - 1)
-    if is_last:
-        if int(session_id) == 1:
-            next_label = "세션 1 종료"
-        elif int(session_id) == 2:
-            next_label = "세션 2 종료"
+        rs["question_start"] = None
+        rs[idx_key] = index + 1
+        if rs[idx_key] >= len(items):
+            set_phase(next_phase)
         else:
-            next_label = "다음 단계"
-    else:
-        next_label = "다음"
-
-    next_clicked = st.button(
-        next_label,
-        key=f"ncs_s{session_id}_next_{index}",
-        use_container_width=True,
-        disabled=bool(st.session_state.get("in_mcp", False)),
-    )
-    if not next_clicked:
+            set_phase(st.session_state.phase)
+        try:
+            st.rerun()
+        except Exception:
+            st.experimental_rerun()
         return
-
-    rs["ncs_submitted_item_id"] = None
-    rs["ncs_active_item_id"] = None
-    st.session_state.ncs_inputs_disabled = False
-    rs["question_start"] = None
-    rs[idx_key] = index + 1
-    if rs[idx_key] >= len(items):
-        set_phase(next_phase)
-    else:
-        set_phase(st.session_state.phase)
 
 
 def render_analysis(round_key: str, round_no: int, next_phase: str) -> None:
@@ -2912,15 +2885,13 @@ def render_session3_transition(next_phase: str = "motivation") -> None:
         """
 <div class="feedback-page">
   <div class="feedback-card feedback-comment-card">
-    <div class="feedback-comment-title">
-      <span class="feedback-comment-icon">📌</span>
-      문제 해결 과제 종료
-    </div>
-    <p class="feedback-comment-subtitle">
-      문제 해결 과제가 모두 끝났습니다.<br/>
-      이제 다음 단계에서는 과제를 수행한 경험과 동기에 대해 간단한 문항에 응답하시게 됩니다.<br/>
-      안내에 따라 차분히 진행해 주세요.
-    </p>
+    
+## 세션 3까지 모두 완료했습니다
+
+- 이 단계에서는 **추가 피드백이 제공되지 않습니다.**
+- 이제부터는 **과제 수행 경험**과 관련된 설문(동기/조작점검 등)이 이어집니다.
+- 안내 문항을 읽고 **평소 생각과 가장 가까운 선택지**를 골라 주세요.
+
   </div>
 </div>
         """.strip(),

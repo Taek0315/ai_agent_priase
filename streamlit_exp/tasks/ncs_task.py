@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,32 +32,67 @@ def _session_id_for_item_number(item_number: int) -> int:
     return 3
 
 
-def _compute_item7_weighted_winner() -> str:
-    """
-    Deterministically compute the best candidate for item 7.
-    Rent is reversed: (100 - rent) before weighting.
-    """
-    # Hidden candidate table (NOT displayed)
-    candidates = {
-        "A": {"rent": 70, "access": 80, "size": 60},
-        "B": {"rent": 60, "access": 85, "size": 70},
-        "C": {"rent": 80, "access": 70, "size": 75},
-        "D": {"rent": 65, "access": 75, "size": 65},
-    }
-    weights = {"rent": 0.40, "access": 0.35, "size": 0.25}
+_PLACEHOLDER_SUBSTRINGS: Tuple[str, ...] = (
+    "(그래프 기준",
+    "(요약문",
+    "(계산상",
+    "(연도별",
+    "(요약",
+    "(제시",
+    "(제공",
+    "TODO",
+    "TBD",
+    "예:",
+)
 
-    def score(row: Dict[str, int]) -> float:
-        rent_reversed = 100 - row["rent"]
-        return (
-            rent_reversed * weights["rent"]
-            + row["access"] * weights["access"]
-            + row["size"] * weights["size"]
-        )
 
-    scored = {k: score(v) for k, v in candidates.items()}
-    winner = max(scored.items(), key=lambda kv: kv[1])[0]
-    # We intentionally construct the table such that B wins.
-    return {"A": "1", "B": "2", "C": "3", "D": "4"}[winner]
+def _is_dev_mode() -> bool:
+    """
+    Dev-only logging for stimulus QA.
+    Enable by setting env `COVNOX_DEV=1`.
+    """
+    return str(os.getenv("COVNOX_DEV", "")).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _validate_no_authoring_placeholders(items: List[Dict[str, Any]]) -> None:
+    """
+    Fail fast when any NCS item contains authoring placeholders.
+    This prevents shipping broken stimuli (e.g., '(요약문 제공)').
+    """
+
+    def _check_string(item_id: str, field: str, value: str) -> None:
+        if not value:
+            return
+        for token in _PLACEHOLDER_SUBSTRINGS:
+            if token and token in value:
+                raise ValueError(
+                    f"[NCS] Authoring placeholder detected: item={item_id} field={field} token={token!r} value={value!r}"
+                )
+
+    for it in items:
+        item_id = str(it.get("id") or it.get("item_number") or "unknown")
+        _check_string(item_id, "instruction", str(it.get("instruction") or ""))
+        _check_string(item_id, "stimulus_text", str(it.get("stimulus_text") or ""))
+        _check_string(item_id, "question", str(it.get("question") or ""))
+        for k, v in dict(it.get("options") or {}).items():
+            _check_string(item_id, f"options[{k}]", str(v or ""))
+        # Defensive scan of chart/table labels too (titles/headers).
+        chart = dict(it.get("chart_spec") or {})
+        _check_string(item_id, "chart_spec.title", str(chart.get("title") or ""))
+        for row in list(chart.get("data") or []):
+            if isinstance(row, dict):
+                for ck, cv in row.items():
+                    if isinstance(cv, str):
+                        _check_string(item_id, f"chart_spec.data[{ck}]", cv)
+        table = dict(it.get("table_spec") or {})
+        for col in list(table.get("columns") or []):
+            if isinstance(col, str):
+                _check_string(item_id, "table_spec.columns[]", col)
+        for row in list(table.get("rows") or []):
+            if isinstance(row, (list, tuple)):
+                for cell in row:
+                    if isinstance(cell, str):
+                        _check_string(item_id, "table_spec.rows[]", cell)
 
 
 def load_ncs_items() -> List[Dict[str, Any]]:
@@ -64,11 +100,6 @@ def load_ncs_items() -> List[Dict[str, Any]]:
     Returns the 15 NCS items (3 sessions) as a list of dicts.
     Text is exact per spec; do not translate.
     """
-    item7_answer_key = _compute_item7_weighted_winner()
-    # Defensive: ensure B is the winner as specified.
-    if item7_answer_key != "2":
-        item7_answer_key = "2"
-
     items: List[Dict[str, Any]] = [
         # -------------------------
         # SESSION 1 (1–5)
@@ -182,53 +213,73 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 6,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음 조건을 모두 고려하여 최적의 회의 일정을 결정하시오.",
+            "instruction": "아래 조건을 모두 만족하는 회의 일정(시간/회의실/참석 인원)을 고르시오.",
             "stimulus_type": "text",
-            "stimulus_text": "팀원 5명 중 최소 4명이 참석해야 한다\n회의실 A는 오전만 사용 가능, 회의실 B는 오후만 사용 가능\n총 회의 비용은 50만 원을 초과할 수 없다\n팀원 1명당 회의 비용은 12만 원이다",
-            "question": "위 조건을 모두 만족하는 회의 일정은 무엇인가?",
-            "options": _options_dict(
-                "오전 / 회의실 A / 5명",
-                "오전 / 회의실 B / 4명",
-                "오후 / 회의실 A / 4명",
-                "오후 / 회의실 B / 4명",
-                "오후 / 회의실 B / 5명",
+            "stimulus_text": "\n".join(
+                [
+                    "- 팀원은 총 5명(A,B,C,D,E)이며 최소 4명이 참석해야 한다.",
+                    "- A는 오전만 가능",
+                    "- B는 오전·오후 모두 가능",
+                    "- C는 오후만 가능",
+                    "- D는 오후만 가능",
+                    "- E는 오전·오후 모두 가능",
+                    "- 회의실 A는 오전만 사용 가능 / 회의실 B는 오후만 사용 가능",
+                    "- 참석 1인당 비용은 12만 원이며, 총 비용은 50만 원을 초과할 수 없다.",
+                ]
             ),
-            "answer_key": "4",
+            "question": "조건을 모두 만족하는 일정은 무엇인가?",
+            "options": _options_dict(
+                "오전 / 회의실 A / A,B,C,E 참석",
+                "오전 / 회의실 A / A,B,E,D 참석",
+                "오후 / 회의실 B / C,D,E,B 참석",
+                "오후 / 회의실 B / C,D,E,A 참석",
+                "오후 / 회의실 A / C,D,E,A 참석",
+            ),
+            "answer_key": "3",
         },
         {
             "id": "ncs_s2_q7",
             "item_number": 7,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음은 후보지 선정 기준과 가중치이다.",
-            "stimulus_type": "text",
-            "stimulus_text": "임대료: 40% (낮을수록 유리)\n위치 접근성: 35%\n공간 크기: 25%\n각 후보지의 점수를 종합하여 최적지를 선정하려 한다.",
-            "question": "가중치를 모두 반영했을 때 가장 높은 종합 점수를 얻는 후보지는?",
-            "options": _options_dict(
-                "후보지 A",
-                "후보지 B",
-                "후보지 C",
-                "후보지 D",
-                "모두 동일하다",
+            "instruction": "다음은 후보지 3곳의 평가 점수(1~10점)이다. 가중치를 반영해 종합점수가 가장 높은 후보지를 고르시오.",
+            "stimulus_type": "table",
+            "stimulus_text": "\n".join(
+                [
+                    "- 임대료(낮을수록 유리): 40%",
+                    "- 접근성: 35%",
+                    "- 공간 크기: 25%",
+                    "",
+                    "※ 임대료는 “낮을수록 유리”이므로, 표의 ‘임대료 점수’는 이미 “낮을수록 높은 점수”로 환산된 값이다(그대로 사용).",
+                ]
             ),
-            "answer_key": item7_answer_key,
-            "hidden_candidate_table": {
-                "A": {"rent": 70, "access": 80, "size": 60},
-                "B": {"rent": 60, "access": 85, "size": 70},
-                "C": {"rent": 80, "access": 70, "size": 75},
-                "D": {"rent": 65, "access": 75, "size": 65},
-                "weights": {"rent": 0.40, "access": 0.35, "size": 0.25},
-                "rent_transform": "100-rent",
+            "table_spec": {
+                "columns": ["후보지", "임대료 점수", "접근성", "공간 크기"],
+                "rows": [
+                    ["A", 7, 6, 8],
+                    ["B", 6, 9, 7],
+                    ["C", 8, 5, 7],
+                ],
             },
+            "question": "가중치를 반영한 종합점수가 가장 높은 후보지는?",
+            "options": _options_dict("A", "B", "C", "A와 C", "모두 동일"),
+            "answer_key": "2",
         },
         {
             "id": "ncs_s2_q8",
             "item_number": 8,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음 조건을 읽고 참인 경우만을 고르시오.",
+            "instruction": "다음 조건을 모두 참으로 만들 수 있는 선택지를 고르시오.",
             "stimulus_type": "text",
-            "stimulus_text": "A가 참이면 B는 거짓이다\nB가 거짓이면 C는 참이다\nC가 참이면 D는 거짓이다\nD는 참이다",
+            "stimulus_text": "\n".join(
+                [
+                    "1) A가 참이면 B는 거짓이다.",
+                    "2) B가 거짓이면 C는 참이다.",
+                    "3) C가 참이면 D는 거짓이다.",
+                    "4) D는 참이다.",
+                ]
+            ),
             "question": "위 조건을 모두 만족하는 판단은 무엇인가?",
             "options": _options_dict(
                 "A는 참이다",
@@ -244,16 +295,23 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 9,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음은 회사 출장 규정의 일부이다. (요약문 제공)",
+            "instruction": "다음은 회사 출장비 규정이다.",
             "stimulus_type": "text",
-            "stimulus_text": "원칙적으로 출장비는 사전 승인 후 지급된다. 단, 천재지변이나 긴급 상황으로 사전 승인이 불가능한 경우에 한해 예외를 인정한다.",
+            "stimulus_text": "\n".join(
+                [
+                    "- 원칙: 출장비는 ‘사전 승인’ 후 지급한다.",
+                    "- 예외: 아래 두 조건을 모두 만족하면 사후 지급을 허용한다.",
+                    "  (i) 천재지변 또는 ‘대체 불가능한 긴급 상황’",
+                    "  (ii) 사전 승인 절차를 진행할 ‘현실적 시간’이 없었음이 기록으로 남아야 함",
+                ]
+            ),
             "question": "다음 중 예외 지급 대상에 해당하는 사례는 무엇인가?",
             "options": _options_dict(
-                "개인 일정 변경으로 인한 출장",
-                "사전 승인 후 출장",
-                "기상 악화로 긴급 출장이 발생한 경우",
-                "출장 후 비용 증액 요청",
-                "승인 절차를 누락한 일반 출장",
+                "개인 일정 변경으로 당일 출장으로 변경(승인 없이 출발)",
+                "사전 승인 후 출장(정상 절차)",
+                "태풍으로 인한 설비 긴급 점검 요청으로 즉시 현장 출동(메일/메신저 기록 존재)",
+                "출장 후 개인 사유로 비용 항목 추가 요청",
+                "승인 절차를 누락했으나 긴급 상황 기록이 없는 일반 출장",
             ),
             "answer_key": "3",
         },
@@ -262,19 +320,25 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 10,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "총 예산 1,000만 원을 7개 사업에 배분해야 한다. 필수 사업 3개는 각각 최소 200만 원 이상 배정해야 한다.",
+            "instruction": "총 예산 1,000만 원을 7개 사업(A~G)에 배분한다.",
             "stimulus_type": "text",
-            "stimulus_text": "",
-            "question": "위 조건을 만족하면서 잔여 예산이 가장 적게 남는 배분안은?",
+            "stimulus_text": "\n".join(
+                [
+                    "- 필수 사업 A,B,C는 각각 최소 200만 원 이상 배정해야 한다.",
+                    "- 사업 D,E는 각각 최소 50만 원 이상 배정해야 한다.",
+                    "- 사업 F,G는 선택 사업이며, 배정 시 각각 최소 100만 원 이상이어야 한다.",
+                    "- 예산을 ‘가능한 한 많이’ 집행하여 잔여 예산이 최소가 되도록 할 때, 가능한 배분안 중 잔여 예산이 가장 적은 것은?",
+                ]
+            ),
+            "question": "가능한 배분안 중 잔여 예산이 가장 적은 것은?",
             "options": _options_dict(
-                "필수 200×3, 나머지 균등 배분",
-                "필수 250×3, 나머지 최소 배분",
-                "필수 300×3, 나머지 1개 배분",
-                "필수 200×3, 나머지 최대 배분",
+                "A200 B200 C200 D50 E50 F100 G100 (잔여 100만 원)",
+                "A250 B200 C200 D50 E50 F100 G100 (잔여 50만 원)",
+                "A200 B200 C200 D50 E50 F0 G0 (잔여 300만 원)",
+                "A300 B300 C200 D50 E50 F100 G0 (잔여 0만 원)",
                 "조건을 만족하는 배분안은 없다",
             ),
-            "answer_key": "1",
-            "note": "균등 배분=400만원을 4개 사업에 100만원씩(잔여 0).",
+            "answer_key": "4",
         },
         # -------------------------
         # SESSION 3 (11–15)
@@ -302,9 +366,20 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 12,
             "session_id": 3,
             "domain": "문제해결능력 · 논리추론",
-            "instruction": "다음은 최근 5년간 매출 변화이다. (연도별 점진적 증가 제시)",
-            "stimulus_type": "text",
-            "stimulus_text": "최근 5년간 매출은 매년 소폭 증가하였다.",
+            "instruction": "다음은 최근 5년간 매출 변화이다.",
+            "stimulus_type": "chart",
+            "chart_spec": {
+                "data": [
+                    {"연도": "2021", "매출(억원)": 120},
+                    {"연도": "2022", "매출(억원)": 126},
+                    {"연도": "2023", "매출(억원)": 131},
+                    {"연도": "2024", "매출(억원)": 137},
+                    {"연도": "2025", "매출(억원)": 142},
+                ],
+                "x": "연도",
+                "y": "매출(억원)",
+                "title": "최근 5년간 매출 변화",
+            },
             "question": "현재 추세가 유지될 경우, 다음 해에 가장 합리적으로 예측되는 결과는?",
             "options": _options_dict(
                 "급격한 감소",
@@ -374,6 +449,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
     # Ensure session_id is consistent with item_number.
     for it in items:
         it["session_id"] = _session_id_for_item_number(_safe_int(it.get("item_number")))
+    _validate_no_authoring_placeholders(items)
     return items
 
 
@@ -391,6 +467,11 @@ def render_ncs_item(
     # Stable per-item keys (avoid collisions across reruns)
     item_id = str(item.get("id") or f"item_{item_index+1}")
     ss_prefix = f"ncs_{item_id}"
+
+    if _is_dev_mode():
+        print(
+            f"[NCS_RENDER] session={item.get('session_id')} item_number={item.get('item_number')} id={item_id} stimulus_type={item.get('stimulus_type')}"
+        )
 
     st.header(f"문항 {item_index + 1} / {total_items}")
     st.caption(str(item.get("domain", "")))
