@@ -206,6 +206,94 @@ COMPACT_CSS = """
      align-items: flex-start !important;
      font-weight: 500;
    }
+   /* -------------------------
+      NCS task readability blocks
+      ------------------------- */
+   .task-section-title {
+     margin: 6px 0 10px;
+     font-weight: 800;
+     color: #1f2433;
+     font-size: 0.95rem;
+     letter-spacing: 0.01em;
+   }
+   .task-block {
+     width: 100%;
+     max-width: 100%;
+     border-radius: 14px;
+     border: 1px solid #e2e6f3;
+     background: #ffffff;
+     padding: 12px 14px;
+     margin: 10px 0;
+     overflow: hidden;
+   }
+   .task-block-title {
+     font-weight: 800;
+     color: #2b3147;
+     font-size: 0.95rem;
+     margin: 0 0 8px;
+   }
+   .task-block-body {
+     margin: 0;
+     color: #1f2433;
+     font-size: 0.98rem;
+     line-height: 1.65;
+   }
+   .task-bullets {
+     margin: 0;
+     padding-left: 1.1rem;
+   }
+   .task-bullets li {
+     margin: 6px 0;
+   }
+   .task-quote {
+     padding: 10px 12px;
+     border-radius: 12px;
+     background: #f6f7fb;
+     border: 1px solid #e6e9f5;
+   }
+   .task-table-caption {
+     margin: 2px 0 8px;
+     font-weight: 700;
+     color: #4b5575;
+     font-size: 0.9rem;
+   }
+   .task-table-wrap {
+     width: 100%;
+     overflow-x: auto;
+     -webkit-overflow-scrolling: touch;
+     border-radius: 12px;
+     border: 1px solid #e6e9f5;
+     background: #ffffff;
+   }
+   table.task-table {
+     width: 100%;
+     border-collapse: collapse;
+     font-size: 0.95rem;
+   }
+   table.task-table th,
+   table.task-table td {
+     padding: 10px 10px;
+     border-bottom: 1px solid #eef1fb;
+     vertical-align: top;
+     text-align: left;
+     white-space: normal;
+     word-break: keep-all;
+   }
+   table.task-table th {
+     background: #f6f7fb;
+     font-weight: 800;
+     color: #2b3147;
+   }
+   table.task-table td {
+     color: #1f2433;
+   }
+   @media (max-width: 768px) {
+     table.task-table th,
+     table.task-table td {
+       padding: 9px 9px;
+       font-size: 0.92rem;
+     }
+   }
    p, .stMarkdown p   { margin-top: 0 !important; }
    .anthro-title { margin-top: 0 !important; }
    div[data-testid="stProgress"] { margin-bottom: 0.4rem !important; }

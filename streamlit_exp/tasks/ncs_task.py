@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import os
 import time
 import re
@@ -71,6 +72,29 @@ def _validate_no_authoring_placeholders(items: List[Dict[str, Any]]) -> None:
                     f"[TASK] Authoring placeholder detected: item={item_id} field={field} token={token!r} value={value!r}"
                 )
 
+    def _scan_info_blocks(item_id: str, blocks: Any) -> None:
+        if not blocks:
+            return
+        if not isinstance(blocks, list):
+            return
+        for i, blk in enumerate(blocks):
+            if not isinstance(blk, dict):
+                continue
+            _check_string(item_id, f"info_blocks[{i}].title", str(blk.get("title") or ""))
+            _check_string(item_id, f"info_blocks[{i}].text", str(blk.get("text") or ""))
+            for j, b in enumerate(list(blk.get("bullets") or [])):
+                _check_string(item_id, f"info_blocks[{i}].bullets[{j}]", str(b or ""))
+            table = dict(blk.get("table") or {})
+            _check_string(item_id, f"info_blocks[{i}].table.caption", str(table.get("caption") or ""))
+            for col in list(table.get("columns") or []):
+                if isinstance(col, str):
+                    _check_string(item_id, f"info_blocks[{i}].table.columns[]", col)
+            for row in list(table.get("rows") or []):
+                if isinstance(row, (list, tuple)):
+                    for cell in row:
+                        if isinstance(cell, str):
+                            _check_string(item_id, f"info_blocks[{i}].table.rows[]", cell)
+
     for it in items:
         item_id = str(it.get("id") or it.get("item_number") or "unknown")
         _check_string(item_id, "instruction", str(it.get("instruction") or ""))
@@ -78,6 +102,7 @@ def _validate_no_authoring_placeholders(items: List[Dict[str, Any]]) -> None:
         _check_string(item_id, "question", str(it.get("question") or ""))
         for k, v in dict(it.get("options") or {}).items():
             _check_string(item_id, f"options[{k}]", str(v or ""))
+        _scan_info_blocks(item_id, it.get("info_blocks"))
         # Defensive scan of chart/table labels too (titles/headers).
         chart = dict(it.get("chart_spec") or {})
         _check_string(item_id, "chart_spec.title", str(chart.get("title") or ""))
@@ -113,17 +138,26 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "의사소통능력 · 기초 자료해석",
             "instruction": "다음은 오늘 처리해야 할 업무 목록이다. 우선순위 규칙에 따라 물음에 답하시오.",
             "stimulus_type": "text",
-            "stimulus_text": "\n".join(
-                [
-                    "규칙: 마감 시간이 가장 이른 업무를 먼저 처리한다.",
-                    "",
-                    "업무 A: 마감 11:30 / 예상 소요 30분 / 요청 부서: 인사팀",
-                    "업무 B: 마감 10:00 / 예상 소요 40분 / 요청 부서: 재무팀",
-                    "업무 C: 마감 15:00 / 예상 소요 20분 / 요청 부서: 개발팀",
-                    "업무 D: 마감 13:00 / 예상 소요 15분 / 요청 부서: 영업팀",
-                    "업무 E: 마감 16:30 / 예상 소요 10분 / 요청 부서: 고객지원팀",
-                ]
-            ),
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "필수 조건",
+                    "bullets": ["규칙: 마감 시간이 가장 이른 업무를 먼저 처리한다."],
+                },
+                {
+                    "title": "업무 목록",
+                    "table": {
+                        "columns": ["업무", "마감", "예상 소요", "요청 부서"],
+                        "rows": [
+                            ["업무 A", "11:30", "30분", "인사팀"],
+                            ["업무 B", "10:00", "40분", "재무팀"],
+                            ["업무 C", "15:00", "20분", "개발팀"],
+                            ["업무 D", "13:00", "15분", "영업팀"],
+                            ["업무 E", "16:30", "10분", "고객지원팀"],
+                        ],
+                    },
+                },
+            ],
             "question": "규칙에 따라 가장 먼저 처리해야 할 업무는 무엇인가?",
             "options": _options_dict(
                 "업무 A",
@@ -141,6 +175,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "의사소통능력 · 기초 자료해석",
             "instruction": "다음은 발주처별 ‘납품까지 남은 일수’를 나타낸 막대그래프이다.",
             "stimulus_type": "chart",
+            "stimulus_text": "",
             "chart_spec": {
                 "data": [
                     {"발주처": "A사", "남은일수": 6},
@@ -164,14 +199,23 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "의사소통능력 · 기초 자료해석",
             "instruction": "다음은 협력사로 파일을 전송할 때의 내부 규정이다. 규정에 따라 물음에 답하시오.",
             "stimulus_type": "text",
-            "stimulus_text": "\n".join(
-                [
-                    "- 규정: 고객의 이름/전화번호 등 개인정보가 포함된 파일은 외부(협력사)로 보내기 전에 반드시 암호화해야 한다.",
-                    "- 암호화가 된 경우에만 외부 전송이 허용된다.",
-                    "",
-                    "상황: 지금 보내려는 파일에는 고객 이름과 전화번호가 포함되어 있으며, 암호화 기능을 사용할 수 있다.",
-                ]
-            ),
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "필수 조건",
+                    "bullets": [
+                        "개인정보(이름/전화번호 등)가 포함된 파일은 외부(협력사) 전송 전에 반드시 암호화해야 한다.",
+                        "암호화가 된 경우에만 외부 전송이 허용된다.",
+                    ],
+                },
+                {
+                    "title": "상황",
+                    "bullets": [
+                        "지금 보내려는 파일에는 고객 이름과 전화번호가 포함되어 있다.",
+                        "암호화 기능을 사용할 수 있다.",
+                    ],
+                },
+            ],
             "question": "규정에 따라 가장 적절한 조치는 무엇인가?",
             "options": _options_dict(
                 "개인정보가 포함되어 있으므로 외부 전송을 즉시 금지한다(암호화 여부와 무관).",
@@ -189,7 +233,13 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "의사소통능력 · 기초 자료해석",
             "instruction": "다음 표는 외주 업체의 제안 조건이다. 아래 필수 조건을 만족하는 업체를 고르시오.",
             "stimulus_type": "table",
-            "stimulus_text": "필수 조건: A/S 기간이 ‘18개월 이상’인 업체만 선택한다. (18개월은 포함됨)",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "Required conditions",
+                    "bullets": ["A/S 기간이 ‘18개월 이상’인 업체만 선택한다. (18개월은 포함됨)"],
+                }
+            ],
             "table_spec": {
                 "columns": ["업체", "A/S 기간", "견적(만원)", "납기(일)"],
                 "rows": [
@@ -211,6 +261,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "의사소통능력 · 기초 자료해석",
             "instruction": "다음 표는 한 팀의 주간 업무 처리 시간이다.",
             "stimulus_type": "table",
+            "stimulus_text": "",
             "table_spec": {
                 "columns": ["업무", "월", "화"],
                 "rows": [
@@ -236,20 +287,54 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 6,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "아래 조건을 모두 만족하는 회의 일정(시간/회의실/참석 인원)을 고르시오.",
-            "stimulus_type": "text",
-            "stimulus_text": "\n".join(
+            "instruction": "\n".join(
                 [
-                    "- 팀원은 총 5명(A,B,C,D,E)이며 최소 4명이 참석해야 한다.",
-                    "- A는 오전만 가능",
-                    "- B는 오전·오후 모두 가능",
-                    "- C는 오후만 가능",
-                    "- D는 오후만 가능",
-                    "- E는 오전·오후 모두 가능",
-                    "- 회의실 A는 오전만 사용 가능 / 회의실 B는 오후만 사용 가능",
-                    "- 참석 1인당 비용은 12만 원이며, 총 비용은 50만 원을 초과할 수 없다.",
+                    "당신은 팀 회의 일정을 확정해야 한다.",
+                    "아래의 ‘참석 가능 시간’, ‘회의실 사용 가능 시간’, ‘예산(참석 비용)’ 조건이 동시에 적용된다.",
+                    "선택지 중에서 모든 조건을 한 번에 만족하는 1개 일정(시간/회의실/참석자 구성)을 고르시오.",
                 ]
             ),
+            "stimulus_type": "text",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "bullets": [
+                        "팀원은 총 5명(A, B, C, D, E)이다.",
+                        "회의는 ‘오전’ 또는 ‘오후’ 중 한 번 진행한다.",
+                    ],
+                },
+                {
+                    "title": "제약(반드시 만족)",
+                    "bullets": [
+                        "최소 참석 인원: 4명 이상",
+                        "회의실 A: 오전만 사용 가능",
+                        "회의실 B: 오후만 사용 가능",
+                        "참석 1인당 비용: 12만 원",
+                        "총 비용: 50만 원 초과 불가",
+                    ],
+                },
+                {
+                    "title": "참석 가능 시간(팀원별)",
+                    "table": {
+                        "columns": ["팀원", "가능 시간"],
+                        "rows": [
+                            ["A", "오전만"],
+                            ["B", "오전·오후 모두"],
+                            ["C", "오후만"],
+                            ["D", "오후만"],
+                            ["E", "오전·오후 모두"],
+                        ],
+                    },
+                },
+                {
+                    "title": "추가 규칙(조건이 상호작용하는 부분)",
+                    "bullets": [
+                        "총 비용 ≤ 50만 원이고 1인당 12만 원이므로, 참석 인원은 최대 4명까지 가능하다(5명 전원 참석은 불가).",
+                        "최소 참석 인원이 4명이므로, 이 문항에서는 참석 인원은 정확히 4명이어야 한다.",
+                    ],
+                },
+            ],
             "question": "조건을 모두 만족하는 일정은 무엇인가?",
             "options": _options_dict(
                 "오전 / 회의실 A / A,B,C,E 참석",
@@ -265,17 +350,38 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 7,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음은 후보지 3곳의 평가 점수(1~10점)이다. 가중치를 반영해 종합점수가 가장 높은 후보지를 고르시오.",
-            "stimulus_type": "table",
-            "stimulus_text": "\n".join(
+            "instruction": "\n".join(
                 [
-                    "- 임대료(낮을수록 유리): 40%",
-                    "- 접근성: 35%",
-                    "- 공간 크기: 25%",
-                    "",
-                    "※ 임대료는 “낮을수록 유리”이므로, 표의 ‘임대료 점수’는 이미 “낮을수록 높은 점수”로 환산된 값이다(그대로 사용).",
+                    "당신은 후보지 3곳(A, B, C) 중 한 곳을 선택해야 한다.",
+                    "아래 표의 점수(1~10점)에 가중치를 반영하여 ‘종합점수’가 가장 높은 후보지를 고르시오.",
+                    "종합점수는 (각 항목 점수 × 해당 가중치)의 합으로 계산한다.",
                 ]
             ),
+            "stimulus_type": "table",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "bullets": ["각 후보지의 평가 점수(1~10점)가 주어진다."],
+                },
+                {
+                    "title": "제약(가중치)",
+                    "table": {
+                        "columns": ["항목", "가중치"],
+                        "rows": [
+                            ["임대료 점수(낮을수록 유리)", "40%"],
+                            ["접근성", "35%"],
+                            ["공간 크기", "25%"],
+                        ],
+                    },
+                },
+                {
+                    "title": "추가 규칙",
+                    "bullets": [
+                        "임대료는 “낮을수록 유리”이므로, 표의 ‘임대료 점수’는 이미 “낮을수록 높은 점수”로 환산된 값이다(그대로 사용)."
+                    ],
+                },
+            ],
             "table_spec": {
                 "columns": ["후보지", "임대료 점수", "접근성", "공간 크기"],
                 "rows": [
@@ -293,16 +399,36 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 8,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음 조건을 모두 참으로 만들 수 있는 선택지를 고르시오.",
-            "stimulus_type": "text",
-            "stimulus_text": "\n".join(
+            "instruction": "\n".join(
                 [
-                    "1) A가 참이면 B는 거짓이다.",
-                    "2) B가 거짓이면 C는 참이다.",
-                    "3) C가 참이면 D는 거짓이다.",
-                    "4) D는 참이다.",
+                    "A, B, C, D는 각각 ‘참/거짓’으로 판단되는 문장이다.",
+                    "아래의 조건이 모두 동시에 성립하도록 만들 때, 가능한 판단(선택지)을 고르시오.",
                 ]
             ),
+            "stimulus_type": "text",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "bullets": ["A, B, C, D의 참/거짓을 결정해야 한다."],
+                },
+                {
+                    "title": "제약(조건: 모두 동시에 만족)",
+                    "table": {
+                        "columns": ["번호", "조건"],
+                        "rows": [
+                            ["1", "A가 참이면 B는 거짓이다."],
+                            ["2", "B가 거짓이면 C는 참이다."],
+                            ["3", "C가 참이면 D는 거짓이다."],
+                            ["4", "D는 참이다."],
+                        ],
+                    },
+                },
+                {
+                    "title": "추가 규칙",
+                    "bullets": ["조건을 하나라도 위반하면 정답이 될 수 없다(모두 만족해야 함)."],
+                },
+            ],
             "question": "위 조건을 모두 만족하는 판단은 무엇인가?",
             "options": _options_dict(
                 "A는 참이다",
@@ -318,16 +444,39 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 9,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "다음은 회사 출장비 규정이다.",
-            "stimulus_type": "text",
-            "stimulus_text": "\n".join(
+            "instruction": "\n".join(
                 [
-                    "- 원칙: 출장비는 ‘사전 승인’ 후 지급한다.",
-                    "- 예외: 아래 두 조건을 모두 만족하면 사후 지급을 허용한다.",
-                    "  (i) 천재지변 또는 ‘대체 불가능한 긴급 상황’",
-                    "  (ii) 사전 승인 절차를 진행할 ‘현실적 시간’이 없었음이 기록으로 남아야 함",
+                    "다음은 회사 출장비 지급 규정이다.",
+                    "아래 사례 중에서 ‘예외적으로 사후 지급이 허용되는 경우’를 고르시오.",
+                    "예외는 제시된 조건을 모두 만족해야 한다.",
                 ]
             ),
+            "stimulus_type": "text",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "bullets": ["출장비 지급이 ‘원칙’에 해당하는지, 또는 ‘예외’로 사후 지급이 허용되는지 판단한다."],
+                },
+                {
+                    "title": "제약(원칙)",
+                    "bullets": ["출장비는 ‘사전 승인’ 후 지급한다."],
+                },
+                {
+                    "title": "제약(예외: 두 조건을 모두 만족해야 함)",
+                    "table": {
+                        "columns": ["조건", "내용"],
+                        "rows": [
+                            ["(i)", "천재지변 또는 ‘대체 불가능한 긴급 상황’"],
+                            ["(ii)", "사전 승인 절차를 진행할 ‘현실적 시간’이 없었음이 기록으로 남아야 함"],
+                        ],
+                    },
+                },
+                {
+                    "title": "추가 규칙",
+                    "bullets": ["예외는 (i)와 (ii)를 모두 만족해야 하며, 하나만 만족하면 예외로 인정되지 않는다."],
+                },
+            ],
             "question": "다음 중 예외 지급 대상에 해당하는 사례는 무엇인가?",
             "options": _options_dict(
                 "개인 일정 변경으로 당일 출장으로 변경(승인 없이 출발)",
@@ -343,16 +492,39 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 10,
             "session_id": 2,
             "domain": "자원관리능력 · 상황판단",
-            "instruction": "총 예산 1,000만 원을 7개 사업(A~G)에 배분한다.",
-            "stimulus_type": "text",
-            "stimulus_text": "\n".join(
+            "instruction": "\n".join(
                 [
-                    "- 필수 사업 A,B,C는 각각 최소 200만 원 이상 배정해야 한다.",
-                    "- 사업 D,E는 각각 최소 50만 원 이상 배정해야 한다.",
-                    "- 사업 F,G는 선택 사업이며, 배정 시 각각 최소 100만 원 이상이어야 한다.",
-                    "- 예산을 ‘가능한 한 많이’ 집행하여 잔여 예산이 최소가 되도록 할 때, 가능한 배분안 중 잔여 예산이 가장 적은 것은?",
+                    "당신은 총 예산 1,000만 원을 7개 사업(A~G)에 배분해야 한다.",
+                    "아래의 필수/선택 조건을 모두 만족하는 배분안 중에서, 잔여 예산이 최소가 되도록(= 가능한 한 많이 집행하도록) 하는 선택지를 고르시오.",
                 ]
             ),
+            "stimulus_type": "text",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "bullets": ["총 예산 1,000만 원을 사업 A~G에 배분한다."],
+                },
+                {
+                    "title": "제약(필수 조건)",
+                    "bullets": [
+                        "총 예산: 1,000만 원",
+                        "필수 사업 A, B, C: 각각 최소 200만 원 이상",
+                        "사업 D, E: 각각 최소 50만 원 이상",
+                    ],
+                },
+                {
+                    "title": "제약(선택 조건)",
+                    "bullets": [
+                        "사업 F, G는 선택 사업이다.",
+                        "단, 배정한다면 각각 최소 100만 원 이상이어야 한다.",
+                    ],
+                },
+                {
+                    "title": "추가 규칙(목표)",
+                    "bullets": ["예산을 ‘가능한 한 많이’ 집행하여 잔여 예산이 최소가 되도록 한다."],
+                },
+            ],
             "question": "가능한 배분안 중 잔여 예산이 가장 적은 것은?",
             "options": _options_dict(
                 "A200 B200 C200 D50 E50 F100 G100 (잔여 100만 원)",
@@ -391,6 +563,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "문제해결능력 · 논리추론",
             "instruction": "다음은 최근 5년간 매출 변화이다.",
             "stimulus_type": "chart",
+            "stimulus_text": "",
             "chart_spec": {
                 "data": [
                     {"연도": "2021", "매출(억원)": 120},
@@ -420,7 +593,20 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "문제해결능력 · 논리추론",
             "instruction": "다음 업무 중 처리 우선순위를 정하려 한다.",
             "stimulus_type": "text",
-            "stimulus_text": "업무 A: 마감 오늘, 영향도 중간\n업무 B: 마감 내일, 영향도 높음\n업무 C: 마감 오늘, 영향도 낮음",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "업무 정보",
+                    "table": {
+                        "columns": ["업무", "마감", "영향도"],
+                        "rows": [
+                            ["업무 A", "오늘", "중간"],
+                            ["업무 B", "내일", "높음"],
+                            ["업무 C", "오늘", "낮음"],
+                        ],
+                    },
+                }
+            ],
             "question": "가장 합리적인 처리 순서는?",
             "options": _options_dict(
                 "C → A → B",
@@ -438,7 +624,13 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "문제해결능력 · 논리추론",
             "instruction": "다음은 사업 실패 요약 보고서이다.",
             "stimulus_type": "text",
-            "stimulus_text": "“시장 조사 부족과 일정 관리 미흡으로 목표를 달성하지 못함.”",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "요약 보고서(발췌)",
+                    "text": "“시장 조사 부족과 일정 관리 미흡으로 목표를 달성하지 못함.”",
+                }
+            ],
             "question": "위 보고서에서 제시된 핵심 원인으로 가장 적절한 것은?",
             "options": _options_dict(
                 "인력 부족",
@@ -456,7 +648,13 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "domain": "문제해결능력 · 논리추론",
             "instruction": "다음 상황을 읽고 부작용을 최소화할 대안을 고르시오.",
             "stimulus_type": "text",
-            "stimulus_text": "“신규 시스템 도입으로 일부 직원의 업무 혼란이 예상된다.”",
+            "stimulus_text": "",
+            "info_blocks": [
+                {
+                    "title": "상황",
+                    "text": "“신규 시스템 도입으로 일부 직원의 업무 혼란이 예상된다.”",
+                }
+            ],
             "question": "가장 적절한 대응 방안은?",
             "options": _options_dict(
                 "즉시 전면 도입",
@@ -499,24 +697,122 @@ def render_ncs_item(
     st.header(f"문항 {item_index + 1} / {total_items}")
     st.caption(str(item.get("domain", "")))
 
-    # Instruction + stimulus
-    instruction = str(item.get("instruction", "") or "")
+    def _escape(s: Any) -> str:
+        return html.escape(str(s or ""), quote=True)
+
+    def _render_card(label: str, content: str, *, badge: Optional[str] = None) -> None:
+        badge_html = f'<div class="question-badge">{_escape(badge)}</div>' if badge else ""
+        content_html = _escape(content).replace("\n", "<br/>")
+        st.markdown(
+            f"""
+<div class="question-card">
+  {badge_html}
+  <div class="question-label">{_escape(label)}</div>
+  <p class="question-stem">{content_html}</p>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+    def _render_small_table(columns: List[Any], rows: List[Any], *, caption: str = "") -> None:
+        safe_cols = [_escape(c) for c in list(columns or [])]
+        safe_rows: List[List[str]] = []
+        for r in list(rows or []):
+            if isinstance(r, dict):
+                safe_rows.append([_escape(r.get(c, "")) for c in columns])
+            elif isinstance(r, (list, tuple)):
+                safe_rows.append([_escape(c) for c in list(r)])
+            else:
+                safe_rows.append([_escape(r)])
+
+        caption_html = f"<div class='task-table-caption'>{_escape(caption)}</div>" if caption else ""
+        head_html = "".join([f"<th>{c}</th>" for c in safe_cols]) if safe_cols else ""
+        body_html = ""
+        for rr in safe_rows:
+            tds = "".join([f"<td>{c}</td>" for c in rr])
+            body_html += f"<tr>{tds}</tr>"
+
+        st.markdown(
+            f"""
+{caption_html}
+<div class="task-table-wrap">
+  <table class="task-table">
+    {'<thead><tr>' + head_html + '</tr></thead>' if head_html else ''}
+    <tbody>
+      {body_html}
+    </tbody>
+  </table>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+    def _render_info_block(block: Dict[str, Any]) -> None:
+        title = str(block.get("title") or "").strip()
+        text = str(block.get("text") or "").strip()
+        bullets = list(block.get("bullets") or [])
+        table = dict(block.get("table") or {})
+
+        body_parts: List[str] = []
+        if text:
+            body_parts.append(f'<div class="task-quote">{_escape(text)}</div>')
+        if bullets:
+            items_html = "".join([f"<li>{_escape(b)}</li>" for b in bullets if str(b or "").strip()])
+            body_parts.append(f'<ul class="task-bullets">{items_html}</ul>')
+
+        st.markdown(
+            f"""
+<div class="task-block">
+  <div class="task-block-title">{_escape(title)}</div>
+  <div class="task-block-body">
+    {''.join(body_parts) if body_parts else ''}
+  </div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+        if table:
+            _render_small_table(
+                list(table.get("columns") or []),
+                list(table.get("rows") or []),
+                caption=str(table.get("caption") or ""),
+            )
+
+    # Instruction (card)
+    instruction = str(item.get("instruction", "") or "").strip()
     if instruction:
-        st.markdown(f"**{instruction}**")
+        _render_card("지시문", instruction, badge=f"Session {item.get('session_id')}")
 
     stimulus_type = str(item.get("stimulus_type", "text") or "text")
     stimulus_text = str(item.get("stimulus_text", "") or "")
+    info_blocks: List[Dict[str, Any]] = list(item.get("info_blocks") or [])
 
-    if stimulus_type in {"text", "table+chart"} and stimulus_text:
-        st.markdown(stimulus_text)
+    # Information / Conditions (structured blocks)
+    if info_blocks or stimulus_text:
+        st.markdown('<div class="task-section-title">정보 / 조건</div>', unsafe_allow_html=True)
+        for blk in info_blocks:
+            if isinstance(blk, dict):
+                _render_info_block(blk)
+
+        # Legacy fallback: render remaining stimulus text only when it's short.
+        # (Avoid dense paragraphs; prefer authoring via info_blocks.)
+        if stimulus_text and not info_blocks:
+            lines = [ln.strip() for ln in stimulus_text.splitlines() if ln.strip()]
+            if len(lines) <= 3:
+                _render_info_block({"title": "Information", "bullets": lines})
+            else:
+                _render_info_block(
+                    {"title": "Information", "bullets": lines[:8] + (["(… 생략 …)"] if len(lines) > 8 else [])}
+                )
 
     if stimulus_type in {"table", "table+chart"}:
         spec = dict(item.get("table_spec") or {})
         columns = list(spec.get("columns") or [])
         rows = list(spec.get("rows") or [])
         if columns and rows:
-            df = pd.DataFrame(rows, columns=columns)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.markdown('<div class="task-section-title">자료 (표)</div>', unsafe_allow_html=True)
+            _render_small_table(columns, rows)
 
     if stimulus_type in {"chart", "table+chart"}:
         spec = dict(item.get("chart_spec") or {})
@@ -525,6 +821,7 @@ def render_ncs_item(
         y = spec.get("y")
         title = spec.get("title") or ""
         if data and x and y:
+            st.markdown('<div class="task-section-title">자료 (그래프)</div>', unsafe_allow_html=True)
             # Altair is used to keep charts responsive and consistent.
             import altair as alt
 
@@ -540,15 +837,16 @@ def render_ncs_item(
             )
             st.altair_chart(chart, use_container_width=True)
 
-    # Question + options
+    # Question (card) + options
     question_text = str(item.get("question", "") or "")
     if question_text:
-        st.markdown(f"**{question_text}**")
+        _render_card("발문", question_text)
 
     options: Dict[str, str] = dict(item.get("options") or {})
     option_keys = list(options.keys())
 
     _allocation_token_re = re.compile(r"([A-G])\s*([0-9]+)")
+    _schedule_option_re = re.compile(r"^\s*(오전|오후)\s*/\s*회의실\s*([A-Z])\s*/\s*([A-E](?:\s*,\s*[A-E])*)\s*참석\s*$")
 
     def _format_option_value_for_display(raw: str) -> str:
         """
@@ -561,6 +859,20 @@ def render_ncs_item(
             return ""
         if "\n" in text:
             return text
+
+        # Meeting schedule option (e.g., Session 2 item 6): add line breaks + labels.
+        m = _schedule_option_re.match(text)
+        if m:
+            time_of_day = m.group(1)
+            room = m.group(2)
+            attendees = m.group(3).replace(" ", "")
+            return "\n".join(
+                [
+                    f"시간: {time_of_day}",
+                    f"회의실: {room}",
+                    f"참석: {attendees}",
+                ]
+            )
 
         # Allocation-style option (e.g., Session 2 item 10).
         tokens = _allocation_token_re.findall(text)
@@ -608,8 +920,9 @@ def render_ncs_item(
         st.session_state.get("ncs_inputs_disabled", False)
     )
 
+    st.markdown('<div class="task-section-title">답안 선택</div>', unsafe_allow_html=True)
     selected_key = st.radio(
-        "정답을 선택하세요",
+        "선택지",
         options=option_keys,
         index=None,
         format_func=lambda k: (
