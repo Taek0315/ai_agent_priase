@@ -2558,39 +2558,23 @@ def get_randomized_option_state(
 
 def render_visual_training_intro() -> None:
     scroll_top_js()
-    st.title("연습: 응답 형식 확인")
+    # NOTE: Task instruction must be shown ONCE (brief).
+    st.title("문제 해결 과제")
     st.markdown(
         """
-### 문제 해결 과제에 응답합니다.
+짧은 문항을 보고 **조건에 맞는 행동 1개**를 고릅니다.
 
-이 연구에서는 **문제 해결 과제**를 수행합니다.  
-문항에 제시된 **문장/표/그래프**의 정보를 읽고, **조건과 제약**을 확인한 뒤, 필요한 **규칙 적용 및 수치/자원 계산**을 통해 **객관식 정답 1개**를 선택하게 됩니다.
-
-이 연습 단계는 **응답 형식에 익숙해지기 위한 것**이며, 점수에 반영되지 않습니다.
-        """
+- 각 문항: 상황 → 조건 → 질문
+- 선택지는 5개이며, **정답은 1개**입니다.
+        """.strip()
     )
-    st.info("이 연습 단계는 응답 형식에 익숙해지기 위한 것입니다.")
-
-    with st.expander("과제 개요(다시 보기)", expanded=True):
-        st.markdown(GRAMMAR_INFO_MD)
-
-    understood = st.checkbox(
-        "위 안내사항을 읽었으며 이해했습니다.",
-        key="practice_instructions_understood",
-    )
-    if st.button(
-        "다음으로 진행하기",
-        use_container_width=True,
-        disabled=not understood,
-        key="practice_instructions_to_practice",
-    ):
+    if st.button("연습 문항 풀기", use_container_width=True, key="practice_instructions_to_practice"):
         set_phase("practice_building_height")
 
 
 def render_practice_building_height() -> None:
     scroll_top_js()
-    st.title("연습 문항: 응답 형식 확인")
-    st.caption("이 연습 문항은 점수에 반영되지 않습니다.")
+    st.title("연습 문항")
 
     ps = st.session_state.practice_state
     if ps.get("attempted", False):
@@ -2603,31 +2587,26 @@ def render_practice_building_height() -> None:
             set_phase("task_intro")
         return
 
-    # Very easy NCS-style practice item (text/table based, no images).
+    # Very easy NCS-style practice item (short; similar length to main items).
     practice_item: Dict[str, Any] = {
         "id": "ncs_practice_q1",
         "item_number": 0,
         "session_id": 0,
-        "domain": "연습 · 응답 형식",
-        "instruction": "다음 표를 보고 물음에 답하시오.",
-        "stimulus_type": "table",
-        "table_spec": {
-            "columns": ["항목", "값"],
-            "rows": [
-                ["예산(만원)", "100"],
-                ["지출(만원)", "40"],
-            ],
-        },
+        "domain": "practice",
+        "instruction": "메일 제목에 ‘긴급’이 붙었다.",
+        "stimulus_type": "text",
         "stimulus_text": "",
-        "question": "잔여 예산은 얼마인가?",
+        "info_blocks": [{"title": "", "bullets": ["‘긴급’ 메일은 바로 답장한다."]}],
+        "table_spec": {},
+        "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
         "options": {
-            "1": "40만원",
-            "2": "60만원",
-            "3": "100만원",
-            "4": "140만원",
-            "5": "정보가 부족하다",
+            "1": "즉시 답장한다.",
+            "2": "내일 답장한다.",
+            "3": "읽지 않고 보관한다.",
+            "4": "다른 사람에게만 전달한다.",
+            "5": "삭제한다.",
         },
-        "answer_key": "2",
+        "answer_key": "1",
     }
 
     selected_key, _unused_rationales, meta = render_ncs_item(
@@ -2687,31 +2666,10 @@ def render_visual_practice() -> None:
 
 def render_task_intro() -> None:
     scroll_top_js()
-    st.title("문제 해결 과제(본 과제)")
-    st.markdown(
-        """
-### 이제 본 문제 해결 과제를 시작합니다
-
-문항에 제시된 **문장/표/그래프**를 읽고, 문항이 요구하는 **조건과 제약(시간/예산/규정 등)**을 확인한 뒤,
-필요한 **규칙 적용 및 수치/자원 계산**을 통해 **객관식 정답 1개**를 선택해 주세요.
-
-구성:
-- 총 3세션(각 5문항)으로 진행됩니다.
-- 세션 1과 세션 2가 끝난 뒤에는 AI 에이전트의 피드백을 한 번씩 확인합니다.
-- 세션 3 이후에는 과제 경험과 동기에 관한 문항이 이어집니다.
-
-중요:
-- 이 단계에서는 정답만 선택하면 되며, **이유/근거 선택(설명)은 요구되지 않습니다.**
-        """
-    )
-    st.markdown(
-        """
-각 세션이 끝난 뒤에는, 안내에 따라 다음 단계로 진행해 주세요.
-        """
-    )
-    with st.expander("과제 개요(다시 보기)", expanded=True):
-        st.markdown(GRAMMAR_INFO_MD)
-    if st.button("본 문제 시작하기", use_container_width=True):
+    # NOTE: Keep this screen short: "Main task begins" message only.
+    st.title("본 과제가 시작됩니다")
+    st.markdown("준비되면 다음을 눌러 시작하세요.")
+    if st.button("시작하기", use_container_width=True):
         st.session_state.round_state["ncs_s1_index"] = 0
         st.session_state.round_state["ncs_s2_index"] = 0
         st.session_state.round_state["ncs_s3_index"] = 0

@@ -135,74 +135,74 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s1_q1",
             "item_number": 1,
             "session_id": 1,
-            "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "\n".join(["상황: 당신은 고객센터 당직이다.", "지금 ‘결제 오류’ 문의가 들어왔다."]),
+            "domain": "session1",
+            "instruction": "고객이 ‘결제 오류’라고 문의했다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": ["‘결제 오류’는 즉시 결제 담당팀으로 에스컬레이션한다."],
+                    "title": "",
+                    "bullets": ["결제 관련 문의는 결제팀에 ‘티켓’으로 전달한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "환불 안내를 먼저 보낸다.",
-                "결제 담당팀에 즉시 에스컬레이션한다.",
+                "결제팀에 티켓으로 전달한다.",
+                "결제팀에 메신저로만 전달한다.",
+                "배송팀에 전달한다.",
+                "고객에게 환불만 안내한다.",
                 "내일 다시 확인한다.",
-                "문의 내용을 삭제한다.",
-                "배송 담당팀에 전달한다.",
             ),
-            "answer_key": "2",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s1_q2",
             "item_number": 2,
             "session_id": 1,
-            "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "\n".join(["상황: 출고 지연을 막기 위해 주문 확인 전화를 해야 한다.", "지금은 1건만 먼저 전화할 수 있다."]),
+            "domain": "session1",
+            "instruction": "확인 전화를 1건만 먼저 할 수 있다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": ["‘오늘 출고 예정’ 주문을 최우선으로 확인한다."],
+                    "title": "",
+                    "bullets": ["필수: 오늘 출고 / 연락처 미확인 주문을 먼저 확인한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "다음 주 출고 주문부터 확인한다.",
-                "수량이 가장 적은 주문부터 확인한다.",
-                "오늘 출고 예정 주문을 먼저 전화로 확인한다.",
-                "모든 주문을 메일로만 확인한다.",
-                "임의로 한 건을 골라 출고부터 진행한다.",
+                "주문 A(오늘 출고/미확인)부터 전화한다.",
+                "주문 B(오늘 출고/확인)부터 전화한다.",
+                "주문 C(내일 출고/미확인)부터 전화한다.",
+                "주문 D(내일 출고/확인)부터 전화한다.",
+                "아무 주문도 전화하지 않는다.",
             ),
-            "answer_key": "3",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s1_q3",
             "item_number": 3,
             "session_id": 1,
-            "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "\n".join(["상황: 협력사에 고객 연락처 파일을 보내야 한다.", "오늘 안에 전달해야 한다."]),
+            "domain": "session1",
+            "instruction": "협력사에 고객 연락처를 전달해야 한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": ["개인정보 파일은 ‘보안 전송 링크’로만 보낸다."],
+                    "title": "",
+                    "bullets": ["개인정보는 ‘보안 전송 링크’로만 보낸다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "보안 전송 링크로 보내고 비밀번호는 별도로 전달한다.",
+                "보안 전송 링크로 보낸다.",
                 "일반 이메일에 첨부해 보낸다.",
                 "개인 메신저로 파일을 보낸다.",
-                "USB에 담아 전달한다.",
-                "오픈 채팅방에 링크를 공유한다.",
+                "오픈 채팅방에 파일을 올린다.",
+                "USB로만 전달한다.",
             ),
             "answer_key": "1",
         },
@@ -210,24 +210,24 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s1_q4",
             "item_number": 4,
             "session_id": 1,
-            "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "\n".join(["상황: 장비 유지보수 업체 1곳을 지금 선정해야 한다."]),
+            "domain": "session1",
+            "instruction": "유지보수 업체 1곳을 고른다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": ["A/S 18개월 이상 중 ‘견적’이 가장 낮은 업체를 고른다."],
+                    "title": "",
+                    "bullets": ["A/S 18개월↑ 중 ‘견적’이 가장 낮은 곳을 고른다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "가 업체(24개월/120만원)로 계약한다.",
-                "나 업체(18개월/105만원)로 계약한다.",
-                "다 업체(12개월/90만원)로 계약한다.",
-                "라 업체(18개월/115만원)로 계약한다.",
-                "마 업체(15개월/98만원)로 계약한다.",
+                "가(24개월/120만원)로 계약한다.",
+                "나(18개월/105만원)로 계약한다.",
+                "다(12개월/90만원)로 계약한다.",
+                "라(18개월/115만원)로 계약한다.",
+                "마(15개월/98만원)로 계약한다.",
             ),
             "answer_key": "2",
         },
@@ -235,24 +235,24 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s1_q5",
             "item_number": 5,
             "session_id": 1,
-            "domain": "의사소통능력 · 기초 자료해석",
-            "instruction": "\n".join(["상황: 오늘 근무기록 제출 전, 일부 기록에 누락이 있다."]),
+            "domain": "session1",
+            "instruction": "근무기록 누락 1건을 먼저 고친다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": ["퇴근 기록이 ‘누락’된 날을 먼저 보완한다."],
+                    "title": "",
+                    "bullets": ["퇴근 기록 ‘누락’부터 보완한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "월(정상)부터 확인 요청한다.",
-                "화(퇴근기록 누락)부터 보완 요청한다.",
-                "수(정상)부터 확인 요청한다.",
-                "목(정상)부터 확인 요청한다.",
-                "금(정상)부터 확인 요청한다.",
+                "월(정상)부터 보완한다.",
+                "화(퇴근 누락)부터 보완한다.",
+                "수(정상)부터 보완한다.",
+                "목(정상)부터 보완한다.",
+                "금(정상)부터 보완한다.",
             ),
             "answer_key": "2",
         },
@@ -263,146 +263,141 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s2_q6",
             "item_number": 6,
             "session_id": 2,
-            "domain": "자원관리능력 · 상황판단",
-            "instruction": "\n".join(
-                [
-                    "상황: 4인 회의를 오늘 확정해야 한다.",
-                    "참석 가능: A(오전만), C·D(오후만), B·E(오전·오후).",
-                ]
-            ),
+            "domain": "session2",
+            "instruction": "D는 오후만 가능하다. 회의 일정 1개를 확정한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
+                    "title": "",
                     "bullets": [
-                        "B와 D는 반드시 참석한다.",
-                        "회의실 A는 오전만, 회의실 B는 오후만 사용한다.",
+                        "필수: B·D 참석 / 회의실은 오전만 사용",
+                        "예외: D가 오후만 가능하면 ‘오후 온라인’으로 진행",
                     ],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "오전 / 회의실 A / A,B,D,E 참석",
-                "오전 / 회의실 A / A,B,C,E 참석",
-                "오후 / 회의실 B / B,C,D,E 참석",
-                "오후 / 회의실 B / A,B,D,E 참석",
-                "오후 / 회의실 A / B,C,D,E 참석",
+                "오전 회의실로 잡는다(B·D 참석).",
+                "오후 온라인으로 잡는다(B·D 참석).",
+                "오전 온라인으로 잡는다(B·D 참석).",
+                "오후 회의실로 잡는다(B·D 참석).",
+                "일정을 미룬다.",
             ),
-            "answer_key": "3",
+            "answer_key": "2",
         },
         {
             "id": "ncs_s2_q7",
             "item_number": 7,
             "session_id": 2,
-            "domain": "자원관리능력 · 상황판단",
-            "instruction": "\n".join(["상황: 행사 배너 200장을 외주로 맡기려 한다.", "업체 1곳을 지금 선택한다."]),
+            "domain": "session2",
+            "instruction": "구매 요청 1건을 지금 승인한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
+                    "title": "",
                     "bullets": [
-                        "인증(O)이고 납기 3일 이내인 업체만 선택한다.",
-                        "그중 단가가 가장 낮은 업체를 선택한다.",
+                        "필수: 30만원 이하 / 부서 확인 O",
+                        "예외: 안전 문제면 금액 조건을 무시하고 그 건을 승인",
                     ],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "가사(단가 6.2/납기 3일/인증 O)를 선택한다.",
-                "나사(단가 5.8/납기 4일/인증 O)를 선택한다.",
-                "다사(단가 6.0/납기 2일/인증 X)를 선택한다.",
-                "라사(단가 6.5/납기 2일/인증 O)를 선택한다.",
-                "마사(단가 5.9/납기 3일/인증 O)를 선택한다.",
+                "요청 A(안전 O/50만원/확인 O)를 승인한다.",
+                "요청 B(안전 X/20만원/확인 O)를 승인한다.",
+                "요청 C(안전 X/20만원/확인 X)를 승인한다.",
+                "요청 D(안전 O/50만원/확인 X)를 승인한다.",
+                "요청 E(안전 X/40만원/확인 O)를 승인한다.",
             ),
-            "answer_key": "5",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s2_q8",
             "item_number": 8,
             "session_id": 2,
-            "domain": "자원관리능력 · 상황판단",
-            "instruction": "\n".join(["상황: 오늘 고객에게 ‘임시 안내’ 공지를 발송해야 한다."]),
+            "domain": "session2",
+            "instruction": "장애는 이미 정상화됐다. 공지 문구 1개를 보낸다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
+                    "title": "",
                     "bullets": [
-                        "서비스 중단을 단정하지 않는다.",
-                        "확정 시간은 쓰지 않되, 문의처는 반드시 포함한다.",
+                        "필수: 원인 단정 금지 / 문의처 포함",
+                        "예외: 정상화된 경우 ‘정상화’ 표현은 허용",
                     ],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "“오늘 점검으로 서비스가 중단됩니다. 문의: help@company.com”",
-                "“오늘 15:00~16:00 점검 예정입니다. 문의: help@company.com”",
-                "“시스템 상태를 확인 중입니다. 문의: help@company.com”",
-                "“시스템 상태를 확인 중입니다.”",
-                "“오늘 15:00~16:00 점검으로 서비스가 중단됩니다. 문의: help@company.com”",
+                "“현재 정상화되었습니다. 문의: help@company.com”",
+                "“원인은 서버 오류로 확인되었습니다. 문의: help@company.com”",
+                "“현재 정상화되었습니다.”",
+                "“오늘 15:00에 정상화됩니다. 문의: help@company.com”",
+                "“원인은 미정입니다. 문의처는 없습니다.”",
             ),
-            "answer_key": "3",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s2_q9",
             "item_number": 9,
             "session_id": 2,
-            "domain": "자원관리능력 · 상황판단",
-            "instruction": "\n".join(["상황: 사전 승인 없이 출장비가 발생했다.", "예외 승인 1건만 처리한다."]),
+            "domain": "session2",
+            "instruction": "로그 조회 요청 1건을 승인한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
+                    "title": "",
                     "bullets": [
-                        "예외 승인: 긴급(O) + 사전 승인 불가(X) + 24시간 내 보고(O).",
-                        "세 조건을 모두 만족하는 사례만 승인한다.",
+                        "필수: 업무 목적 O / 7일 이내",
+                        "예외: 사고 조사면 30일까지 허용",
                     ],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "사례 A(긴급 O / 사전승인 O / 24h보고 O)를 승인한다.",
-                "사례 B(긴급 X / 사전승인 X / 24h보고 O)를 승인한다.",
-                "사례 C(긴급 O / 사전승인 X / 24h보고 O)를 승인한다.",
-                "사례 D(긴급 O / 사전승인 X / 24h보고 X)를 승인한다.",
-                "사례 E(긴급 X / 사전승인 O / 24h보고 X)를 승인한다.",
+                "요청 A(사고 O/30일/목적 O)를 승인한다.",
+                "요청 B(사고 X/14일/목적 O)를 승인한다.",
+                "요청 C(사고 X/7일/목적 X)를 승인한다.",
+                "요청 D(사고 O/30일/목적 X)를 승인한다.",
+                "요청 E(사고 X/3일/목적 X)를 승인한다.",
             ),
-            "answer_key": "3",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s2_q10",
             "item_number": 10,
             "session_id": 2,
-            "domain": "자원관리능력 · 상황판단",
-            "instruction": "\n".join(["상황: 이번 주 잔여 예산은 500만 원이다.", "지출 요청 1건만 즉시 승인한다."]),
+            "domain": "session2",
+            "instruction": "초과근무 신청 1건을 처리한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
+                    "title": "",
                     "bullets": [
-                        "필수(O)이고 증빙(O)인 요청만 승인한다.",
-                        "예산 500만 원을 넘는 요청은 승인하지 않는다.",
+                        "필수: 사전 신청 O / 팀장 승인 O",
+                        "예외: 긴급 장애 대응이면 사전 신청 없이도 처리",
                     ],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "요청 A(필수 O / 480만 / 증빙 X)를 승인한다.",
-                "요청 B(필수 O / 300만 / 증빙 O)를 승인한다.",
-                "요청 C(필수 X / 120만 / 증빙 O)를 승인한다.",
-                "요청 D(필수 O / 520만 / 증빙 O)를 승인한다.",
-                "요청 E(필수 X / 90만 / 증빙 X)를 승인한다.",
+                "신청 A(긴급 O/사전 X/승인 O)를 승인한다.",
+                "신청 B(긴급 X/사전 O/승인 X)를 승인한다.",
+                "신청 C(긴급 X/사전 X/승인 O)를 승인한다.",
+                "신청 D(긴급 O/사전 X/승인 X)를 승인한다.",
+                "신청 E(긴급 X/사전 O/승인 X)를 승인한다.",
             ),
-            "answer_key": "2",
+            "answer_key": "1",
         },
         # -------------------------
         # SESSION 3 (11–15)
@@ -411,27 +406,24 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s3_q11",
             "item_number": 11,
             "session_id": 3,
-            "domain": "문제해결능력 · 논리추론",
-            "instruction": "\n".join(["상황: 비정상 다운로드가 감지되어 정보 유출이 의심된다."]),
+            "domain": "session3",
+            "instruction": "비정상 다운로드가 감지됐다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": [
-                        "우선: 확산 차단 + 증거(로그) 보존을 한다.",
-                        "보안팀에 즉시 보고하고, 외부 공유는 하지 않는다.",
-                    ],
+                    "title": "",
+                    "bullets": ["확산 차단을 먼저 한다.", "로그를 보존한 뒤 보안팀에 보고한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "시스템을 최소 범위로 격리하고 로그를 보존한 뒤 보안팀에 즉시 보고한다.",
-                "원인 파악을 위해 관련 로그를 삭제하고 재시작한다.",
-                "외부(고객/협력사)에게 ‘유출 발생’이라고 먼저 알린다.",
-                "격리·로그 보존 후, 외부에 원인을 단정해 공유한다.",
-                "아무 조치 없이 상황을 지켜본다.",
+                "접근을 차단하고 로그를 보존한 뒤 보안팀에 보고한다.",
+                "로그를 지우고 재시작한다.",
+                "외부에 먼저 알린다.",
+                "로그만 보고 차단은 하지 않는다.",
+                "아무 조치도 하지 않는다.",
             ),
             "answer_key": "1",
         },
@@ -439,27 +431,24 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s3_q12",
             "item_number": 12,
             "session_id": 3,
-            "domain": "문제해결능력 · 논리추론",
-            "instruction": "\n".join(["상황: 야간 모니터링 중 알림 5개가 동시에 떴다."]),
+            "domain": "session3",
+            "instruction": "알림 5개 중 1개만 먼저 본다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": [
-                        "개인정보 위험 알림을 최우선으로 대응한다.",
-                        "동일하면 발생 시각이 더 이른 알림을 먼저 대응한다.",
-                    ],
+                    "title": "",
+                    "bullets": ["개인정보 위험을 먼저 본다.", "같으면 더 이른 시각을 먼저 본다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "알림 A(성능 저하/02:13)를 먼저 대응한다.",
-                "알림 B(개인정보 위험/02:17)를 먼저 대응한다.",
-                "알림 C(결제 장애/02:15)를 먼저 대응한다.",
-                "알림 D(로그인 오류/02:12)를 먼저 대응한다.",
-                "알림 E(개인정보 위험/02:19)를 먼저 대응한다.",
+                "A(성능/02:13)를 먼저 본다.",
+                "B(개인정보/02:17)를 먼저 본다.",
+                "C(결제/02:15)를 먼저 본다.",
+                "D(로그인/02:12)를 먼저 본다.",
+                "E(개인정보/02:19)를 먼저 본다.",
             ),
             "answer_key": "2",
         },
@@ -467,27 +456,24 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s3_q13",
             "item_number": 13,
             "session_id": 3,
-            "domain": "문제해결능력 · 논리추론",
-            "instruction": "\n".join(["상황: 오늘 배포할 변경 요청 1건을 지금 선택한다."]),
+            "domain": "session3",
+            "instruction": "오늘 처리할 요청 1건을 고른다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": [
-                        "승인 완료 + 롤백 계획이 있는 요청만 배포한다.",
-                        "그중 고객 영향이 더 큰 요청을 우선한다.",
-                    ],
+                    "title": "",
+                    "bullets": ["되돌리기 쉬운 것을 우선한다.", "같으면 고객 영향이 큰 것을 우선한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "요청 A(승인 완료/롤백 있음/영향 높음)를 배포한다.",
-                "요청 B(승인 대기/롤백 있음/영향 중간)를 배포한다.",
-                "요청 C(승인 완료/롤백 없음/영향 높음)를 배포한다.",
-                "요청 D(승인 완료/롤백 있음/영향 낮음)를 배포한다.",
-                "요청 E(승인 대기/롤백 없음/영향 중간)를 배포한다.",
+                "요청 A(되돌림 쉬움/영향 높음)를 선택한다.",
+                "요청 B(되돌림 어려움/영향 높음)를 선택한다.",
+                "요청 C(되돌림 쉬움/영향 낮음)를 선택한다.",
+                "요청 D(되돌림 어려움/영향 낮음)를 선택한다.",
+                "요청 E(되돌림 쉬움/영향 중간)를 선택한다.",
             ),
             "answer_key": "1",
         },
@@ -495,55 +481,49 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "id": "ncs_s3_q14",
             "item_number": 14,
             "session_id": 3,
-            "domain": "문제해결능력 · 논리추론",
-            "instruction": "\n".join(["상황: 서비스 장애 공지 초안 5개 중 1개를 바로 게시해야 한다."]),
+            "domain": "session3",
+            "instruction": "지연 안내 메시지 1개를 고른다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": [
-                        "원인 추정/책임 단정 표현은 금지한다.",
-                        "현 상태 + 다음 업데이트 시각을 포함한 초안 중 가장 간결한 것을 고른다.",
-                    ],
+                    "title": "",
+                    "bullets": ["확정 시간은 쓰지 않는다.", "다음 안내 시점을 포함한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "“원인이 특정 팀의 실수로 확인되었습니다. 현재 복구 중이며 30분 후 업데이트하겠습니다.”",
-                "“현재 복구 중입니다. 가능한 한 빨리 업데이트하겠습니다.”",
-                "“현재 복구 중입니다. 30분 후 업데이트하겠습니다.”",
-                "“30분 후 업데이트하겠습니다.”",
-                "“원인은 아직 미정이지만 조치 중입니다. 가능한 한 빨리 업데이트하겠습니다.”",
+                "“지연이 발생했습니다. 다음 안내는 오늘 오후에 드리겠습니다.”",
+                "“지연이 발생했습니다. 15:00에 다시 안내하겠습니다.”",
+                "“지연이 발생했습니다.”",
+                "“지연 원인은 시스템 오류입니다. 다음 안내는 오늘 오후에 드리겠습니다.”",
+                "“곧 안내하겠습니다.”",
             ),
-            "answer_key": "3",
+            "answer_key": "1",
         },
         {
             "id": "ncs_s3_q15",
             "item_number": 15,
             "session_id": 3,
-            "domain": "문제해결능력 · 논리추론",
-            "instruction": "\n".join(["상황: 다음 달 신규 업무 시스템으로 전환한다.", "전환 계획 1개를 확정한다."]),
+            "domain": "session3",
+            "instruction": "새 시스템 전환 계획 1개를 고른다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
-                    "title": "조건",
-                    "bullets": [
-                        "전환 전 가이드/FAQ 배포 + 교육 1회를 진행한다.",
-                        "전환 주간 지원창구 + 책임자 지정을 포함한 계획 중 ‘단계적 전환’을 고른다.",
-                    ],
+                    "title": "",
+                    "bullets": ["가이드 배포를 포함한다.", "지원 창구(담당자)를 지정한다."],
                 },
             ],
             "table_spec": {},
             "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
             "options": _options_dict(
-                "계획 A(가이드/FAQ O, 지원창구 O, 단계적 전환)를 확정한다.",
-                "계획 B(가이드/FAQ X, 지원창구 O, 단계적 전환)를 확정한다.",
-                "계획 C(가이드/FAQ O, 지원창구 X, 전면 전환)를 확정한다.",
-                "계획 D(가이드/FAQ O, 지원창구 O, 전면 전환)를 확정한다.",
-                "계획 E(가이드/FAQ X, 지원창구 X, 전면 전환)를 확정한다.",
+                "계획 A(가이드 O/지원창구 O)를 선택한다.",
+                "계획 B(가이드 X/지원창구 O)를 선택한다.",
+                "계획 C(가이드 O/지원창구 X)를 선택한다.",
+                "계획 D(가이드 X/지원창구 X)를 선택한다.",
+                "계획 E(가이드 O/지원창구 X)를 선택한다.",
             ),
             "answer_key": "1",
         },
@@ -577,7 +557,6 @@ def render_ncs_item(
         )
 
     st.header(f"문항 {item_index + 1} / {total_items}")
-    st.caption(str(item.get("domain", "")))
 
     def _escape(s: Any) -> str:
         return html.escape(str(s or ""), quote=True)
@@ -642,10 +621,11 @@ def render_ncs_item(
             items_html = "".join([f"<li>{_escape(b)}</li>" for b in bullets if str(b or "").strip()])
             body_parts.append(f'<ul class="task-bullets">{items_html}</ul>')
 
+        title_html = f'<div class="task-block-title">{_escape(title)}</div>' if title else ""
         st.markdown(
             f"""
 <div class="task-block">
-  <div class="task-block-title">{_escape(title)}</div>
+  {title_html}
   <div class="task-block-body">
     {''.join(body_parts) if body_parts else ''}
   </div>
@@ -664,15 +644,14 @@ def render_ncs_item(
     # Instruction (card)
     instruction = str(item.get("instruction", "") or "").strip()
     if instruction:
-        _render_card("지시문", instruction, badge=f"Session {item.get('session_id')}")
+        _render_card("상황", instruction)
 
     stimulus_type = str(item.get("stimulus_type", "text") or "text")
     stimulus_text = str(item.get("stimulus_text", "") or "")
     info_blocks: List[Dict[str, Any]] = list(item.get("info_blocks") or [])
 
-    # Information / Conditions (structured blocks)
+    # Conditions (structured blocks)
     if info_blocks or stimulus_text:
-        st.markdown('<div class="task-section-title">정보 / 조건</div>', unsafe_allow_html=True)
         for blk in info_blocks:
             if isinstance(blk, dict):
                 _render_info_block(blk)
@@ -722,7 +701,7 @@ def render_ncs_item(
     # Question (card) + options
     question_text = str(item.get("question", "") or "")
     if question_text:
-        _render_card("발문", question_text)
+        _render_card("질문", question_text)
 
     options: Dict[str, str] = dict(item.get("options") or {})
     option_keys = list(options.keys())
@@ -802,11 +781,11 @@ def render_ncs_item(
         st.session_state.get("ncs_inputs_disabled", False)
     )
 
-    st.markdown('<div class="task-section-title">답안 선택</div>', unsafe_allow_html=True)
     selected_key = st.radio(
         "선택지",
         options=option_keys,
         index=None,
+        label_visibility="collapsed",
         format_func=lambda k: (
             f"{k})\n{_format_option_value_for_display(options.get(str(k), ''))}"
             if "\n" in _format_option_value_for_display(options.get(str(k), ""))
