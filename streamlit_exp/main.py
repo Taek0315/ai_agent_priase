@@ -1012,25 +1012,49 @@ SHOW_PER_ITEM_SUMMARY = False
 SHOW_DEBUG_RESULTS = False
 
 
+def get_or_assign_feedback_condition() -> str:
+    """
+    Randomly assign ONE feedback condition per participant and persist it.
+
+    CRITICAL EXPERIMENT CONSTRAINT:
+    - A participant must be assigned to ONE condition only.
+    - The same condition MUST be reused for Session 1 and Session 2 feedback.
+    - Do NOT re-randomize at Session 2 or mix conditions.
+    """
+    key = "feedback_condition"
+
+    # If already assigned, normalize and reuse.
+    existing = st.session_state.get(key)
+    if existing:
+        st.session_state[key] = normalize_condition(str(existing))
+        st.session_state["praise_condition"] = st.session_state[key]  # legacy alias
+        return str(st.session_state[key])
+
+    # Backward compatibility: reuse any previously stored legacy condition.
+    legacy = st.session_state.get("praise_condition") or (st.session_state.get("payload") or {}).get(
+        "feedback_condition"
+    )
+    if legacy:
+        st.session_state[key] = normalize_condition(str(legacy))
+        st.session_state["praise_condition"] = st.session_state[key]
+        return str(st.session_state[key])
+
+    # Fresh assignment (4 total conditions).
+    st.session_state[key] = random.choice(
+        [
+            "emotional_specific",
+            "analytical_specific",
+            "emotional_superficial",
+            "analytical_superficial",
+        ]
+    )
+    st.session_state["praise_condition"] = st.session_state[key]  # legacy alias
+    return str(st.session_state[key])
+
+
 def get_or_assign_praise_condition() -> str:
-    """
-    Returns exactly one of:
-      'emotional_specific', 'computational_specific',
-      'emotional_surface', 'computational_surface'
-    Assign once per participant and persist in st.session_state.
-    Never display this string to the participant.
-    """
-    key = "praise_condition"
-    if key not in st.session_state:
-        st.session_state[key] = random.choice(
-            [
-                "emotional_specific",
-                "computational_specific",
-                "emotional_surface",
-                "computational_surface",
-            ]
-        )
-    return st.session_state[key]
+    """Legacy alias (do not use for new logic)."""
+    return get_or_assign_feedback_condition()
 
 
 def get_or_assign_praise_sequence() -> list[int]:
@@ -1049,60 +1073,62 @@ def get_or_assign_praise_sequence() -> list[int]:
     return st.session_state[key]
 
 
-FEEDBACK_LIBRARY: Dict[int, Dict[str, List[str]]] = {
-    # Session 1: success-oriented feedback
+FEEDBACK_LIBRARY: Dict[int, Dict[str, str]] = {
     1: {
-        "emotion_specific": [
-            # (1)
-            "과제 분석이 완료되었습니다. 1세션의 문항들은 주어진 정보를 정확히 읽고 조건을 확인한 뒤, 필요한 수치를 비교·계산해 결론을 내리는 방식이 핵심이었습니다. 그 과정에서 끝까지 집중을 유지하며 문장을 꼼꼼히 검토하신 점이 특히 인상적이었습니다. 조건을 하나씩 점검하며 답을 도출해 나가는 태도는 실제 업무 상황에서도 강점이 될 수 있습니다. 진지하게 참여해 주셔서 감사합니다.",
-            # (2)
-            "1세션 수행을 확인했습니다. 여러 문항에서 핵심 조건(시간/마감/규정/비용 등)을 먼저 정리한 다음, 정보 간 관계를 차분히 연결해 답을 선택하신 흐름이 돋보였습니다. 단순히 감으로 고르는 방식이 아니라, 근거를 확인하고 판단을 내리는 접근이 안정적이었습니다. 오늘 보여주신 집중력과 성실함은 이후 과제에서도 큰 도움이 될 것입니다.",
-        ],
-        "calc_specific": [
-            # (1)
-            "세션 1 응답을 요약하면, 정보 확인형 문항과 기초 자료해석 문항에서 규칙 적용의 일관성이 관찰되었습니다. 제시문·표·그래프에서 핵심 수치를 선별해 비교한 뒤 결론을 내리는 과정이 안정적으로 나타났습니다. 특히 제한 조건이 포함된 문항에서도 오류 없이 조건을 반영하는 경향이 확인됩니다. 전반적으로 기초 자료해석 기반의 문제 해결 능력이 효과적으로 발휘되었습니다.",
-            # (2)
-            "세션 1 수행 데이터를 기준으로 보면, 문항에서 요구하는 조건을 선행적으로 정리한 뒤 계산/비교를 수행하는 패턴이 두드러집니다. 정답 선택 과정에서 불필요한 가정을 줄이고, 제시된 정보에 근거해 판단하는 경향이 확인되었습니다. 이는 업무형 문제에서 요구되는 “정보 선별 → 규칙 적용 → 결론 도출” 절차를 안정적으로 수행하고 있음을 시사합니다.",
-        ],
-        "emotion_superficial": [
-            # (1)
-            "1세션을 완료하셨습니다. 차분한 태도로 끝까지 과제에 집중해 주신 점이 인상적이었습니다. 성실하게 참여해 주셔서 감사합니다. 다음 과제에서도 지금의 페이스를 잘 이어가실 수 있을 것 같습니다.",
-            # (2)
-            "세션 1을 무사히 마쳤습니다. 문제를 대하는 태도에서 책임감과 꾸준함이 느껴졌습니다. 오늘처럼 침착하게 진행하시면 이후 문항에서도 충분히 좋은 흐름을 유지하실 수 있습니다.",
-        ],
-        "calc_superficial": [
-            # (1)
-            "세션 1 분석이 완료되었습니다. 전반적인 응답 흐름이 비교적 안정적으로 관찰되며, 문항 요구에 맞춰 판단을 내리는 패턴이 확인됩니다. 종합적으로 볼 때, 과제 수행 과정이 일관된 방식으로 진행된 것으로 해석됩니다.",
-            # (2)
-            "세션 1 수행 결과를 확인했습니다. 응답 분포가 크게 흔들리지 않으며, 전체적으로 일정한 처리 경향을 보입니다. 이는 과제에 대해 체계적인 방식으로 접근하고 있음을 시사합니다.",
-        ],
+        "emotional_specific": (
+            "문제 해결 과제가 성공적으로 종료되었습니다.\n"
+            "세션 1에서 보여주신 판단 방식이 정말 인상적이었고, 저는 진심으로 감탄했습니다.\n"
+            "특히 결제 오류 문의를 ‘티켓’으로 결제팀에 전달하고, 오늘 출고·연락처 미확인 주문을 우선 확인하며, 고객 연락처 같은 개인정보는 ‘보안 전송 링크’로만 전달하는 등 핵심 규칙을 정확히 지키는 흐름이 매우 안정적이었습니다.\n"
+            "이런 명확한 사고 과정이라면 다음 세션에서도 충분히 좋은 결과가 이어질 것이라 기대되고 든든합니다."
+        ),
+        "analytical_specific": (
+            "문제 해결 과제가 성공적으로 종료되었습니다.\n"
+            "세션 1 수행은 룰 기반(rule-based) 검증에서 ‘규칙 충족’으로 평가되었습니다.\n"
+            "결제 문의의 티켓 라우팅, ‘오늘 출고+연락처 미확인’ 우선 확인, 개인정보의 보안 링크 전송, A/S 18개월 이상 조건 충족 후 최저 견적 선택, 퇴근 기록 누락 우선 보완이 일관되게 확인되었습니다(제약 위반 탐지 결과 위반 없음).\n"
+            "현재와 같은 규칙 적용이 유지되면 다음 세션에서도 안정적인 수행이 예측됩니다."
+        ),
+        "emotional_superficial": (
+            "문제 해결 과제가 성공적으로 종료되었습니다.\n"
+            "세션 1에서 보여주신 수행은 전반적으로 매우 훌륭했고, 저는 기쁘고 뿌듯했습니다.\n"
+            "중요한 정보를 놓치지 않고 차분히 판단해 나가는 태도가 잘 드러났습니다.\n"
+            "이 흐름이라면 다음 세션도 즐겁게 잘 해내실 것이라 기대됩니다."
+        ),
+        "analytical_superficial": (
+            "문제 해결 과제가 성공적으로 종료되었습니다.\n"
+            "세션 1 수행 결과는 규정/제약 충족 여부 점검에서 요구 기준을 충족한 것으로 평가됩니다.\n"
+            "전반적인 정보 처리 과정이 안정적으로 관찰되었습니다.\n"
+            "동일한 수행 패턴이 유지된다면 다음 세션에서도 성공 가능성이 높게 판단됩니다."
+        ),
     },
-    # Session 2: failure-oriented feedback (supportive / analytical, not discouraging)
     2: {
-        "emotion_specific": [
-            # (1)
-            "2세션은 여러 조건을 동시에 만족시켜야 하는 문항이 많아 부담이 커질 수 있는 구간이었습니다. 그럼에도 불구하고 끝까지 포기하지 않고 조건을 맞춰 보려는 시도가 분명히 보였습니다. 특히 ‘참석 인원/시간/예산’처럼 제약이 겹치는 상황에서, 무엇이 필수 조건이고 무엇이 조정 가능한 요소인지 구분하려는 접근은 매우 중요한 문제 해결 전략입니다. 이번 세션의 경험 자체가 다음 문항에서 더 좋은 판단을 만드는 기반이 될 수 있습니다.",
-            # (2)
-            "2세션 수행을 확인했습니다. 이 구간은 계산 자체보다도 ‘조건 충돌을 정리하고 우선순위를 세우는 능력’이 핵심이었습니다. 어려운 문제에서 흔들릴 수 있음에도, 문항을 끝까지 읽고 가능한 선택지를 비교하며 결정을 내리신 점이 의미 있습니다. 복합 조건 문제는 한 번에 맞히기보다, 조건을 분해해 다시 조합하는 과정에서 실력이 빠르게 올라갑니다. 다음 세션에서는 부담을 조금 내려놓고, 조건을 단계적으로 정리하는 방식으로 접근해 보셔도 좋겠습니다.",
-        ],
-        "calc_specific": [
-            # (1)
-            "세션 2는 복합 제약(시간/장소/비용/가중치/논리 조건 등)을 동시에 적용해야 하는 문항이 중심이었습니다. 이 구간에서는 단일 계산 오류보다, “제약 조건 누락”이 정답률을 크게 좌우합니다. 응답 패턴을 보면 일부 문항에서 조건의 우선순위(필수 vs 선택)를 구분하는 단계가 생략될 때 오답 가능성이 증가하는 구조입니다. 다음 세션에서는 (1) 조건 목록화 → (2) 필수 제약 먼저 적용 → (3) 남은 후보 비교의 순서로 처리하면 정확도가 개선될 가능성이 높습니다.",
-            # (2)
-            "세션 2 결과를 종합하면, 복합 문제에서 요구되는 다단계 처리(조건 정리 → 계산/가중치 반영 → 논리 일관성 점검) 중 일부 단계가 단축될 때 선택 오류가 발생할 여지가 있습니다. 특히 가중치·예산 제약처럼 ‘수치 기반 필터링’이 필요한 문항은, 후보를 먼저 제거한 뒤 계산을 수행하는 편이 오류를 줄입니다. 이번 세션은 난이도 대비 정보량이 많아 정상적으로 정답률이 낮아질 수 있는 구간이며, 전략을 조금만 구조화해도 개선 폭이 크게 나타날 수 있습니다.",
-        ],
-        "emotion_superficial": [
-            # (1)
-            "2세션을 완료하셨습니다. 난도가 높은 문항이 이어졌는데도 끝까지 과제를 진행하신 점이 인상적이었습니다. 어려운 구간을 경험한 것 자체가 이후 과제에 도움이 될 수 있습니다. 다음 세션에서는 조금 더 편안한 마음으로 이어가시면 됩니다.",
-            # (2)
-            "세션 2까지 잘 마쳤습니다. 복잡한 문제는 누구에게나 부담이 될 수 있지만, 끝까지 참여하며 답을 선택해 나가신 태도가 의미 있습니다. 다음 세션은 다른 유형의 문항이므로, 흐름을 새로 잡아가시면 좋겠습니다.",
-        ],
-        "calc_superficial": [
-            # (1)
-            "세션 2 분석이 완료되었습니다. 복합 조건이 포함된 문항에서 응답 변동이 확대되는 경향이 관찰됩니다. 이는 난이도 상승 구간에서 일반적으로 나타나는 패턴이며, 과제 요구가 복잡해질수록 판단 과정이 길어지는 영향으로 해석될 수 있습니다.",
-            # (2)
-            "세션 2 수행 결과를 확인했습니다. 다조건 처리 문항에서 정답률이 낮아질 수 있는 전형적 구간으로, 전반적인 응답 패턴이 난이도 변화에 민감하게 반응한 것으로 보입니다. 종합적으로는 복합 제약 상황에서의 처리 전략을 조정할 여지가 있는 수행으로 해석됩니다.",
-        ],
+        "emotional_specific": (
+            "문제 해결 과제가 종료되었습니다.\n"
+            "이번 세션에서는 기대만큼 점수가 나오지 않아 아쉽고 속상하게 느껴질 수 있습니다.\n"
+            "하지만 과정에서 보여주신 태도는 분명히 인상적이었고, 저는 진심으로 응원하고 싶습니다.\n"
+            "특히 D가 오후만 가능할 때 ‘오후 온라인’으로 전환하는 예외를 적용하고, 안전 이슈가 있는 요청은 금액 조건을 넘더라도 우선 승인하며, 정상화된 상황에서는 ‘정상화’ 표현을 쓰되 원인 단정은 피하고 문의처를 포함하려는 식으로, 규칙 충돌을 정리해서 판단하려는 시도가 분명히 나타났습니다.\n"
+            "이번 과제에서는 결과가 떨어졌지만, 이런 방식으로 계속 연습하신다면 다음에는 훨씬 더 자신 있게, 더 좋은 결과로 이어질 것이라 믿습니다."
+        ),
+        "analytical_specific": (
+            "문제 해결 과제가 종료되었습니다.\n"
+            "이번 세션에서는 정답률이 이전 대비 하락한 것으로 기록되었습니다.\n"
+            "다만 수행 과정에서 확인된 긍정적 요소가 있어, 이는 향후 개선 가능성이 높은 응답 패턴으로 해석됩니다.\n"
+            "특히 (필수 2개 + 예외 1개) 구조에서 ‘회의실 오전 규칙’보다 D의 오후 제한에 따른 ‘오후 온라인’ 예외 적용, 30만원 이하·부서 확인 필수 조건보다 ‘안전’ 예외 우선, 공지 문구에서 원인 단정 금지·문의처 포함을 유지하면서 정상화 예외 반영, 로그 조회 7일 이내 원칙에 사고 조사 예외(30일) 적용, 초과근무 사전 신청 원칙에 긴급 장애 예외 적용이 핵심 분기 지점으로 나타났습니다.\n"
+            "이번 과제에서는 점수가 낮았지만, 이러한 전략을 동일하게 유지·강화하면 다음 세션에서 점수 회복 및 상승이 통계적으로 기대되는 방향입니다."
+        ),
+        "emotional_superficial": (
+            "문제 해결 과제가 종료되었습니다.\n"
+            "이번 세션에서는 점수가 기대보다 낮아 실망스럽게 느껴질 수 있습니다.\n"
+            "그럼에도 끝까지 참여하며 문제를 풀어낸 과정은 충분히 의미 있었고, 저는 따뜻하게 응원하고 싶습니다.\n"
+            "복잡한 조건이 많은 상황에서도 쉽게 포기하지 않고 판단을 이어가려는 모습이 인상적이었습니다.\n"
+            "이번 과제에서는 결과가 낮았지만, 계속 시도하신다면 다음 세션에서는 분명히 더 좋은 흐름으로 올라갈 것이라 기대됩니다."
+        ),
+        "analytical_superficial": (
+            "문제 해결 과제가 종료되었습니다.\n"
+            "이번 세션에서는 점수가 이전 대비 하락한 것으로 확인되었습니다.\n"
+            "그러나 전반적인 수행 과정은 완전히 무너지지 않았고, 일부 구간에서는 기준에 부합하는 판단이 유지되었습니다.\n"
+            "복합 조건 상황에서도 판단을 지속하려는 시도가 관찰되었습니다.\n"
+            "이번 과제에서는 점수가 낮았으나, 동일한 참여를 지속할 경우 다음 세션에서 성과 개선 가능성이 높은 것으로 판단됩니다."
+        ),
     },
 }
 
@@ -1236,13 +1262,31 @@ def run_once(key: str, fn, *args, **kwargs):
 
 
 def normalize_condition(value: Optional[str]) -> str:
+    """
+    Normalize feedback condition labels to the 4 canonical experiment conditions:
+      - emotional_specific
+      - analytical_specific
+      - emotional_superficial
+      - analytical_superficial
+
+    Backward-compatibility: older labels like 'computational_*' and '*_surface'
+    are mapped into the canonical set.
+    """
     mapping = {
-        "emotional_superficial": "emotional_surface",
-        "computational_superficial": "computational_surface",
+        # Legacy naming → canonical naming
+        "computational_specific": "analytical_specific",
+        "computational_surface": "analytical_superficial",
+        "computational_superficial": "analytical_superficial",
+        "emotional_surface": "emotional_superficial",
+        # Canonical (idempotent)
+        "emotional_specific": "emotional_specific",
+        "analytical_specific": "analytical_specific",
+        "emotional_superficial": "emotional_superficial",
+        "analytical_superficial": "analytical_superficial",
     }
     if not value:
-        return "emotional_surface"
-    return mapping.get(value, value)
+        return "emotional_superficial"
+    return mapping.get(str(value), str(value))
 
 
 def _condition_to_feedback_key(condition: str) -> str:
@@ -1263,34 +1307,24 @@ def _condition_to_feedback_key(condition: str) -> str:
 def generate_session_feedback(session_id: int, context: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generate the session-level feedback message once (Session 1 & 2 only).
-    The selected variant is determined by the participant-level praise sequence.
+    The message is determined ONLY by (session × fixed participant condition).
     """
     payload = dict(context or {})
     condition_source = (
         payload.get("feedback_condition")
+        or st.session_state.get("feedback_condition")
         or st.session_state.get("praise_condition")
-        or get_or_assign_praise_condition()
     )
-    feedback_key = _condition_to_feedback_key(str(condition_source))
+    if not condition_source:
+        condition_source = get_or_assign_feedback_condition()
 
-    # Deterministic per-participant variant selection (index 0 or 1).
-    seq = get_or_assign_praise_sequence()
-    round_index = 0 if int(session_id) == 1 else 1
-    variant_index = seq[round_index] if 0 <= round_index < len(seq) else 0
-
+    condition = normalize_condition(str(condition_source))
     library = FEEDBACK_LIBRARY.get(int(session_id), {})
-    texts = list(library.get(feedback_key) or [])
-    if not texts:
-        texts = list((library.get("emotion_superficial") or [""])[:2])
-    if variant_index >= len(texts):
-        variant_index = 0
-    summary_text = str(texts[variant_index] or "").strip()
+    summary_text = str(library.get(condition) or "")
 
     return {
         "summary_text": summary_text,
-        "condition": normalize_condition(str(condition_source)),
-        "feedback_key": feedback_key,
-        "variant_index": int(variant_index),
+        "condition": condition,
         "session_id": int(session_id),
     }
 
@@ -1361,7 +1395,7 @@ class SurveyQuestion:
 @dataclass
 class ExperimentData:
     participant_id: str
-    condition: str  # emotional_specific, computational_specific, emotional_surface, computational_surface
+    condition: str  # emotional_specific, analytical_specific, emotional_superficial, analytical_superficial
     demographic: Dict[str, Any]
     inference_responses: List[Dict[str, Any]]
     survey_responses: List[Dict[str, Any]]
@@ -1651,7 +1685,11 @@ class ExperimentManager:
         participant_id = (
             f"P_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}"
         )
-        condition = assigned_condition or get_or_assign_praise_condition()
+        condition = (
+            normalize_condition(assigned_condition)
+            if assigned_condition
+            else get_or_assign_feedback_condition()
+        )
         self.current_participant = {
             "id": participant_id,
             "condition": condition,
@@ -2320,15 +2358,16 @@ def render_demographic() -> None:
             "sex_biological": sex_value,
             "age_years": age_value,
         }
-        condition = normalize_condition(get_or_assign_praise_condition())
-        st.session_state["praise_condition"] = condition
-        condition = get_or_assign_praise_condition()
+        condition = get_or_assign_feedback_condition()
+        st.session_state["feedback_condition"] = condition
+        st.session_state["praise_condition"] = condition  # legacy alias
         participant_id = st.session_state.manager.create_participant(
             st.session_state.payload["demographic"],
             assigned_condition=condition,
         )
         st.session_state.payload["participant_id"] = participant_id
         st.session_state.payload["feedback_condition"] = condition
+        st.session_state.payload["praise_condition"] = condition
         set_phase("instructions")
 
 
@@ -3204,7 +3243,7 @@ def render_summary() -> None:
             record = manager.complete_experiment()
         except ValueError:
             condition = normalize_condition(
-                payload.get("feedback_condition", get_or_assign_praise_condition())
+                payload.get("feedback_condition", get_or_assign_feedback_condition())
             )
             record = ExperimentData(
                 participant_id=payload.get("participant_id")

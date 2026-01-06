@@ -169,7 +169,7 @@ def _task_specificity(condition: str) -> str:
     cond = condition or ""
     if "specific" in cond:
         return "specific"
-    if "surface" in cond:
+    if "superficial" in cond or "surface" in cond:
         return "surface"
     return "unknown"
 
