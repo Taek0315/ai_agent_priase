@@ -2605,7 +2605,8 @@ def render_practice_building_height() -> None:
 
     ps = st.session_state.practice_state
     if ps.get("attempted", False):
-        st.success("연습 문항 제출이 완료되었습니다. \n 앞으로 진행될 본 문항도 문항을 읽고 정답을 선택해주시면 됩니다.")
+        st.success("연습 문항 제출이 완료되었습니다.") 
+        st.success("앞으로 진행될 본 문항도 문항을 읽고 정답을 선택해주시면 됩니다.")
         if st.button(
             "본 문항 시작하기",
             use_container_width=True,
