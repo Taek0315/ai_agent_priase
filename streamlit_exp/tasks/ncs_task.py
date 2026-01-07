@@ -250,10 +250,10 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "question": "가장 효율적인 작업 순서는 무엇인가?",
             "options": _options_dict(
                 "C → B → A → D",
-                "C → A → B&D",
+                "C → A → B & D",
                 "B → C → A → D",
                 "A → B → C → D",
-                "C → B&D → A",
+                "C → B & D → A",
             ),
             "answer_key": "5",
         },
