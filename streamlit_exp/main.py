@@ -2620,10 +2620,10 @@ def render_practice_building_height() -> None:
         "item_number": 0,
         "session_id": 0,
         "domain": "practice",
-        "instruction": "사수가 부재 중인 상황 메일 하나가 도착하였다.\n 받은 메일 제목: [긴급] A시스템에 심각한 오류가 발견되었습니다. 확인 후 회신 바랍니다.",
+        "instruction": "사수가 부재 중인 상황 혼자 일을 하고 있는 중간 메일 하나가 도착하였다.\n 받은 메일 제목: [!긴급!] A시스템에 심각한 오류가 발견되었습니다. 확인 후 회신 바랍니다.",
         "stimulus_type": "text",
         "stimulus_text": "",
-        "info_blocks": [{"title": "", "bullets": ["모든 메시지의 연락은 사수의 컨펌을 받은 후 회신 해야한다. 단, 상황에 따라 유연하게 대처가 필요하다."]}],
+        "info_blocks": [{"title": "", "bullets": ["모든 메시지의 연락은 사수의 컨펌을 받은 후 회신 해야한다.\n 단, 사수 부재시 개별 판단이 가능하다."]}],
         "table_spec": {},
         "question": "다음 중 가장 적절한 행동은 무엇인가?",
         "options": {
