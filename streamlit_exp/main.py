@@ -2605,7 +2605,8 @@ def render_practice_building_height() -> None:
 
     ps = st.session_state.practice_state
     if ps.get("attempted", False):
-        st.success("연습 문항 제출이 완료되었습니다.")
+        st.success("연습 문항 제출이 완료되었습니다.",
+        "앞으로 진행될 본 문항도 문항을 읽고 정답을 선택해주시면 됩니다.")
         if st.button(
             "본 문항 시작하기",
             use_container_width=True,
@@ -2628,11 +2629,11 @@ def render_practice_building_height() -> None:
         "table_spec": {},
         "question": "다음 중 가장 적절한 행동은 무엇인가?",
         "options": {
-            "1": "즉시 답장한다.",
+            "1": "즉시 메일에 답장한다.",
             "2": "사수에게 보고하고 후속 조치를 기다린다.",
             "3": "사수에게 해당 메일을 포워딩한다.",
             "4": "내용 확인 후 대기한다.",
-            "5": "삭제한다.",
+            "5": "시스템 문제를 내가 해결한다.",
         },
         "answer_key": "1",
     }
