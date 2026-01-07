@@ -165,15 +165,15 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 2,
             "session_id": 1,
             "domain": "session1",
-            "instruction": "집에서 택배를 기다리고 있다. 오늘 처리할 ‘배송 관련 문의’가 여러 건 쌓였다.",
+            "instruction": "택배 관련 문의를 처리 중이다. 오늘 처리할 ‘배송 관련 문의’가 여러 건 쌓였다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
                     "title": "처리 기준",
                     "bullets": [
-                        "‘오늘 도착 예정’ 문의를 먼저 처리한다.",
-                        "같다면 ‘주문일이 더 이른’ 문의를 먼저 처리한다.",
+                        "‘도착 예정이 빠른’ 문의를 먼저 처리한다.",
+                        "도착 예정이 같다면 ‘주문일이 더 빠른’ 문의를 먼저 처리한다.",
                     ],
                 },
             ],
