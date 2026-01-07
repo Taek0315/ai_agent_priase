@@ -313,21 +313,21 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 7,
             "session_id": 2,
             "domain": "session2",
-            "instruction": "회사에서 소모품 구매 요청 1건을 결재해야 한다.",
+            "instruction": "회사에서 소모품과 비품을 구매 하고자 하는 구매 요청을 결재해야 한다. \n 남은 예산이 한정되어 있기 때문에 전부 결재해줄 수 없다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
                     "title": "결재 기준",
                     "bullets": [
-                        "필수: 30만 원 이하",
-                        "필수: 팀 확인 완료(O)",
-                        "예외: 안전 문제 해결 목적이면 금액 기준을 무시하고 승인",
+                        "예산 범위: 30만 원",
+                        "각 팀별 부서장의 확인 필수",
+                        "단, 안전 문제 해결 목적이면 금액 기준 만을 무시하고 승인",
                     ],
                 },
             ],
             "table_spec": {},
-            "question": "기준에 따라 가장 적절한 행동은 무엇인가?",
+            "question": "기준에 따라 승인할 요청은 무엇인가?",
             "options": _options_dict(
                 "요청 A(안전 O/50만 원/확인 O)를 승인한다.",
                 "요청 B(안전 X/20만 원/확인 O)를 승인한다.",
