@@ -283,16 +283,17 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 6,
             "session_id": 2,
             "domain": "session2",
-            "instruction": "친구 3명과 오프라인으로 모일 약속을 잡고 있다. 모두가 가능한 시간을 찾아야 한다.",
+            "instruction": "친구 3명과 팀플 회의 약속을 잡고 있다. 모두가 가능한 시간을 찾아야 한다.",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
                     "title": "약속 기준",
                     "bullets": [
-                        "A는 월 저녁, 화 저녁 가능",
-                        "B는 화 저녁, 수 저녁 가능 (단, B는 오프라인 참석 필수)",
-                        "C는 월 저녁, 수 저녁 가능",
+                        "A는 월 저녁, 화 점심, 목 저녁 가능 수 온라인 가능",
+                        "B는 화 점심, 수 저녁, 목 점심 가능 월 온라인 가능",
+                        "C는 월 저녁, 화 점심, 수 저녁 가능 화 온라인 가능",
+                        "A와 B는 만나지 않아야 하며, B와 C는 같이 만나야 한다."
                     ],
                 },
             ],
@@ -300,12 +301,12 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "question": "조건에 따라 가장 알맞은 약속 시간은 언제인가?",
             "options": _options_dict(
                 "월요일 저녁",
-                "화요일 저녁",
-                "수요일 저녁",
                 "화요일 점심",
+                "수요일 저녁",
+                "목요일 점심",
                 "수요일 점심",
             ),
-            "answer_key": "2",
+            "answer_key": "3",
         },
         {
             "id": "ncs_s2_q7",
