@@ -193,7 +193,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "info_blocks": [
                 {
                     "title": "",
-                    "bullets": ["개인정보는 ‘보안 전송 링크’로만 보낸다.", "보안 전송 링크는 지정된 IP(보안팀 결재 필요)를 통해서만 접속 가능하다.", "긴급한 사항일 경우 개인 정보는 마스킹 처리 후 팩스로 보낸다."],
+                    "bullets": ["개인정보는 ‘보안 전송 링크’로만 보낸다.", "보안 전송 링크는 생성에 2일이 소요된다.", "긴급한 사항일 경우 개인 정보는 마스킹 처리 후 팩스로 보낸다."],
                 },
             ],
             "table_spec": {},
@@ -237,25 +237,25 @@ def load_ncs_items() -> List[Dict[str, Any]]:
             "item_number": 5,
             "session_id": 1,
             "domain": "session1",
-            "instruction": "근무기록 누락 1건을 먼저 고친다.",
+            "instruction": "오늘 수행할 작업에 대해 계획을 세우고 있다",
             "stimulus_type": "text",
             "stimulus_text": "",
             "info_blocks": [
                 {
                     "title": "",
-                    "bullets": ["퇴근 기록 ‘누락’부터 보완한다."],
+                    "bullets": ["A: 우선 순위 중 / 단독 처리", "B: 우선 순위 상 / 동시 처리 가능", "C: 우선 순위 상 / 단독 처리", "D: 우선 순위 하 / 동시 처리 가능"],
                 },
             ],
             "table_spec": {},
-            "question": "조건에 따라 가장 적절한 행동은 무엇인가?",
+            "question": "가장 효율적인 작업 순서는 무엇인가?",
             "options": _options_dict(
-                "월(정상)부터 보완한다.",
-                "화(퇴근 누락)부터 보완한다.",
-                "수(정상)부터 보완한다.",
-                "목(정상)부터 보완한다.",
-                "금(정상)부터 보완한다.",
+                "C → B → A → D",
+                "C → A → B&D",
+                "B → C → A → D",
+                "A → B → C → D",
+                "C → B&D → A",
             ),
-            "answer_key": "2",
+            "answer_key": "5",
         },
         # -------------------------
         # SESSION 2 (6–10)
