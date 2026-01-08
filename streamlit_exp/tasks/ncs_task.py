@@ -467,7 +467,7 @@ def load_ncs_items() -> List[Dict[str, Any]]:
                     "bullets": [
                         "1. 구체적인 도착 예정 시간 포함",
                         "2. 지각 사유 명시",
-                        "3. 감정적 호소(예: 너무 슬퍼요 등) 금지",
+                        "3. 감정적 호소(예시: 너무 슬퍼요 등) 금지",
                     ],
                 },
             ],
@@ -829,4 +829,3 @@ def build_ncs_payload(
         "timing": dict(timing or {}),
         "session_meta": dict(session_meta or {}),
     }
-
