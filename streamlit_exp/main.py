@@ -2585,16 +2585,27 @@ def render_visual_training_intro() -> None:
     scroll_top_js()
     # NOTE: Task instruction must be shown ONCE (brief).
     st.title("문제 해결 과제")
-    st.markdown(
-        """
-지금 부터 문제 해결 과제가 시작됩니다.
-각 과제는 주어진 지시문을 읽고 정답이라고 생각되는 보기를 선택해주시면 됩니다.
-문제 풀이 중 정답이 무엇인지는 제공되지 않습니다.
-
-연습 문항을 풀어본 후 본 문항으로 넘어가게 됩니다.
-준비가 되셨다면 하단의 버튼을 클릭해주세요.
-        """.strip()
-    )
+    with st.container():
+        st.markdown(
+            """
+<div style="
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  margin: 0.5rem 0 1rem 0;
+">
+  <div style="line-height: 1.7;">
+    <div style="margin: 0 0 0.75rem 0;">지금 부터 문제 해결 과제가 시작됩니다.</div>
+    <div style="margin: 0 0 0.75rem 0;">각 과제는 주어진 지시문을 읽고 정답이라고 생각되는 보기를 선택해주시면 됩니다.</div>
+    <div style="margin: 0 0 0.9rem 0;">문제 풀이 중 정답이 무엇인지는 제공되지 않습니다.</div>
+    <div style="margin: 0 0 0.75rem 0;">연습 문항을 풀어본 후 본 문항으로 넘어가게 됩니다.</div>
+    <div style="margin: 0;">준비가 되셨다면 하단의 버튼을 클릭해주세요.</div>
+  </div>
+</div>
+            """.strip(),
+            unsafe_allow_html=True,
+        )
     if st.button("연습 문항 풀기", use_container_width=True, key="practice_instructions_to_practice"):
         set_phase("practice_building_height")
 
@@ -2605,9 +2616,25 @@ def render_practice_building_height() -> None:
 
     ps = st.session_state.practice_state
     if ps.get("attempted", False):
-        st.success("연습 문항 제출이 완료되었습니다.") 
-        st.info("앞으로 진행될 본 문항도 문항을 읽고 정답을 선택해주시면 됩니다.")
-        st.info("본 문항을 시작할 준비가 되셨으면 아래 버튼을 클릭해주세요.")
+        with st.container():
+            st.markdown(
+                """
+<div style="
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  margin: 0.5rem 0 1rem 0;
+">
+  <div style="line-height: 1.7;">
+    <div style="margin: 0 0 0.75rem 0;">연습 문항 제출이 완료되었습니다.</div>
+    <div style="margin: 0 0 0.75rem 0;">앞으로 진행될 본 문항도 문항을 읽고 정답을 선택해주시면 됩니다.</div>
+    <div style="margin: 0;">본 문항을 시작할 준비가 되셨으면 아래 버튼을 클릭해주세요.</div>
+  </div>
+</div>
+                """.strip(),
+                unsafe_allow_html=True,
+            )
         if st.button(
             "본 문항 시작하기",
             use_container_width=True,
