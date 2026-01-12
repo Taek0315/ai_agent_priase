@@ -2724,9 +2724,9 @@ def render_ncs_session(session_id: int, *, next_phase: str) -> None:
     """
     scroll_top_js()
     title_map = {
-        1: "문제 해결 과제 · 세션 1 (1–5)",
-        2: "문제 해결 과제 · 세션 2 (6–10)",
-        3: "문제 해결 과제 · 세션 3 (11–15)",
+        1: "문제 해결 과제 · 세션 1",
+        2: "문제 해결 과제 · 세션 2",
+        3: "문제 해결 과제 · 세션 3",
     }
     st.title(title_map.get(int(session_id), "문제 해결 과제"))
 
